@@ -24,7 +24,8 @@
         "wapmorgan/morphos": "dev-master",
         "ext-sodium": "*",
         "php81_bc/strftime": "^0.0.2",
-        "ext-iconv": "*"
+        "ext-iconv": "*",
+        "phpmailer/phpmailer": "^7.0"
     },
     "minimum-stability": "beta",
     "require-dev": {

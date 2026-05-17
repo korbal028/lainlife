@@ -1,0 +1,92 @@
+{extends "../@layout.latte"}
+{block title}{_feed}{/block}
+
+{block header}
+    {_feed}
+{/block}
+{block content}
+<div class="tabs">
+    {* Мои новости *}
+    <div n:attr="id => ($globalFeed !== true && $rss !== true ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($globalFeed !== true && $rss !== true ? 'act_tab_a' : 'ki')" href="/feed">
+            {_my_news}
+        </a>
+    </div>
+
+    {* Все новости *}
+    <div n:attr="id => ($globalFeed === true ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($globalFeed === true ? 'act_tab_a' : 'ki')" href="/feed/all">
+            {_all_news}
+        </a>
+    </div>
+
+    {* RSS *}
+    <div n:attr="id => ($rss === true ? 'activetabs' : 'ki')" class="tab">
+        <a n:attr="id => ($rss === true ? 'act_tab_a' : 'ki')" href="/feed/rss">
+            RSS
+        </a>
+    </div>
+</div>
+
+<div style="padding: 10px;">
+    <p style="color:#888; font-size:12px; margin-bottom:8px;">Добавьте несколько адресов — по одному в строке. Записи со всех лент показываются на этой странице (без параметра предпросмотра).</p>
+
+    <form method="post" action="/feed/rss/add" style="margin-bottom:20px;">
+        <input type="hidden" name="hash" value="{$csrfToken}" />
+        <textarea name="urls" rows="5" placeholder="https://example.com/news.xml&#10;https://другой-сайт/feed" style="width:100%; box-sizing:border-box; margin-bottom:8px;"></textarea>
+        <button type="submit" class="button">Добавить ленты</button>
+    </form>
+
+    <div n:if="$subscriptions && $subscriptions->count() > 0" style="margin-bottom:20px;">
+        <div n:foreach="$subscriptions as $sub" style="display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="min-width:0;">
+                <div style="font-weight:bold; word-break:break-all;">{$sub->title}</div>
+                <div style="font-size:11px; color:#777; word-break:break-all;">{$sub->url}</div>
+            </div>
+            <form method="post" action="/feed/rss/remove" style="margin:0;">
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="hidden" name="id" value="{$sub->id}" />
+                <button type="submit" class="button" style="white-space:nowrap;">Удалить</button>
+            </form>
+        </div>
+    </div>
+
+    <hr style="border:0; border-top:1px solid rgba(255,255,255,0.08); margin:16px 0;" />
+
+    <h4 style="margin: 0 0 10px 0;">Предпросмотр по ссылке</h4>
+    <form method="get" action="/feed/rss" style="display:flex; gap:8px; margin-bottom:15px; flex-wrap:wrap;">
+        <input type="text" name="url" value="{$url}" placeholder="Одна RSS-ссылка для просмотра…" style="flex:1; min-width:200px;" />
+        <button type="submit" class="button">Загрузить</button>
+        <a href="/feed/rss" class="button" style="text-decoration:none; display:inline-block; line-height:1.2;">Все сохранённые ленты</a>
+    </form>
+
+    {if $error}
+        <div style="color:#e74c3c; padding:10px;">{$error}</div>
+    {/if}
+
+    {if $url && $feedTitle}
+        <h3 style="margin-bottom:10px;">{$feedTitle}</h3>
+    {elseif !$url && isset($mergedMode) && $mergedMode}
+        <h3 style="margin-bottom:10px;">Все ленты</h3>
+    {/if}
+
+    {if isset($mergedMode) && $mergedMode && (!$subscriptions || $subscriptions->count() === 0) && !$error}
+        <div style="color:#999; padding:10px 0;">Добавьте хотя бы одну RSS-ленту выше или используйте предпросмотр.</div>
+    {/if}
+
+    {foreach $items as $item}
+        <div style="padding:12px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+            <div style="font-size:11px; color:#6b8; margin-bottom:4px;">
+                {if isset($item->sourceFeed)}{$item->sourceFeed}{/if}
+            </div>
+            <a href="{$item->link}" target="_blank" rel="noopener noreferrer" style="font-weight:bold;">{$item->title}</a>
+            <div style="font-size:11px; color:#999; margin:3px 0;">{$item->date}</div>
+            <div style="font-size:13px; color:#ccc;">{$item->desc|noescape}</div>
+        </div>
+    {/foreach}
+
+    {if $url && count($items) === 0 && !$error}
+        <div style="color:#999; padding:10px;">Нет записей.</div>
+    {/if}
+</div>
+{/block}

@@ -8,12 +8,9 @@
         <div id="activetabs" class="tab">
             <a id="act_tab_a" href="javascript:false">{_all_messages}</a>
         </div>
+    <div class="tab">
+        <a href="/im/convs">Мои беседы</a>
     </div>
-
-    <div class="container_gray">
-        <form action="/im/search" method="POST" style="margin: 0;">
-            <input type="text" name="pattern" placeholder="{_search_messages}" required />
-        </form>
     </div>
 
     {if sizeof($corresps) > 0}

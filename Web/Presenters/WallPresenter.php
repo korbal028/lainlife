@@ -16,6 +16,10 @@ use Bhaktaraz\RSSGenerator\Channel;
 
 final class WallPresenter extends OpenVKPresenter
 {
+    private const RSS_MAX_FEEDS_PER_USER = 50;
+    private const RSS_ITEMS_PER_FEED = 30;
+    private const RSS_MAX_MERGED_ITEMS = 200;
+
     private $posts;
 
     public function __construct(Posts $posts)
@@ -181,6 +185,7 @@ final class WallPresenter extends OpenVKPresenter
     public function renderFeed(): void
     {
         $this->assertUserLoggedIn();
+        $this->template->rss = false;
 
         $id    = $this->user->id;
         $subs  = DatabaseConnection::i()
@@ -243,6 +248,7 @@ final class WallPresenter extends OpenVKPresenter
         $count = DatabaseConnection::i()->getConnection()->query("SELECT COUNT(*) " . $queryBase)->fetch()->{"COUNT(*)"};
 
         $this->template->_template     = "Wall/Feed.latte";
+        $this->template->rss           = false;
         $this->template->globalFeed    = true;
         $this->template->paginatorConf = (object) [
             "count"   => $count,
@@ -804,4 +810,312 @@ final class WallPresenter extends OpenVKPresenter
         $this->template->page     = $page;
         $this->template->perPage  = OPENVK_DEFAULT_PER_PAGE;
     }
+
+
+    public function renderFeedRss(): void
+    {
+        $this->assertUserLoggedIn();
+        $this->template->_template     = "Wall/FeedRss.latte";
+        $this->template->globalFeed   = false;
+        $this->template->rss          = true;
+
+        $url = $this->queryParam("url");
+        $url = is_string($url) ? trim($url) : "";
+        $this->template->url          = $url;
+        $this->template->items         = [];
+        $this->template->feedTitle    = "";
+        $this->template->error         = null;
+        $this->template->mergedMode    = ($url === "");
+
+        $this->template->subscriptions = DatabaseConnection::i()
+            ->getContext()
+            ->table("rss_subscriptions")
+            ->where("user_id", $this->user->id)
+            ->order("id DESC");
+
+        try {
+            if ($url !== "") {
+                $parsed = $this->fetchRssFeed($url);
+                if ($parsed["feedTitle"] === "" && sizeof($parsed["items"]) === 0) {
+                    $this->template->error = "Не удалось загрузить RSS";
+                } else {
+                    $this->template->feedTitle = $parsed["feedTitle"];
+                    $this->template->items     = array_slice($parsed["items"], 0, self::RSS_ITEMS_PER_FEED);
+                    foreach ($this->template->items as $it) {
+                        $it->sourceFeed = $parsed["feedTitle"];
+                        $it->sourceUrl  = $url;
+                    }
+                }
+            } else {
+                $merged = [];
+                foreach ($this->template->subscriptions as $sub) {
+                    $parsed = $this->fetchRssFeed($sub->url);
+                    $slice  = array_slice($parsed["items"], 0, self::RSS_ITEMS_PER_FEED);
+                    $label  = (string) ($sub->title ?: $parsed["feedTitle"] ?: $sub->url);
+                    foreach ($slice as $it) {
+                        $it->sourceFeed = $label;
+                        $it->sourceUrl  = (string) $sub->url;
+                        $merged[]       = $it;
+                    }
+                }
+                usort($merged, function ($a, $b) {
+                    return $this->rssItemSortKey($b) <=> $this->rssItemSortKey($a);
+                });
+                $this->template->items = array_slice($merged, 0, self::RSS_MAX_MERGED_ITEMS);
+            }
+        } catch (\Throwable $e) {
+            $this->template->error = "Ошибка: " . $e->getMessage();
+        }
+    }
+
+    public function renderAddRssFeeds(): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
+
+        $raw = (string) ($this->postParam("urls") ?? "");
+        $lines = preg_split('/\R+/u', $raw) ?: [];
+        $added = 0;
+        $skipped = 0;
+
+        $count = DatabaseConnection::i()
+            ->getContext()
+            ->table("rss_subscriptions")
+            ->where("user_id", $this->user->id)
+            ->count("*");
+
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if ($line === "") {
+                continue;
+            }
+            if (!filter_var($line, FILTER_VALIDATE_URL)) {
+                $skipped++;
+                continue;
+            }
+            if ($count >= self::RSS_MAX_FEEDS_PER_USER) {
+                break;
+            }
+
+            $exists = DatabaseConnection::i()
+                ->getContext()
+                ->table("rss_subscriptions")
+                ->where("user_id", $this->user->id)
+                ->where("url", $line)
+                ->fetch();
+
+            if ($exists) {
+                $skipped++;
+                continue;
+            }
+
+            $parsed = $this->fetchRssFeed($line);
+            $title  = $parsed["feedTitle"] !== "" ? $parsed["feedTitle"] : $line;
+            if ($parsed["feedTitle"] === "" && sizeof($parsed["items"]) === 0) {
+                $skipped++;
+                continue;
+            }
+
+            DatabaseConnection::i()
+                ->getContext()
+                ->table("rss_subscriptions")
+                ->insert([
+                    "user_id" => $this->user->id,
+                    "url"     => $line,
+                    "title"   => mb_substr($title, 0, 500),
+                    "created" => time(),
+                ]);
+            $count++;
+            $added++;
+        }
+
+        if ($added > 0) {
+            $this->flash("succ", "RSS", "Добавлено лент: {$added}" . ($skipped > 0 ? " (пропущено: {$skipped})" : ""));
+        } else {
+            $this->flash("err", "RSS", $skipped > 0 ? "Не удалось добавить ленты (неверный URL или дубликат)." : "Вставьте хотя бы одну ссылку.");
+        }
+
+        $this->redirect("/feed/rss");
+    }
+
+    public function renderRemoveRssFeed(): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
+
+        $id = (int) ($this->postParam("id") ?? 0);
+        if ($id > 0) {
+            $row = DatabaseConnection::i()
+                ->getContext()
+                ->table("rss_subscriptions")
+                ->where("user_id", $this->user->id)
+                ->where("id", $id)
+                ->fetch();
+            if ($row) {
+                DatabaseConnection::i()
+                    ->getContext()
+                    ->table("rss_subscriptions")
+                    ->where("id", $id)
+                    ->delete();
+                $this->flash("succ", "RSS", "Лента удалена.");
+            }
+        }
+
+        $this->redirect("/feed/rss");
+    }
+
+    private function loadXmlFromUrl(string $feedUrl): ?\SimpleXMLElement
+    {
+        $opts = [
+            "http"  => ["timeout" => 14, "user_agent" => "OpenVK-RSS/1.0"],
+            "https" => ["timeout" => 14, "user_agent" => "OpenVK-RSS/1.0"],
+        ];
+        $ctx  = stream_context_create($opts);
+        $data = @file_get_contents($feedUrl, false, $ctx);
+        if ($data === false || $data === "") {
+            return null;
+        }
+        \libxml_use_internal_errors(true);
+        $xml = @simplexml_load_string($data);
+        \libxml_clear_errors();
+
+        return $xml ?: null;
+    }
+
+    private function extractLinkFromRss2Item(\SimpleXMLElement $item): string
+    {
+        $lnk = \trim((string) $item->link);
+        if ($lnk !== "") {
+            return $lnk;
+        }
+        foreach ($item->xpath('.//*[local-name()="link"]') ?: [] as $node) {
+            $h = \trim((string) ($node->attributes()->href ?? ""));
+            if ($h !== "") {
+                return $h;
+            }
+            $t = \trim((string) $node);
+            if ($t !== "") {
+                return $t;
+            }
+        }
+        if (isset($item->guid)) {
+            $g = \trim((string) $item->guid);
+            if ($g !== "" && \filter_var($g, FILTER_VALIDATE_URL)) {
+                return $g;
+            }
+        }
+        $desc = (string) ($item->description ?? "");
+        if ($desc !== "" && \preg_match('#\bhref\s*=\s*"(https?://[^"]+)"#i', $desc, $m)) {
+            return \html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5, "UTF-8");
+        }
+
+        return "";
+    }
+
+    private function extractLinkFromAtomEntry(\SimpleXMLElement $entry): string
+    {
+        $nonSelf = "";
+        $first   = "";
+        foreach ($entry->xpath('.//*[local-name()="link"]') ?: [] as $linkEl) {
+            $attrs = $linkEl->attributes();
+            $href  = \trim((string) ($attrs["href"] ?? ""));
+            if ($href === "") {
+                continue;
+            }
+            $rel = \strtolower((string) ($attrs["rel"] ?? ""));
+            if ($rel === "alternate" || $rel === "") {
+                return $href;
+            }
+            if ($rel !== "self" && $nonSelf === "") {
+                $nonSelf = $href;
+            }
+            if ($first === "") {
+                $first = $href;
+            }
+        }
+        if ($nonSelf !== "") {
+            return $nonSelf;
+        }
+        if (isset($entry->id)) {
+            $id = \trim((string) $entry->id);
+            if ($id !== "" && \filter_var($id, FILTER_VALIDATE_URL)) {
+                return $id;
+            }
+        }
+
+        return $first;
+    }
+
+    /**
+     * @return array{0: string, 1: list<object>}
+     */
+    private function extractItemsFromXml(\SimpleXMLElement $xml): array
+    {
+        $feedTitle = "";
+        $out       = [];
+
+        if (isset($xml->channel)) {
+            $feedTitle = (string) $xml->channel->title;
+            foreach ($xml->channel->item as $item) {
+                $lnk = $this->extractLinkFromRss2Item($item);
+                $out[] = (object) [
+                    "title" => (string) $item->title,
+                    "link"  => $lnk,
+                    "desc"  => (string) ($item->description ?? ""),
+                    "date"  => (string) ($item->pubDate ?? ""),
+                ];
+            }
+
+            return [$feedTitle, $out];
+        }
+
+        if (isset($xml->entry)) {
+            $feedTitle = (string) ($xml->title ?? "");
+            foreach ($xml->entry as $entry) {
+                $lnk = $this->extractLinkFromAtomEntry($entry);
+                $d   = (string) ($entry->summary ?? $entry->content ?? "");
+                $out[] = (object) [
+                    "title" => (string) $entry->title,
+                    "link"  => $lnk,
+                    "desc"  => $d,
+                    "date"  => (string) ($entry->updated ?? $entry->published ?? ""),
+                ];
+            }
+
+            return [$feedTitle, $out];
+        }
+
+        return ["", []];
+    }
+
+    /**
+     * @return array{feedTitle: string, items: list<object>}
+     */
+    private function fetchRssFeed(string $url): array
+    {
+        $xml = $this->loadXmlFromUrl($url);
+        if (!$xml) {
+            return ["feedTitle" => "", "items" => []];
+        }
+        [$feedTitle, $items] = $this->extractItemsFromXml($xml);
+        if ($feedTitle === "" && sizeof($items) === 0) {
+            return ["feedTitle" => "", "items" => []];
+        }
+
+        return [
+            "feedTitle" => $feedTitle !== "" ? $feedTitle : $url,
+            "items"     => $items,
+        ];
+    }
+
+    private function rssItemSortKey(object $item): int
+    {
+        $raw = (string) ($item->date ?? "");
+        $t   = @\strtotime($raw);
+
+        return $t !== false ? $t : 0;
+    }
+
 }

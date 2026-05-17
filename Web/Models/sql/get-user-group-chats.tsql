@@ -1,0 +1,7 @@
+-- Получение групповых чатов пользователя
+-- Параметры: user_id (LIKE для поиска в participants), limit, offset
+SELECT * FROM `group_chats`
+WHERE `participants` LIKE ?
+  AND `deleted` = 0
+ORDER BY `created` DESC
+LIMIT ? OFFSET ?

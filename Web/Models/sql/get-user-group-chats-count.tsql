@@ -1,0 +1,5 @@
+-- Подсчёт групповых чатов пользователя
+-- Параметры: user_id (LIKE для поиска в participants)
+SELECT COUNT(*) as cnt FROM `group_chats`
+WHERE `participants` LIKE ?
+  AND `deleted` = 0

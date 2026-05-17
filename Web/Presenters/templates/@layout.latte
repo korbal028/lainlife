@@ -288,7 +288,11 @@
                             <a n:if="\OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['enable'] && $thisUser->getLeftMenuItemStatus('poster')" href="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['link']}" >
                                 <img src="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['src']}" alt="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['caption']}" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
                             </a>
-
+                            <a href="https://lainlife.ru/donate" style="display:block;">
+                                <img src="https://lainlife.ru/blob_a0/a085b03a25a161c79ad1241f0a25fec5805cd71eb5f9423588836c928c9fea808425e5cab612a556c8ff69ac314d2b2c3b525170154d09b75874582802496b42_cropped/large.jpeg" alt="донаты" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
+                            </a>
+                            <a href="https://wiki.lainlife.ru" style="display:block;">
+                                <img src="https://lainlife.ru/blob_40/40219e82e843c47e94a8759e05d6f18c9708a763844978dcd42776871e253de24d88f21637058b6fcb7bf0657ffbdd9ea37511fa318f3982ab672684556eba06_cropped/large.jpeg" alt="Наша вики" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
                             <div class="floating_sidebar">
                                 <a id="minilink-friends" class="minilink" href="/friends{$thisUser->getId()}">
                                     <object type="internal/link" n:if="$thisUser->getRequestsCount() > 0">
@@ -402,7 +406,7 @@
                 {/foreach}
                 <a href="/language" class="link">all languages &raquo;</a>
             </p>
-            <p>OpenVK <a href="/about:openvk">{php echo OPENVK_VERSION}</a> | PHP: {phpversion()} | DB: {$dbVersion}</p>
+	    <p>LainLife <a href="/about:openvk">{php echo OPENVK_VERSION}</a> | est. 2026 | <a href="https://t.me/lainlifesoc"> ТГК</p>
             <p n:ifcontent>
                 {php echo OPENVK_ROOT_CONF["openvk"]["appearance"]["motd"]}
             </p>

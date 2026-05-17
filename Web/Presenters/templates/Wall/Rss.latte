@@ -1,0 +1,46 @@
+{extends "../@layout.latte"}
+{block title}{_feed}{/block}
+
+{block header}
+    {_feed}
+{/block}
+{block content}
+    <div class="tabs">
+        <div n:attr="id => (isset($globalFeed) ? 'ki' : 'activetabs')" class="tab">
+            <a n:attr="id => (isset($globalFeed) ? 'ki' : 'act_tab_a')" href="/feed">{_my_news}</a>
+        </div>
+        <div n:attr="id => (isset($globalFeed) ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => (isset($globalFeed) ? 'act_tab_a' : 'ki')" href="/feed/all">{_all_news}</a>
+        </div>
+        <div n:attr="id => (isset($rss) ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => (isset($rss) ? 'act_tab_a' : 'ki')" href="/feed/rss">RSS</a>
+        </div>
+	</div>
+    
+	<div style="padding: 10px;">
+        <form method="get" action="/feed/rss" style="display:flex; gap:8px; margin-bottom:15px;">
+            <input type="text" name="url" value="{$url}" placeholder="Вставьте ссылку на RSS..." style="flex:1;" />
+            <button type="submit" class="button">Загрузить</button>
+        </form>
+
+        {if $error}
+            <div style="color:#e74c3c; padding:10px;">{$error}</div>
+        {/if}
+
+        {if $feedTitle}
+            <h3 style="margin-bottom:10px;">{$feedTitle}</h3>
+        {/if}
+
+        {foreach $items as $item}
+            <div style="padding:10px 0; border-bottom:1px solid rgba(255,255,255,0.05);">
+                <a href="{$item->link}" target="_blank" style="font-weight:bold;">{$item->title}</a>
+                <div style="font-size:11px; color:#999; margin:3px 0;">{$item->date}</div>
+                <div style="font-size:13px; color:#ccc;">{$item->desc|noescape}</div>
+            </div>
+        {/foreach}
+
+        {if $url && count($items) === 0 && !$error}
+            <div style="color:#999; padding:10px;">Нет записей.</div>
+        {/if}
+    </div>
+{/block}

@@ -6,6 +6,9 @@ namespace openvk\Web\Presenters;
 
 use Chandler\Signaling\SignalManager;
 use openvk\Web\Events\NewMessageEvent;
+use openvk\Web\Events\DeleteMessageEvent;
+use openvk\Web\Events\EditMessageEvent;
+use openvk\Web\Events\ForwardMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, Messages};
 use openvk\Web\Models\Entities\{Message, Correspondence};
 
@@ -45,7 +48,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $page = (int) ($_GET["p"] ?? 1);
         $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page));
 
-        // #КакаоПрокакалось
+        // бля
 
         $this->template->corresps = $correspondences;
         $this->template->paginatorConf = (object) [
@@ -143,7 +146,9 @@ final class MessengerPresenter extends OpenVKPresenter
         $messages       = [];
         $correspondence = new Correspondence($this->user->identity, $correspondent);
         foreach ($correspondence->getMessages(1, $lastMsg === 0 ? null : $lastMsg, null, 0) as $message) {
-            $messages[] = $message->simplify();
+            $simple = $message->simplify();
+            $this->enrichAttachmentsWithHTML($message, $simple);
+            $messages[] = $simple;
         }
 
         header("Content-Type: application/json");
@@ -155,7 +160,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        if (empty($this->postParam("content"))) {
+        if (empty($this->postParam("content")) && empty($this->postParam("attachments"))) {
             header("HTTP/1.1 400 Bad Request");
             exit("<b>Argument error</b>: param 'content' expected to be string, undefined given.");
         }
@@ -166,13 +171,193 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
+        $attachments = [];
+        if (!empty($this->postParam("attachments"))) {
+            $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
+            if (sizeof($attachments_array) > 0) {
+                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc']);
+            }
+        }
+
         $cor = new Correspondence($this->user->identity, $sel);
         $msg = new Message();
         $msg->setContent($this->postParam("content"));
+        if (!empty($this->postParam("reply_to"))) {
+            $msg->setForwarded_from((int) $this->postParam("reply_to"));
+        }
         $cor->sendMessage($msg);
+
+        foreach ($attachments as $attachment) {
+            if (!$attachment || $attachment->isDeleted() || !$attachment->canBeViewedBy($this->user->identity)) {
+                continue;
+            }
+
+            $msg->attach($attachment);
+        }
 
         header("HTTP/1.1 202 Accepted");
         header("Content-Type: application/json");
-        exit(json_encode($msg->simplify()));
+        $simple = $msg->simplify();
+        $this->enrichAttachmentsWithHTML($msg, $simple);
+        exit(json_encode($simple));
     }
+
+    private function enrichAttachmentsWithHTML(Message $messageObj, array &$simplifiedArray): void
+    {
+        $children = iterator_to_array($messageObj->getChildren());
+
+        foreach ($simplifiedArray['attachments'] as $index => &$attachmentData) {
+            if (!isset($children[$index])) {
+                continue;
+            }
+
+            $originalObj = $children[$index];
+            $html = "";
+
+            if ($attachmentData['type'] === 'audio') {
+                $html = $this->getTemplatingEngine()->renderToString(
+                    # костыль жоский
+                    dirname(__FILE__) . '/templates/Audio/player.latte',
+                    [
+                        'audio' => $originalObj,
+                        'thisUser' => $this->user->identity,
+                        'hideButtons' => false,
+                        'club' => null,
+                    ]
+                );
+            }
+
+            if ($html !== "") {
+                $attachmentData['html'] = $html;
+            }
+        }
+    }
+
+
+    public function renderApiEditMessage(int $sel, int $msgId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        if (empty($this->postParam("content"))) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
+
+        $msg = (new Messages())->get($msgId);
+        if (!$msg) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        if ($msg->getSender()->getId() !== $this->user->id) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $msg->setContent($this->postParam("content"));
+        if (!empty($this->postParam("reply_to"))) {
+            $msg->setForwarded_from((int) $this->postParam("reply_to"));
+        }
+        $msg->setEdited(time());
+        $msg->save();
+
+        $recipient = $msg->getRecipient();
+        $sender = $msg->getSender();
+        $this->signaler->triggerEvent(new EditMessageEvent($msg), $recipient->getId());
+        $this->signaler->triggerEvent(new EditMessageEvent($msg), $sender->getId());
+
+        header("HTTP/1.1 200 OK");
+        header("Content-Type: application/json");
+        $simple = $msg->simplify();
+        exit(json_encode($simple));
+    }
+
+public function renderApiForwardMessage(int $sel, int $msgId): void
+{
+    $this->assertUserLoggedIn();
+    $this->willExecuteWriteAction();
+
+    $origMsg = (new Messages())->get($msgId);
+    if(!$origMsg) {
+        header("HTTP/1.1 404 Not Found");
+        exit();
+    }
+
+    $recipient = $this->getCorrespondent($sel);
+    if(!$recipient) {
+        header("HTTP/1.1 404 Not Found");
+        exit();
+    }
+
+    if($recipient->getId() !== $this->user->id && !$recipient->getPrivacyPermission('messages.write', $this->user->identity)) {
+        header("HTTP/1.1 403 Forbidden");
+        exit();
+    }
+
+    $cor = new Correspondence($this->user->identity, $recipient);
+    $msg = new Message();
+    $msg->setContent($this->postParam("content") ?? "");
+    $msg->setForwarded_from($msgId);
+    $cor->sendMessage($msg);
+
+	$recipient = $msg->getRecipient();
+	$this->signaler->triggerEvent(new ForwardMessageEvent($msg), $recipient->getId());
+
+    header("HTTP/1.1 202 Accepted");
+    header("Content-Type: application/json");
+    $simple = $msg->simplify();
+    $this->enrichAttachmentsWithHTML($msg, $simple);
+    exit(json_encode($simple));
+}
+
+    public function renderApiDeleteMessage(int $sel, int $msgId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $msg = (new Messages())->get($msgId);
+        if (!$msg) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        if ($msg->getSender()->getId() !== $this->user->id) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $msg->setDeleted(1);
+        $msg->save();
+
+
+	$recipient = $msg->getRecipient();
+	$sender = $msg->getSender();
+	$this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $recipient->getId());
+	$this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
+
+        header("HTTP/1.1 200 OK");
+        header("Content-Type: application/json");
+        exit(json_encode(["success" => true]));
+    }
+
+
+public function renderApiGetDialogs(): void
+{
+    $this->assertUserLoggedIn();
+
+    $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, 1));
+    $result = [];
+    foreach($correspondences as $cor) {
+        $recipient = $cor->getCorrespondents()[1];
+        $result[] = [
+            "id"     => $recipient->getId(),
+            "name"   => $recipient->getCanonicalName(),
+            "avatar" => $recipient->getAvatarUrl('miniscule'),
+        ];
+    }
+
+    header("Content-Type: application/json");
+    exit(json_encode($result));
+}
 }

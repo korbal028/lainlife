@@ -1,0 +1,51 @@
+{extends "../@layout.latte"}
+{block title}Групповые чаты{/block}
+
+{block header}Групповые чаты{/block}
+
+{block content}
+    <div class="container_gray">
+        <form action="/im/convs/search" method="GET">
+            <input type="text" name="pattern" placeholder="Поиск чатов..." required />
+        </form>
+    </div>
+
+    {if sizeof($chats) > 0}
+        <div class="crp-list scroll_container">
+            <div n:foreach="$chats as $chat"
+                 class="scroll_node crp-entry"
+                 onmousedown="window.location.assign({$chat->getURL()});" >
+                {var $lastMsg = $chat->getLastMessage()}
+
+                <div class="crp-entry--image">
+                    <img src="{$chat->getAvatarURL('miniscule')}"
+                    alt="Аватар чата" loading=lazy />
+                </div>
+                <div class="crp-entry--info">
+                    <a href="{$chat->getURL()}">{$chat->getName()}</a><br/>
+                    <span>{$chat->getParticipantsCount()} участников</span>
+                </div>
+                <div n:class="crp-entry--message, $lastMsg && $lastMsg->getUnreadState() ? unread">
+                    {if $lastMsg}
+                    {var $_author = $lastMsg->getSender()}
+
+                    <div class="crp-entry--message---av" n:if="$_author->getId() === $thisUser->getId()">
+                        <img src="{$_author->getAvatarURL('miniscule')}"
+                        alt="Фотография пользователя" />
+                    </div>
+                    <div class="crp-entry--message---text">
+                        {$lastMsg->getText()|noescape}
+                    </div>
+                    {/if}
+                </div>
+            </div>
+        </div>
+        <div style="margin-top: 3px;">
+            {include "../components/paginator.latte", conf => $paginatorConf}
+        </div>
+    {else}
+        <br/>
+        <br/>
+        <center>У вас пока нет групповых чатов</center>
+    {/if}
+{/block}

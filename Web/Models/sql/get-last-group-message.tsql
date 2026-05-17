@@ -1,0 +1,7 @@
+-- Получение последнего сообщения в групповом чате
+-- Параметры: chat_id
+SELECT * FROM `group_messages`
+WHERE `chat_id` = ?
+  AND `deleted` = 0
+ORDER BY `created` DESC
+LIMIT 1

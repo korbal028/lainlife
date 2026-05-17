@@ -1,0 +1,8 @@
+-- Получение сообщений группового чата
+-- Параметры: chat_id, last_msg_id (опционально), limit, offset
+SELECT * FROM `group_messages`
+WHERE `chat_id` = ?
+  AND `deleted` = 0
+  AND (? IS NULL OR `id` < ?)
+ORDER BY `created` DESC
+LIMIT ? OFFSET ?

@@ -1,0 +1,5 @@
+-- Подсчёт сообщений в групповом чате
+-- Параметры: chat_id
+SELECT COUNT(*) as cnt FROM `group_messages`
+WHERE `chat_id` = ?
+  AND `deleted` = 0

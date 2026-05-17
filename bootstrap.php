@@ -496,8 +496,8 @@ return (function () {
         -630, -660, -720, -765, -780, -840]);
 
     define("nullptr", null);
-    define("OPENVK_DEFAULT_INSTANCE_NAME", "OpenVK");
-    define("OPENVK_VERSION", "Altair Preview ($ver)");
+    define("OPENVK_DEFAULT_INSTANCE_NAME", "Lainlife");
+    define("OPENVK_VERSION", "");
     define("OPENVK_DEFAULT_PER_PAGE", 10);
     define("__OPENVK_ERROR_CLOCK_IN_FUTURE", "Server clock error: FK1200-DTF");
 });

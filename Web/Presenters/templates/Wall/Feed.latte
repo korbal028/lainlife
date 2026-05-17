@@ -14,6 +14,9 @@
         <div n:attr="id => (isset($globalFeed) ? 'activetabs' : 'ki')" class="tab">
             <a n:attr="id => (isset($globalFeed) ? 'act_tab_a' : 'ki')" href="/feed/all">{_all_news}</a>
         </div>
+        <div n:attr="id => (isset($rss) && $rss ? 'activetabs' : 'ki')" class="tab">
+            <a n:attr="id => (isset($rss) && $rss ? 'act_tab_a' : 'ki')" href="/feed/rss">RSS</a>
+        </div>
 
         <a href='#' id="__feed_settings_link" class="side_link" data-pagescount='{ceil($paginatorConf->count / $paginatorConf->perPage)}'>{_feed_settings}</a>
     </div>

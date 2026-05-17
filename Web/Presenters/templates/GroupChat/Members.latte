@@ -1,0 +1,88 @@
+{extends "../@layout.latte"}
+{block title}Участники — {$chat->getName()}{/block}
+{block header}
+    <a href="/im/convs">Мои беседы</a> »
+    <a href="{$chat->getURL()}">{$chat->getName()}</a> »
+    Участники
+    <div style="float: right;">
+        <a href="#" onclick="leaveChat(); return false;" style="font-size: 11px; color: #999;">Покинуть беседу</a>
+    </div>
+{/block}
+
+{block content}
+        {foreach $participants as $participant}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 6px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                <img src="{$participant->getAvatarUrl('miniscule')}" class="ava" style="width:36px;height:36px;" />
+                <div style="flex:1;">
+                    <a href="{$participant->getURL()}">{$participant->getCanonicalName()}</a>
+                    {if $chat->isCreator($participant->getId())}
+                        <span style="font-size:11px; color:#e67e22;"> создатель</span>
+                    {elseif $chat->isAdmin($participant->getId())}
+                        <span style="font-size:11px; color:#3498db;"> администратор</span>
+                    {/if}
+                </div>
+		{if $chat->isCreator($thisUser->getId()) && !$chat->isCreator($participant->getId())}
+                    <div style="display:flex; gap:5px;">
+                        {if $chat->isAdmin($participant->getId())}
+                            <a href="#" onclick="removeAdmin({$participant->getId()}); return false;" style="font-size:11px; color:#999;">снять админа</a>
+                        {else}
+                            <a href="#" onclick="makeAdmin({$participant->getId()}); return false;" style="font-size:11px; color:#3498db;">сделать админом</a>
+                        {/if}
+                        <a href="#" onclick="removeParticipant({$participant->getId()}); return false;" style="font-size:11px; color:#e74c3c;">удалить</a>
+                    </div>
+                {elseif $chat->canManageParticipants($thisUser->getId()) && !$chat->isCreator($participant->getId()) && !$chat->isAdmin($participant->getId())}
+                    <a href="#" onclick="removeParticipant({$participant->getId()}); return false;" style="font-size:11px; color:#e74c3c;">удалить</a>
+                {/if}
+            </div>
+        {/foreach}
+
+        <div id="data" data-chat-id="{$chat->getId()}" data-hash="{$csrfToken}" style="display:none;"></div>
+        <script>
+        var d = document.getElementById("data");
+        var chatId = d.getAttribute("data-chat-id");
+        var hash = d.getAttribute("data-hash");
+
+        function apiPost(url) {
+            var fd = new FormData();
+            fd.append("hash", hash);
+            return fetch(url, { method: "POST", body: fd }).then(r => r.json());
+        }
+
+function leaveChat() {
+    MessageBox("Покинуть беседу?", "Вы больше не сможете писать в эту беседу.", ["Покинуть", "Отмена"], [
+        () => {
+            apiPost("/im/convs/api/leave" + chatId + ".json").then(data => {
+                if(data.success) location.href = "/im/convs";
+                else MessageBox("Ошибка", data.error || "Неизвестная ошибка", ["OK"], [Function.noop]);
+            });
+        },
+        Function.noop
+    ]);
+}
+function removeParticipant(userId) {
+    MessageBox("Удалить участника?", "Участник будет исключён из беседы.", ["Удалить", "Отмена"], [
+        () => {
+            apiPost("/im/convs/api/remove-participant" + chatId + "/" + userId + ".json").then(data => {
+                if(data.success) location.reload();
+                else MessageBox("Ошибка", data.error || "Неизвестная ошибка", ["OK"], [Function.noop]);
+            });
+        },
+        Function.noop
+    ]);
+}
+        function makeAdmin(userId) {
+            apiPost("/im/convs/api/make-admin" + chatId + "/" + userId + ".json").then(data => {
+                if(data.success) location.reload();
+                else alert("Ошибка");
+            });
+        }
+
+        function removeAdmin(userId) {
+            apiPost("/im/convs/api/remove-admin" + chatId + "/" + userId + ".json").then(data => {
+                if(data.success) location.reload();
+                else alert("Ошибка");
+            });
+        }
+        </script>
+    </div>
+{/block}

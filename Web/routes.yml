@@ -123,6 +123,14 @@ routes:
       handler: "Wall->hashtagFeed"
       placeholders:
           hashTag: ".++"
+    - url: "/feed/rss/add"
+      handler: "Wall->addRssFeeds"
+    - url: "/feed/rss/remove"
+      handler: "Wall->removeRssFeed"
+    - url: "/feed/rss/repost"
+      handler: "Wall->repostRss"
+    - url: "/feed/rss"
+      handler: "Wall->feedRss"
     - url: "/wall{num}"
       handler: "Wall->wall"
     - url: "/wall{num}/rss"
@@ -273,6 +281,14 @@ routes:
       handler: "Messenger->apiGetMessages"
     - url: "/im/api/messages{num}/create.json"
       handler: "Messenger->apiWriteMessage"
+    - url: "/im/api/messages{num}/{num}/delete.json"
+      handler: "Messenger->apiDeleteMessage"
+    - url: "/im/api/messages{num}/{num}/edit.json"
+      handler: "Messenger->apiEditMessage"
+    - url: "/im/api/messages{num}/{num}/forward.json"
+      handler: "Messenger->apiForwardMessage"
+    - url: "/im/api/dialogs.json"
+      handler: "Messenger->apiGetDialogs"
     - url: "/search"
       handler: "Search->index"
     - url: "/search/content"
@@ -423,6 +439,56 @@ routes:
       handler: "About->tour"
     - url: "/fave"
       handler: "User->fave"
+
+    # Групповые чаты
+    - url: "/im/convs"
+      handler: "GroupChat->index"
+
+    - url: "/im/convs/create"
+      handler: "GroupChat->create"
+
+    - url: "/im/convs{num}"
+      handler: "GroupChat->app"
+
+    - url: "/im/convs{num}/edit"
+      handler: "GroupChat->edit"
+
+    - url: "/im/convs/api/events{num}"
+      handler: "GroupChat->events"
+
+    - url: "/im/convs/api/messages{num}/{num}.json"
+      handler: "GroupChat->apiGetMessages"
+
+    - url: "/im/convs/api/messages{num}/write.json"
+      handler: "GroupChat->apiWriteMessage"
+
+    - url: "/im/convs/api/messages{num}/{num}/edit.json"
+      handler: "GroupChat->apiEditMessage"
+
+    - url: "/im/convs/api/messages{num}/{num}/delete.json"
+      handler: "GroupChat->apiDeleteMessage"
+
+    - url: "/im/convs/api/messages{num}/{num}/forward.json"
+      handler: "GroupChat->apiForwardMessage"
+
+    - url: "/im/convs/api/create.json"
+      handler: "GroupChat->apiCreateChat"
+
+    - url: "/im/convs/api/avatar{num}/set.json"
+      handler: "GroupChat->apiSetAvatar"
+
+    - url: "/im/convs/api/avatar{num}/delete.json"
+      handler: "GroupChat->apiDeleteAvatar"
+
+    - url: "/im/convs/api/friends{num}.json"
+      handler: "GroupChat->apiGetFriends"
+
+    - url: "/im/convs/api/add-participant{num}/{num}.json"
+      handler: "GroupChat->apiAddParticipant"
+
+    - url: "/im/convs/api/remove-participant{num}/{num}.json"
+      handler: "GroupChat->apiRemoveParticipant"
+
     - url: "/{?shortCode}"
       handler: "UnknownTextRouteStrategy->delegate"
       placeholders:
@@ -431,3 +497,11 @@ routes:
       handler: "Maintenance->section"
     - url: "/maintenances/"
       handler: "Maintenance->all"
+    - url: "/im/convs{num}/members"
+      handler: "GroupChat->members"
+    - url: "/im/convs/api/leave{num}.json"
+      handler: "GroupChat->apiLeave"
+    - url: "/im/convs/api/make-admin{num}/{num}.json"
+      handler: "GroupChat->apiMakeAdmin"
+    - url: "/im/convs/api/remove-admin{num}/{num}.json"
+      handler: "GroupChat->apiRemoveAdmin"

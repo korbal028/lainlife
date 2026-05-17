@@ -1,0 +1,111 @@
+{extends "../@layout.latte"}
+{block title}Настройки беседы{/block}
+{block header}Настройки: {$chat->getName()}{/block}
+
+{block content}
+    <div style="padding: 10px;">
+
+        <div style="display: flex; align-items: center; gap: 15px; margin-bottom: 20px;">
+            <div style="position: relative;">
+                <img id="chat-avatar" src="{$chat->getAvatarUrl()}" style="width: 80px; height: 80px; border-radius: 50%; object-fit: cover;" />
+            </div>
+            <div>
+                <input type="file" id="avatar-upload" accept="image/*" style="display:none;" />
+                <button class="button" onclick="document.getElementById('avatar-upload').click()">Изменить аватар</button>
+                <button class="button" onclick="deleteAvatar()" style="margin-left: 5px;">Удалить аватар</button>
+            </div>
+        </div>
+
+        <form method="post" action="/im/convs{$chat->getId()}/edit">
+            <input type="hidden" name="hash" value="{$csrfToken}" />
+            <div style="margin-bottom: 10px;">
+                <label>Название беседы:</label><br/>
+                <input type="text" name="name" value="{$chat->getName()}" style="width: 300px;" />
+            </div>
+            <button type="submit" class="button">Сохранить</button>
+        </form>
+
+        <hr style="margin: 20px 0;" />
+
+        <h3>Участники ({count($participants)})</h3>
+        {foreach $participants as $participant}
+            <div style="display: flex; align-items: center; gap: 8px; padding: 5px;">
+                <img src="{$participant->getAvatarUrl('miniscule')}" style="width: 32px; height: 32px; border-radius: 50%;" />
+                <a href="{$participant->getURL()}" style="flex: 1;">{$participant->getCanonicalName()}</a>
+                {if $participant->getId() !== $chat->getCreator()->getId()}
+                    <a href="#" onclick="removeParticipant({$participant->getId()}); return false;" style="color: #e74c3c; font-size: 11px;">удалить</a>
+                {/if}
+            </div>
+        {/foreach}
+
+        <hr style="margin: 20px 0;" />
+
+        <h3>Добавить участника</h3>
+        {foreach $friends as $friend}
+            {if !in_array($friend->getId(), $participantsIds)}
+                <label style="display: flex; align-items: center; gap: 8px; padding: 4px; cursor: pointer;">
+                    <img src="{$friend->getAvatarUrl('miniscule')}" style="width: 28px; height: 28px; border-radius: 50%;" />
+                    <span style="flex: 1;">{$friend->getCanonicalName()}</span>
+                    <button class="button" onclick="addParticipant({$friend->getId()}); return false;">Добавить</button>
+                </label>
+            {/if}
+        {/foreach}
+
+        <div id="edit-data" data-chat-id="{$chat->getId()}" data-hash="{$csrfToken}" style="display:none;"></div>
+        <script>
+        var editData = document.getElementById("edit-data");
+        var chatId = editData.getAttribute("data-chat-id");
+        var csrfHash = editData.getAttribute("data-hash");
+
+        document.getElementById("avatar-upload").addEventListener("change", function() {
+            var file = this.files[0];
+            if(!file) return;
+            var fd = new FormData();
+            fd.append("avatar", file);
+            fd.append("hash", csrfHash);
+            fetch("/im/convs/api/avatar" + chatId + "/set.json", { method: "POST", body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) {
+                        document.getElementById("chat-avatar").src = data.avatar_url + "?" + Date.now();
+                    } else {
+                        alert("Ошибка загрузки аватара");
+                    }
+                });
+        });
+
+        function deleteAvatar() {
+            var fd = new FormData();
+            fd.append("hash", csrfHash);
+            fetch("/im/convs/api/avatar" + chatId + "/delete.json", { method: "POST", body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) location.reload();
+                });
+        }
+
+        function addParticipant(userId) {
+            var fd = new FormData();
+            fd.append("hash", csrfHash);
+            fetch("/im/convs/api/add-participant" + chatId + "/" + userId + ".json", { method: "POST", body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) location.reload();
+                    else alert("Ошибка: " + (data.error || "неизвестная ошибка"));
+                });
+        }
+
+        function removeParticipant(userId) {
+            if(!confirm("Удалить участника?")) return;
+            var fd = new FormData();
+            fd.append("hash", csrfHash);
+            fetch("/im/convs/api/remove-participant" + chatId + "/" + userId + ".json", { method: "POST", body: fd })
+                .then(r => r.json())
+                .then(data => {
+                    if(data.success) location.reload();
+                    else alert("Ошибка: " + (data.error || "неизвестная ошибка"));
+                });
+        }
+        </script>
+    </div>
+{/block}

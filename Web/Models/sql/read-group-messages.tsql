@@ -1,0 +1,7 @@
+-- Отметить сообщения как прочитанные
+-- Параметры: chat_id, user_id (для фильтрации не своих сообщений)
+UPDATE `group_messages`
+SET `unread` = 0
+WHERE `chat_id` = ?
+  AND `sender_id` != ?
+  AND `deleted` = 0

@@ -1,0 +1,5 @@
+-- Получение вложений сообщения
+-- Параметры: message_id
+SELECT * FROM `group_msg_attachments`
+WHERE `message` = ?
+ORDER BY `index` ASC

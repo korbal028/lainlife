@@ -1328,7 +1328,7 @@ table.User {
 }
 
 .messenger-app--messages---message ._content .attachments>.msg-attach-j * {
-    max-width: 86%;
+    max-width: 100%;
 }
 
 .messenger-app--messages---message ._content .attachments:not(:empty) {
@@ -4480,4 +4480,35 @@ hr {
 
 .hidden {
     display: none !important;
+}
+
+/* Audio player in messages */
+.messenger-app--messages---message .audioEmbed,
+.messenger-app--messages---message .audioEntry,
+.messenger-app--messages---message .audioEntryWrapper {
+    width: 100% !important;
+    max-width: 100% !important;
+    box-sizing: border-box;
+}
+
+/* Fix audio player in messenger */
+.msg-attach-j-audio .audioEntry {
+    max-height: unset !important;
+    min-height: unset !important;
+    background: var(--color-elevation-card) !important;
+}
+.msg-attach-j-audio .audioEntry .buttons {
+    display: flex !important;
+}
+.msg-attach-j-audio .audioEntry .audioEntryWrapper {
+    height: unset !important;
+    padding: 6px 8px !important;
+    gap: 6px !important;
+}
+.msg-attach-j-audio .audioEntry .status {
+    height: unset !important;
+    margin-top: 0 !important;
+}
+.msg-attach-j-audio .audioEntry .subTracks {
+    padding: 4px 8px !important;
 }

@@ -1,0 +1,428 @@
+{extends "../@layout.latte"}
+{block title}{$chat->getName()}{/block}
+
+{block header}
+<a href="/im/convs">Групповые чаты</a> »
+{$chat->getName()}
+    <div style="float: right;">
+        <span>{$chat->getParticipantsCount()} участников</span>
+    </div>
+{/block}
+
+{block wrap}
+    <div class="messenger-app">
+        <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
+            <div data-bind="foreach: messages">
+                <div class="messenger-app--messages---message" data-bind="css: { unread: !read }">
+                    <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
+                    <div class="_content">
+                        <a href="#" data-bind="attr: { href: sender.link }">
+                            <strong data-bind="text: sender.name"></strong>
+                        </a>
+                        <span class="text" data-bind="html: text"></span>
+                        <!-- ko if: typeof forwarded !== 'undefined' && forwarded !== null -->
+                        <div class="msg-forwarded" style="border-left: 3px solid #3c3949; margin: 5px 0; padding: 5px 8px; background: rgba(60,57,73, 0.1);">
+                            <div style="font-size:11px; color:#999; margin-bottom:3px;">Пересланное сообщение:</div>
+                            <img data-bind="attr: { src: forwarded.sender.avatar }" style="width:20px; height:20px; vertical-align:middle;" />
+                            <strong data-bind="text: forwarded.sender.name" style="font-size:11px;"></strong>
+                            <div data-bind="html: forwarded.text" style="font-size:11px; margin-top:3px;"></div>
+                        </div>
+                        <!-- /ko -->
+                        <div data-bind="if: sender.id === {$thisUser->getId()}" class="msg-actions">
+                            <a href="#" data-bind="click: function() { window.Msg.deleteMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Удалить</a>
+                            <a href="#" data-bind="click: function() { window.Msg.editMessage(uuid, text); }" style="font-size:11px; color:#999; margin-left:5px;">Редактировать</a>
+                        </div>
+                        <a href="#" data-bind="click: function() { window.Msg.forwardMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Переслать</a>
+                        <div data-bind="foreach: attachments" class="attachments">
+                            <div class="msg-attach-j">
+                                <div data-bind="if: type === 'photo'" class="msg-attach-j-photo">
+                                    <a data-bind="attr: { href: link, 'data-photo-id': id }" class="photoMessengerOpen">
+                                        <img data-bind="attr: { src: photo.url, alt: photo.caption }" />
+                                    </a>
+                                </div>
+                                <div data-bind="if: type === 'video'" class="msg-attach-j-video">
+                                    <div style="width: 100%; max-width: 400px; background: #000;">
+                                        <div class="bsdn media" data-bind="attr: { 'data-name': video.name, 'data-author': video.author }" style="width: 100%;">
+                                            <video class="media" data-bind="attr: { src: video.url }" style="width: 100%; display: block;"></video>
+                                        </div>
+                                    </div>
+                                    <div class="video-wowzer" style="margin-top: 8px;">
+                                        <div class="small-video-ico"></div>
+                                        <a data-bind="attr: { href: link, 'data-video-id': id }, text: video.name" class="videoMessengerOpen" style="display: inline-block;"></a>
+                                        <span class="video-wowzer-length" data-bind="text: '(' + video.formatted_length + ')'"></span>
+                                    </div>
+                                </div>
+                                <div data-bind="if: type === 'audio'" class="msg-attach-j-audio">
+                                    <div style="width:100%;">
+                                        <div data-bind="html: html"></div>
+                                    </div>
+                                </div>
+                                <div data-bind="if: type === 'note'" class="msg-attach-j-note">
+                                    <div data-bind="attr: { 'data-att-type': 'note', 'data-att-id': id }">
+                                        <div class="attachment_note">
+                                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 10"><polygon points="0 0 0 10 8 10 8 4 4 4 4 0 0 0"/><polygon points="5 0 5 3 8 3 5 0"/></svg>
+                                            <div class='attachment_note_content' style="width: 30%">
+                                                <span class="attachment_note_text">{_note}</span>
+                                                <span class="attachment_note_name" style="white-space: nowrap">
+                                                    <a href="#" data-bind="click: function() { showArticle(id); return false; }, text: note.name"></a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div data-bind="if: type === 'doc'" class="msg-attach-j-doc attachment">
+                                    <div style="width:100%;">
+                                        <a data-bind="attr: { href: link, 'data-att-type': 'doc', 'data-att-id': id }" style="display:none" class="docGalleryItem viewerOpener"></a>
+
+                                        <a class="docMainItem viewerOpener docGalleryItem"
+                                           data-bind="visible: document.preview && document.preview.medium, attr: { href: link, 'data-id': id }">
+
+                                            <img class="docGalleryItem_main_preview" loading="lazy"
+                                                 data-bind="attr: { src: (document.preview && document.preview.medium) ? document.preview.medium : '', alt: document.name }">
+
+                                            <div class="doc_top_panel doc_shown_by_hover">
+                                                <div class="doc_volume_action" id="add_icon"></div>
+                                            </div>
+
+                                            <div class="doc_bottom_panel doc_shown_by_hover doc_content info_shown">
+                                                <span class="doc_bottom_panel_name noOverflow doc_name" data-bind="text: document.name"></span>
+                                                <span class="doc_bottom_panel_size" data-bind="text: document.size_str"></span>
+                                            </div>
+                                        </a>
+
+                                        <div class="docMainItem docListViewItem"
+                                             data-bind="visible: !(document.preview && document.preview.medium), attr: { 'data-id': id }">
+
+                                            <a class="viewerOpener" data-bind="attr: { href: link }" style="margin-left: 10%;">
+                                                <img class="doc_icon" data-bind="visible: document.preview && document.preview.tiny, attr: { src: (document.preview && document.preview.tiny) ? document.preview.tiny : '' }">
+                                                <div class="doc_icon no_image" data-bind="visible: !document.preview">
+                                                    <span data-bind="text: document.ext" style="justify-content: center; align-items: center; display:flex;"></span>
+                                                </div>
+                                            </a>
+
+                                            <div class="doc_content noOverflow">
+                                                <a class="viewerOpener noOverflow" data-bind="attr: { href: link }">
+                                                    <b class="noOverflow doc_name" data-bind="text: document.name"></b>
+                                                </a>
+                                                <div class="doc_content_info">
+                                                    <span data-bind="text: document.pub_time" style="display:inline;"></span>, <span data-bind="text: document.size_str" style="display:inline;"></span>
+                                                </div>
+                                            </div>
+
+                                            <div class="doc_volume">
+                                                <div id="add_icon"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="time" align="right">
+                        <span data-bind="html: timing.sent"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div id="messenger-attachment-preview" style="margin: 8px 12px; display: none;">
+            <div class="post-horizontal" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
+            <div class="post-vertical" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
+        </div>
+        <div class="messenger-app--input">
+            <img class="ava" src="{$thisUser->getAvatarUrl('miniscule')}" alt="{$thisUser->getCanonicalName()}" />
+            <div class="messenger-app--input---messagebox">
+                <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
+                    <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
+                        <textarea id="wall-post-input-messenger" placeholder="Введите сообщение..." name="message" style="width: 100%;resize: none;" class="small-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress }"></textarea>
+
+                        <div class="post-buttons" style="display: block; margin-top:6px;">
+                            <div class="post-horizontal" style="display: none;"></div>
+                            <div class="post-vertical" style="display: none;"></div>
+
+                            <input type="hidden" name="horizontal_attachments" value="" autocomplete="off" />
+                            <input type="hidden" name="vertical_attachments" value="" autocomplete="off" />
+                            <input type="hidden" name="poll" value="none" autocomplete="off" />
+                            <input type="hidden" id="source" name="source" value="none" autocomplete="off" />
+                            <input type="hidden" name="geo" value="" autocomplete="off" />
+                            <input type="hidden" name="smiles" value="" autocomplete="off" />
+                            <input type="hidden" name="type" value="1" autocomplete="off" />
+                            <input type="hidden" name="hash" value="{$csrfToken}" />
+
+                            <button class="button" data-bind="click: sendMessage">Отправить</button>
+
+                            <div style="float: right; display: flex; flex-direction: column; padding-top: 5px;">
+                                <a class='menu_toggler'>
+                                    Прикрепить
+                                </a>
+                                <div id="wallAttachmentMenu" class="hidden">
+                                    <a class="header menu_toggler">Прикрепить</a>
+                                    <a id="__photoAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-egon.png" />
+                                        Фотография
+                                    </a>
+                                    <a id="__videoAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" />
+                                        Видео
+                                    </a>
+                                    <a id="__audioAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" />
+                                        Аудио
+                                    </a>
+                                    <a id="__documentAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" />
+                                        Документ
+                                    </a>
+                                    <a id="__notesAttachment">
+                                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-srt.png" />
+                                        Заметка
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {script "js/node_modules/knockout/build/output/knockout-latest.js"}
+    <script>
+        function GroupChatViewModel(initialMessages = []) {
+            window.messages     = ko.observableArray(initialMessages);
+            this.messages       = window.messages;
+            this.messageContent = ko.observable("");
+
+            this.sendMessage = model => {
+                if(model.messageContent() === "") return false;
+
+                window.Msg.sendMessage(model.messageContent());
+                model.messageContent("");
+            };
+            this.loadHistory = _ => {
+                window.Msg._loadHistory();
+                document.body.querySelectorAll(".bsdn").forEach(el => {
+                    if(!el.querySelector(".bdsn-hydrated")) {
+                        bsdnInitElement(el);
+                    }
+                });
+            };
+
+            this.onMessagesScroll   = (model, e) => {
+                if(e.target.scrollTop < 21)
+                    model.loadHistory();
+            };
+            this.onTextareaKeyPress = (model, e) => {
+                if(e.which === 13) {
+                    if(!e.metaKey && !e.shiftKey) {
+                        let ta = u("textarea[name=message]").nodes[0];
+                        ta.blur();
+                        model.sendMessage(model);
+                        ta.focus();
+
+                        return false;
+                    }
+                }
+
+                return true;
+            };
+        }
+
+        class GroupChatMessenger {
+            constructor(messages = []) {
+                this.ko     = ko.applyBindings(new GroupChatViewModel(messages));
+                this.appEl  = document.querySelector(".messenger-app--messages");
+                this.offset = 0;
+
+                this._loadHistory();
+                this._setupListener();
+                this.appEl.scrollTop = this.appEl.scrollHeight;
+            }
+
+            _loadHistory() {
+                let xhr = new XMLHttpRequest();
+                xhr.open("GET", "/im/convs/api/messages" + {$chat->getId()} + `/${ this.offset }.json`, false);
+                xhr.send();
+
+                let messages    = JSON.parse(xhr.responseText);
+                let lastMessage = messages[messages.length - 1];
+                if(typeof lastMessage !== "undefined") this.offset = lastMessage.uuid;
+
+                this.prependMessages(messages);
+            }
+
+            _setupListener() {
+                let listenLongpool = () => {
+                    let xhr = new XMLHttpRequest();
+                    xhr.open("GET", "/im/convs/api/events" + {$chat->getId()}, true);
+                    xhr.onload = () => {
+                        let data = JSON.parse(xhr.responseText);
+                        data.forEach(event => {
+                            event = event.event;
+                            if(event.type === "newMessage") {
+                                if(this.offset >= event.message.uuid)
+                                    return void(console.warn("Duplicate message recieved, skipping."));
+                                this.addMessage(event.message);
+                                this.offset = event.message.uuid;
+                            } else if(event.type === "deleteMessage") {
+                                window.messages.remove(m => m.uuid === event.msgId);
+                            } else if(event.type === "editMessage") {
+                                let msgs = window.messages();
+                                for(let i = 0; i < msgs.length; i++) {
+                                    if(msgs[i].uuid === event.message.uuid) {
+                                        let updated = Object.assign({}, msgs[i], {
+                                            text: event.message.text,
+                                            timing: event.message.timing
+                                        });
+                                        window.messages.splice(i, 1, updated);
+                                        break;
+                                    }
+                                }
+                            }
+                        });
+                        listenLongpool();
+                    };
+                    xhr.send();
+                };
+                listenLongpool();
+            }
+
+            appendMessages(messages) {
+                messages.forEach(m => window.messages.push(m));
+            }
+
+            prependMessages(messages) {
+                messages.forEach(m => window.messages.unshift(m));
+            }
+
+            addMessage(message, scroll = true) {
+                this.appendMessages([message]);
+
+                if(scroll) {
+                    this.appEl.scrollTop = this.appEl.scrollHeight;
+                }
+            }
+
+            _patchMessage(tempId, message) {
+                for(let i = window.messages().length - 1; i > -1; i--) {
+                    let msg = window.messages()[i];
+                    if(typeof msg._tuid === "undefined")
+                        return;
+                    else if(msg._tuid !== tempId)
+                        return;
+
+                    window.messages.valueWillMutate();
+                    window.messages()[i] = message;
+                    window.messages.valueHasMutated();
+                }
+            }
+
+            _newSelfMessage(content = "...") {
+                return {
+                    "sender": {
+                        "id": {$thisUser->getId()},
+                        "link": {$thisUser->getURL()},
+                        "avatar": {$thisUser->getAvatarUrl()},
+                        "name": {$thisUser->getFirstName()}
+                    },
+                    "chat_id": {$chat->getId()},
+                    "timing": {
+                        "sent": window.API.Service.getTime(),
+                        "edited": null
+                    },
+                    "text": content,
+                    "read": false,
+                    "attachments": [],
+                    "forwarded": null,
+                    "_tuid": Math.ceil(performance.now())
+                };
+            }
+
+            newMessage(content) {
+                let msg = this._newSelfMessage(content);
+                msg.timing.sent = "<img src=\"/assets/packages/static/openvk/img/loading_mini.gif\">";
+                this.addMessage(msg);
+
+                return msg._tuid;
+            }
+
+            sendMessage(content) {
+                let tempId = this.newMessage(content);
+
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/write.json", true);
+                xhr.onreadystatechange = () => {
+                    if(this.readyState !== 4) return;
+                    if(this.status === 202) {
+                        let msg = JSON.parse(xhr.responseText);
+                        this._patchMessage(tempId, msg);
+                    }
+                };
+
+                let fd = new FormData();
+                fd.set("content", content);
+                fd.set("hash", {$csrfToken});
+                xhr.send(fd);
+            }
+
+            deleteMessage(msgId) {
+                if(!confirm("Удалить сообщение?")) return;
+
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/" + msgId + "/delete.json", true);
+                xhr.onreadystatechange = () => {
+                    if(this.readyState !== 4) return;
+                    if(this.status === 200) {
+                        window.messages.remove(m => m.uuid === msgId);
+                    }
+                };
+
+                let fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                xhr.send(fd);
+            }
+
+            editMessage(msgId, currentText) {
+                let cleanText = currentText.replace(/<[^>]+>/g, "");
+                let body = '<textarea id="edit-msg-input" style="width:100%; height:80px; resize:vertical;">' + cleanText + '</textarea>';
+                MessageBox("Редактировать сообщение", body, ["Отмена", "Сохранить"], [Function.noop, Function.noop], true);
+
+                setTimeout(() => {
+                    u("#edit-msg-input").focus();
+                    u(".ovk-diag-cont .button").eq(1).on("click", () => {
+                        let newText = u("#edit-msg-input").val();
+                        if(!newText || newText === "") return;
+
+                        let xhr = new XMLHttpRequest();
+                        xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/" + msgId + "/edit.json", true);
+                        xhr.onreadystatechange = () => {
+                            if(this.readyState !== 4) return;
+                            if(this.status === 200) {
+                                let msg = JSON.parse(xhr.responseText);
+                                let msgs = window.messages();
+                                for(let i = 0; i < msgs.length; i++) {
+                                    if(msgs[i].uuid === msgId) {
+                                        window.messages.splice(i, 1, msg);
+                                        break;
+                                    }
+                                }
+                                u(".ovk-diag-cont").remove();
+                                u("body").removeClass("dimmed");
+                            }
+                        };
+
+                        let fd = new FormData();
+                        fd.set("content", newText);
+                        fd.set("hash", {$csrfToken});
+                        xhr.send(fd);
+                    });
+                }, 100);
+            }
+
+            forwardMessage(msgId) {
+                alert("Пересылка сообщений в групповых чатах скоро будет доступна");
+            }
+        }
+
+        window.Msg = new GroupChatMessenger();
+    </script>
+{/block}
