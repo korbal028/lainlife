@@ -23,9 +23,9 @@ class Post extends Postable
             "target" => $this->getRecord()->id,
         ];
 
-        if ((sizeof(DB::i()->getContext()->table("likes")->where($searchData)) > 0) !== $liked) {
+        if ((DB::i()->getContext()->table("likes")->where($searchData)->count("*") > 0) !== $liked) {
             if ($this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club)) {
-                (new LikeNotification($this->getOwner(false), $this, $user))->emit();
+                (new LikeNotification($this->getOwner(false), $this, $user, time()))->emit();
             }
 
             parent::setLike($liked, $user);
@@ -78,11 +78,10 @@ class Post extends Postable
 
     public function getRepostCount(): int
     {
-        return sizeof(
-            $this->getRecord()
+        return $this->getRecord()
                  ->related("attachments.attachable_id")
                  ->where("attachable_type", get_class($this))
-        );
+                 ->count("*");
     }
 
     public function isPinned(): bool
@@ -180,12 +179,14 @@ class Post extends Postable
                 case 'openvk_flux_android':
                 case 'openvk_refresh_android':
                 case 'openvk_legacy_android':
+                case 'Kate Mobile':
                     return 'android';
                     break;
 
                 case 'openvk_native_ios':
                 case 'openvk_ios':
                 case 'openvk_legacy_ios':
+                case 'VFeed':
                     return 'iphone';
                     break;
 
@@ -290,7 +291,9 @@ class Post extends Postable
         }
 
         if ($this->getTargetWall() < 0) {
-            return (new Clubs())->get(abs($this->getTargetWall()))->canBeModifiedBy($user);
+            $club = (new Clubs())->get(abs($this->getTargetWall()));
+
+            return $club?->canBeModifiedBy($user) ?? false;
         }
 
         return $this->getTargetWall() === $user->getId();
@@ -302,8 +305,11 @@ class Post extends Postable
             return false;
         }
 
-        if ($this->getTargetWall() < 0 && !$this->getWallOwner()->canBeModifiedBy($user) && $this->getWallOwner()->getWallType() != 1 && $this->getSuggestionType() == 0) {
-            return false;
+        if ($this->getTargetWall() < 0) {
+            $wallOwner = $this->getWallOwner();
+            if (!$wallOwner?->canBeModifiedBy($user) && $wallOwner?->getWallType() != 1 && $this->getSuggestionType() == 0) {
+                return false;
+            }
         }
 
         return $this->getOwnerPost() === $user->getId() || $this->canBePinnedBy($user);
@@ -325,7 +331,7 @@ class Post extends Postable
         $liked = parent::toggleLike($user);
 
         if (!$user->isPrivateLikes() && $this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club)) {
-            (new LikeNotification($this->getOwner(false), $this, $user))->emit();
+            (new LikeNotification($this->getOwner(false), $this, $user, time()))->emit();
         }
 
         foreach ($this->getChildren() as $attachment) {

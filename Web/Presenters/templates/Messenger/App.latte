@@ -130,6 +130,9 @@
                     </div>
                 </div>
             </div>
+            <div class="messenger-app--typing-status" style="display:none;opacity:0;">
+                {tr('message_user_typing', $correspondent->getFirstName())}
+            </div>
         </div>
         <div id="messenger-attachment-preview" style="margin: 8px 12px; display: none;">
             <div class="post-horizontal" style="display: flex; flex-wrap: wrap; gap: 8px;"></div>
@@ -250,7 +253,10 @@
             constructor(messages = []) {
                 this.ko     = ko.applyBindings(new MessengerViewModel(messages));
                 this.appEl  = document.querySelector(".messenger-app--messages");
+                this.typeEl = document.querySelector(".messenger-app--typing-status");
                 this.offset = 0;
+                
+                this.typingTimer = null;
                 
                 this._loadHistory();
                 this._setupListener();
@@ -298,6 +304,10 @@
                                         break;
                                     }
                                 }
+                            } else if(event.type === "typing") {
+                                if(event.message === {$correspondent->getId()}) {
+                                    this.setTypingStatus();
+                                }
                             }
                         });
                         listenLongpool();
@@ -321,6 +331,19 @@
                 if(scroll) {
                     this.appEl.scrollTop = this.appEl.scrollHeight;
                 }
+            }
+            
+            setTypingStatus() {
+                if (this.typeEl.style.display == "block" && this.typeTimer !== null) {
+                    clearTimeout(this.typeTimer);
+                }
+                this.typeEl.style.opacity = 1;
+                this.typeEl.style.display = "block";
+                this.typeTimer = setTimeout(() => {
+                    setTimeout(() => { this.typeEl.style.display = "none" }, 250);
+                    this.typeEl.style.opacity = 0;
+                    this.typeTimer = null;
+                }, 6000);
             }
             
             _patchMessage(tempId, message) {

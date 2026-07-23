@@ -237,15 +237,12 @@ public function renderEvents(int $randNum): void
     private function enrichAttachmentsWithHTML(Message $messageObj, array &$simplifiedArray): void
     {
         $children = iterator_to_array($messageObj->getChildren());
-
         foreach ($simplifiedArray['attachments'] as $index => &$attachmentData) {
             if (!isset($children[$index])) {
                 continue;
             }
-
             $originalObj = $children[$index];
             $html = "";
-
             if ($attachmentData['type'] === 'audio') {
                 $html = $this->getTemplatingEngine()->renderToString(
                     # костыль жоский
@@ -258,13 +255,29 @@ public function renderEvents(int $randNum): void
                     ]
                 );
             }
-
             if ($html !== "") {
                 $attachmentData['html'] = $html;
             }
         }
     }
 
+    public function renderApiSendTypingStatus(int $sel): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $sel = $this->getCorrespondent($sel);
+        if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $cor = new Correspondence($this->user->identity, $sel);
+        $result = $cor->sendTypingEvent();
+        header("HTTP/1.1 202 Accepted");
+        header("Content-Type: application/json");
+        exit(json_encode($result));
+    }
 
     public function renderApiEditMessage(int $sel, int $msgId): void
     {
@@ -281,7 +294,6 @@ public function renderEvents(int $randNum): void
             header("HTTP/1.1 404 Not Found");
             exit();
         }
-
         if ($msg->getSender()->getId() !== $this->user->id) {
             header("HTTP/1.1 403 Forbidden");
             exit();
@@ -305,43 +317,43 @@ public function renderEvents(int $randNum): void
         exit(json_encode($simple));
     }
 
-public function renderApiForwardMessage(int $sel, int $msgId): void
-{
-    $this->assertUserLoggedIn();
-    $this->willExecuteWriteAction();
+    public function renderApiForwardMessage(int $sel, int $msgId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
 
-    $origMsg = (new Messages())->get($msgId);
-    if(!$origMsg) {
-        header("HTTP/1.1 404 Not Found");
-        exit();
+        $origMsg = (new Messages())->get($msgId);
+        if (!$origMsg) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $recipient = $this->getCorrespondent($sel);
+        if (!$recipient) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        if ($recipient->getId() !== $this->user->id && !$recipient->getPrivacyPermission('messages.write', $this->user->identity)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $cor = new Correspondence($this->user->identity, $recipient);
+        $msg = new Message();
+        $msg->setContent($this->postParam("content") ?? "");
+        $msg->setForwarded_from($msgId);
+        $cor->sendMessage($msg);
+
+        $recipient = $msg->getRecipient();
+        $this->signaler->triggerEvent(new ForwardMessageEvent($msg), $recipient->getId());
+
+        header("HTTP/1.1 202 Accepted");
+        header("Content-Type: application/json");
+        $simple = $msg->simplify();
+        $this->enrichAttachmentsWithHTML($msg, $simple);
+        exit(json_encode($simple));
     }
-
-    $recipient = $this->getCorrespondent($sel);
-    if(!$recipient) {
-        header("HTTP/1.1 404 Not Found");
-        exit();
-    }
-
-    if($recipient->getId() !== $this->user->id && !$recipient->getPrivacyPermission('messages.write', $this->user->identity)) {
-        header("HTTP/1.1 403 Forbidden");
-        exit();
-    }
-
-    $cor = new Correspondence($this->user->identity, $recipient);
-    $msg = new Message();
-    $msg->setContent($this->postParam("content") ?? "");
-    $msg->setForwarded_from($msgId);
-    $cor->sendMessage($msg);
-
-	$recipient = $msg->getRecipient();
-	$this->signaler->triggerEvent(new ForwardMessageEvent($msg), $recipient->getId());
-
-    header("HTTP/1.1 202 Accepted");
-    header("Content-Type: application/json");
-    $simple = $msg->simplify();
-    $this->enrichAttachmentsWithHTML($msg, $simple);
-    exit(json_encode($simple));
-}
 
     public function renderApiDeleteMessage(int $sel, int $msgId): void
     {
@@ -362,34 +374,32 @@ public function renderApiForwardMessage(int $sel, int $msgId): void
         $msg->setDeleted(1);
         $msg->save();
 
-
-	$recipient = $msg->getRecipient();
-	$sender = $msg->getSender();
-	$this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $recipient->getId());
-	$this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
+        $recipient = $msg->getRecipient();
+        $sender = $msg->getSender();
+        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $recipient->getId());
+        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
 
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
         exit(json_encode(["success" => true]));
     }
 
+    public function renderApiGetDialogs(): void
+    {
+        $this->assertUserLoggedIn();
 
-public function renderApiGetDialogs(): void
-{
-    $this->assertUserLoggedIn();
+        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, 1));
+        $result = [];
+        foreach ($correspondences as $cor) {
+            $recipient = $cor->getCorrespondents()[1];
+            $result[] = [
+                "id"     => $recipient->getId(),
+                "name"   => $recipient->getCanonicalName(),
+                "avatar" => $recipient->getAvatarUrl('miniscule'),
+            ];
+        }
 
-    $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, 1));
-    $result = [];
-    foreach($correspondences as $cor) {
-        $recipient = $cor->getCorrespondents()[1];
-        $result[] = [
-            "id"     => $recipient->getId(),
-            "name"   => $recipient->getCanonicalName(),
-            "avatar" => $recipient->getAvatarUrl('miniscule'),
-        ];
+        header("Content-Type: application/json");
+        exit(json_encode($result));
     }
-
-    header("Content-Type: application/json");
-    exit(json_encode($result));
-}
 }

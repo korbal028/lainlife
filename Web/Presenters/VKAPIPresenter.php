@@ -50,7 +50,7 @@ final class VKAPIPresenter extends OpenVKPresenter
         exit(json_encode($payload));
     }
 
-    private function twofaFail(int $userId): void
+    private function twofaFail(int $userId, string $data): void
     {
         header("HTTP/1.1 401 Unauthorized");
         header("Content-Type: application/json");
@@ -61,7 +61,7 @@ final class VKAPIPresenter extends OpenVKPresenter
             "validation_type"   => "2fa_app",
             "validation_sid"    => "2fa_" . $userId . "_2839041_randommessdontread",
             "phone_mask"        => "+374 ** *** 420",
-            "redirect_url"      => "https://http.cat/418", // Not implemented yet :( So there is a photo of cat :3
+            "redirect_uri"      => ovk_scheme(true) . $_SERVER["HTTP_HOST"] . "/2fa?data=" . base64_encode($data),
             "validation_resend" => "nowhere",
         ];
 
@@ -124,21 +124,28 @@ final class VKAPIPresenter extends OpenVKPresenter
         $folder   = __DIR__ . "/../../tmp/api-storage/photos";
         $maxSize  = OPENVK_ROOT_CONF["openvk"]["preferences"]["uploads"]["api"]["maxFileSize"];
         $maxFiles = OPENVK_ROOT_CONF["openvk"]["preferences"]["uploads"]["api"]["maxFilesPerDomain"];
+
         $usrFiles = sizeof(glob("$folder/$data[USER]_*.oct"));
         if ($usrFiles >= $maxFiles) {
-            $pendingInfo = $this->getPendingUploadInfo($folder, $data["USER"]);
-            header("HTTP/1.1 507 Insufficient Storage");
-            header("Content-Type: application/json");
-            exit(json_encode([
-                "error" => "insufficient_storage",
-                "error_description" => "There are $maxFiles pending already. Please save them before uploading more :3",
-                "pending_uploads" => $pendingInfo,
-            ]));
+            $usrFiles = $this->evictOldestPendingUploads($folder, (string) $data["USER"], $maxFiles);
+
+            if ($usrFiles >= $maxFiles) {
+                $pendingInfo = $this->getPendingUploadInfo($folder, $data["USER"]);
+
+                header("HTTP/1.1 507 Insufficient Storage");
+                header("Content-Type: application/json");
+                exit(json_encode([
+                    "error" => "insufficient_storage",
+                    "error_description" => "There are $maxFiles pending already. Please save them before uploading more :3",
+                    "pending_uploads" => $pendingInfo,
+                ]));
+            }
         }
 
         # Not multifile
         if ($data["MF"] === 0) {
             $file = $_FILES[$data["FIELD"]];
+
             if (!$file) {
                 header("HTTP/1.0 400");
                 exit("No file");
@@ -150,10 +157,14 @@ final class VKAPIPresenter extends OpenVKPresenter
                 exit("File is too big");
             }
 
-            move_uploaded_file($file["tmp_name"], "$folder/$data[USER]_" . ($usrFiles + 1) . ".oct");
+            $slot = $this->getNextUploadSlot($folder, (string) $data["USER"]);
+            if (!move_uploaded_file($file["tmp_name"], "$folder/$data[USER]_$slot.oct")) {
+                header("HTTP/1.0 500");
+                exit("File could not be saved");
+            }
             header("HTTP/1.0 202 Accepted");
 
-            $photo = $data["USER"] . "|" . ($usrFiles + 1) . "|" . $data["GROUP"];
+            $photo = $data["USER"] . "|" . $slot . "|" . $data["GROUP"];
             exit(json_encode([
                 "server" => "ephemeral",
                 "photo"  => $photo,
@@ -162,27 +173,35 @@ final class VKAPIPresenter extends OpenVKPresenter
         }
 
         $files = [];
+        $slot  = $this->getNextUploadSlot($folder, (string) $data["USER"]);
         for ($i = 1; $i <= 5; $i++) {
             $file = $_FILES[$data["FIELD"] . $i] ?? null;
             if (!$file || $file["error"] != UPLOAD_ERR_OK || $file["size"] > $maxSize) {
                 continue;
-            } elseif ((sizeof($files) + $usrFiles) > $maxFiles) {
-                # Clear uploaded files since they can't be saved anyway
-                foreach ($files as $f) {
-                    unlink($f);
-                }
+            } elseif ((sizeof($files) + $usrFiles) >= $maxFiles) {
+                $usrFiles = $this->evictOldestPendingUploads($folder, (string) $data["USER"], $maxFiles, array_keys($files));
 
-                $pendingInfo = $this->getPendingUploadInfo($folder, $data["USER"]);
-                header("HTTP/1.1 507 Insufficient Storage");
-                header("Content-Type: application/json");
-                exit(json_encode([
-                    "error" => "insufficient_storage",
-                    "error_description" => "There are $maxFiles pending already. Please save them before uploading more :3",
-                    "pending_uploads" => $pendingInfo,
-                ]));
+                if ((sizeof($files) + $usrFiles) >= $maxFiles) {
+                    foreach ($files as $id => $f) {
+                        @unlink("$folder/$data[USER]_$id.oct");
+                    }
+
+                    $pendingInfo = $this->getPendingUploadInfo($folder, $data["USER"]);
+
+                    header("HTTP/1.1 507 Insufficient Storage");
+                    header("Content-Type: application/json");
+                    exit(json_encode([
+                        "error" => "insufficient_storage",
+                        "error_description" => "There are $maxFiles pending already. Please save them before uploading more :3",
+                        "pending_uploads" => $pendingInfo,
+                    ]));
+                }
             }
 
-            $files[++$usrFiles] = move_uploaded_file($file["tmp_name"], "$folder/$data[USER]_$usrFiles.oct");
+            if (move_uploaded_file($file["tmp_name"], "$folder/$data[USER]_$slot.oct")) {
+                $files[$slot] = true;
+                $slot++;
+            }
         }
 
         if (sizeof($files) === 0) {
@@ -204,6 +223,54 @@ final class VKAPIPresenter extends OpenVKPresenter
             "album_id"    => "undefined",
             "hash"        => $manifestHash,
         ]));
+    }
+
+    private function evictOldestPendingUploads(string $folder, string $userId, int $maxFiles, array $protectedSlots = []): int
+    {
+        $files = [];
+
+        foreach (glob("$folder/{$userId}_*.oct") as $file) {
+            if (!preg_match("/_(\\d+)\\.oct$/", basename($file), $matches)) {
+                continue;
+            }
+
+            $slot = (int) $matches[1];
+            if (in_array($slot, $protectedSlots, true)) {
+                continue;
+            }
+
+            $mtime = @filemtime($file);
+            $files[] = ["path" => $file, "mtime" => $mtime === false ? 0 : $mtime];
+        }
+
+        usort($files, fn($a, $b) => $a["mtime"] <=> $b["mtime"]);
+
+        $count = sizeof($files) + sizeof($protectedSlots);
+
+        foreach ($files as $file) {
+            if ($count < $maxFiles) {
+                break;
+            }
+
+            if (@unlink($file["path"])) {
+                $count--;
+            }
+        }
+
+        return $count;
+    }
+
+    private function getNextUploadSlot(string $folder, string $userId): int
+    {
+        $slot = 0;
+
+        foreach (glob("$folder/{$userId}_*.oct") as $file) {
+            if (preg_match("/_(\\d+)\\.oct$/", basename($file), $matches)) {
+                $slot = max($slot, (int) $matches[1]);
+            }
+        }
+
+        return $slot + 1;
     }
 
     private function getPendingUploadInfo(string $folder, string $userId): array
@@ -230,31 +297,39 @@ final class VKAPIPresenter extends OpenVKPresenter
         return $pendingInfo;
     }
 
-    public function renderRoute(string $object, string $method): void
+    /**
+     * Resolves the calling identity (and client platform) from the request, exactly as the
+     * normal API entrypoint does. On authorization problems it emits an error and exits.
+     *
+     * @return array{0: ?User, 1: ?string} [identity, platform]
+     */
+    private function resolveIdentity(string $object, string $method): array
     {
-        $callback = $this->queryParam("callback");
         $authMechanism = $this->queryParam("auth_mechanism") ?? "token";
         if ($authMechanism === "roaming") {
-            if ($callback) {
+            if ($this->queryParam("callback")) {
                 $this->fail(-1, "User authorization failed: roaming mechanism is unavailable with jsonp.", $object, $method);
             }
 
             if (!$this->user->identity) {
                 $this->fail(5, "User authorization failed: roaming mechanism is selected, but user is not logged in.", $object, $method);
-            } else {
-                $identity = $this->user->identity;
-                $platform = null;
             }
+
+            $identity = $this->user->identity;
+            $platform = null;
         } else {
-            if (is_null($this->requestParam("access_token"))) {
-                $identity = null;
-                $platform = null;
-            } else {
+            $identity = null;
+            $platform = null;
+            if (!is_null($this->requestParam("access_token"))) {
                 $token = (new APITokens())->getByCode($this->requestParam("access_token"));
-                if (!$token) {
-                    $identity = null;
-                    $platform = null;
-                } else {
+                if ($token) {
+                    $identity = $token->getUser();
+                    $platform = $token->getPlatform();
+                }
+            } elseif (!is_null($_SERVER['HTTP_AUTHORIZATION'])) {
+                $token = str_replace('Bearer ', '', $_SERVER['HTTP_AUTHORIZATION']);
+                $token = (new APITokens())->getByCode($token);
+                if ($token) {
                     $identity = $token->getUser();
                     $platform = $token->getPlatform();
                 }
@@ -262,29 +337,51 @@ final class VKAPIPresenter extends OpenVKPresenter
         }
 
         if (!is_null($identity) && ($identity->isBanned() || $identity->isDeleted())) {
-            $this->fail(18, "User account is deactivated", $object, $method);
+            $this->fail(18, "User was deleted or banned", $object, $method);
         }
 
+        if (!is_null($identity) && !$identity->isActivated() && OPENVK_ROOT_CONF['openvk']['preferences']['security']['requireEmail'] === true) {
+            $this->fail(7, "Access denied", $object, $method);
+        }
+
+        return [$identity, $platform];
+    }
+
+    /**
+     * Instantiates the handler for $object, binds $params (name => value) to the target
+     * method's signature and invokes it, returning the raw result. Reused by both the normal
+     * API entrypoint and the `execute` method. Errors are thrown as APIErrorException
+     * (unknown method => 3, missing required param => 100) rather than emitted directly.
+     *
+     * @param array<string, mixed> $params
+     */
+    private function callAPIMethod(string $object, string $method, array $params, $identity, $platform, ?bool &$hasRss = null)
+    {
         $object       = ucfirst(strtolower($object));
         $handlerClass = "openvk\\VKAPI\\Handlers\\$object";
         if (!class_exists($handlerClass)) {
-            $this->badMethod($object, $method);
+            throw new APIErrorException("Unknown method passed.", 3);
         }
 
         $handler = new $handlerClass($identity, $platform);
         if (!is_callable([$handler, $method])) {
-            $this->badMethod($object, $method);
+            throw new APIErrorException("Unknown method passed.", 3);
         }
 
-        $has_rss = false;
+        // Way to bypass restrictions in App Stores. Check code comment for isMusicAvailable func
+        if (!is_null($identity) && !$this->isMusicAvailable($identity->getId()) && $object == "Audio") {
+            throw new APIErrorException("Unknown method passed.", 3);
+        }
+
+        $hasRss = false;
         $route  = new \ReflectionMethod($handler, $method);
-        $params = [];
+        $args   = [];
         foreach ($route->getParameters() as $parameter) {
             if ($parameter->getName() == 'rss') {
-                $has_rss = true;
+                $hasRss = true;
             }
 
-            $val = $this->requestParam($parameter->getName());
+            $val = $params[$parameter->getName()] ?? null;
             if (is_null($val)) {
                 if ($parameter->allowsNull()) {
                     $val = null;
@@ -293,7 +390,7 @@ final class VKAPIPresenter extends OpenVKPresenter
                 } elseif ($parameter->isOptional()) {
                     $val = null;
                 } else {
-                    $this->badMethodCall($object, $method, $parameter->getName());
+                    throw new APIErrorException("Required parameter '" . $parameter->getName() . "' missing.", 100);
                 }
             }
 
@@ -301,10 +398,10 @@ final class VKAPIPresenter extends OpenVKPresenter
                 // Проверка типа параметра
                 $type = $parameter->getType();
                 if (($type && !$type->isBuiltin()) || is_null($val)) {
-                    $params[] = $val;
+                    $args[] = $val;
                 } else {
                     settype($val, $parameter->getType()->getName());
-                    $params[] = $val;
+                    $args[] = $val;
                 }
             } catch (\Throwable $e) {
                 // Just ignore the exception, since
@@ -312,10 +409,24 @@ final class VKAPIPresenter extends OpenVKPresenter
             }
         }
 
-        define("VKAPI_DECL_VER", $this->requestParam("v") ?? "4.100");
+        if (!defined("VKAPI_DECL_VER")) {
+            $version = $this->requestParam("v") ?? "5.9999"; // 9999 for ovk apps
+            define("VKAPI_DECL_VER", $version);
+            define("VKAPI_DECL_VER_MAJOR", intval(explode('.', $version)[0] ?? "5"));
+            define("VKAPI_DECL_VER_MINOR", intval(explode('.', $version)[1] ?? "100"));
+        }
 
+        return $handler->{$method}(...$args);
+    }
+
+    public function renderRoute(string $object, string $method): void
+    {
+        $callback = $this->queryParam("callback");
+        [$identity, $platform] = $this->resolveIdentity($object, $method);
+
+        $has_rss = false;
         try {
-            $res = $handler->{$method}(...$params);
+            $res = $this->callAPIMethod($object, $method, $_REQUEST, $identity, $platform, $has_rss);
         } catch (APIErrorException $ex) {
             $this->fail($ex->getCode(), $ex->getMessage(), $object, $method);
         }
@@ -348,6 +459,60 @@ final class VKAPIPresenter extends OpenVKPresenter
         exit($result);
     }
 
+    public function renderExecute(): void
+    {
+        $callback = $this->queryParam("callback");
+        [$identity, $platform] = $this->resolveIdentity("execute", "");
+
+        $code = $this->requestParam("code");
+        if (is_null($code)) {
+            $this->fail(100, "Required parameter 'code' missing.", "execute", "");
+        }
+
+        // Everything except the reserved keys is exposed to the script via Args.
+        $reserved = ["code", "access_token", "v", "callback", "auth_mechanism", "requestPort"];
+        $args     = [];
+        foreach ($_REQUEST as $key => $value) {
+            if (!in_array($key, $reserved, true)) {
+                $args[$key] = $value;
+            }
+        }
+
+        try {
+            $tokens = (new \openvk\VKAPI\VKScript\Lexer($code))->tokenize();
+            $ast    = (new \openvk\VKAPI\VKScript\Parser($tokens))->parse();
+
+            $interpreter = new \openvk\VKAPI\VKScript\Interpreter(
+                function (string $object, string $method, array $params) use ($identity, $platform) {
+                    return $this->callAPIMethod($object, $method, $params, $identity, $platform);
+                },
+                $args
+            );
+
+            $res    = $interpreter->run($ast);
+            $errors = $interpreter->getExecuteErrors();
+        } catch (APIErrorException $ex) {
+            $this->fail($ex->getCode(), $ex->getMessage(), "execute", "");
+        }
+
+        $payload = ["response" => $res];
+        if (!empty($errors)) {
+            $payload["execute_errors"] = $errors;
+        }
+
+        $result = json_encode($payload);
+        if ($callback) {
+            $result = $callback . '(' . $result . ')';
+            header('Content-Type: application/javascript');
+        } else {
+            header("Content-Type: application/json");
+        }
+
+        $size = strlen($result);
+        header("Content-Length: $size");
+
+        exit($result);
+    }
 
     public function renderTokenLogin(): void
     {
@@ -369,6 +534,10 @@ final class VKAPIPresenter extends OpenVKPresenter
 
         $uId  = $chUser->related("profiles.user")->fetch()->id;
         $user = (new Users())->get($uId);
+
+        if (!$user->isActivated() && OPENVK_ROOT_CONF['openvk']['preferences']['security']['requireEmail'] === true) {
+            $this->fail(7, "Access denied", "internal", "acquireToken");
+        }
 
         $platform     = $this->requestParam("client_name");
         $platform   ??= $this->resolveAppIdToString($this->requestParam("client_id"));
@@ -449,8 +618,14 @@ final class VKAPIPresenter extends OpenVKPresenter
         $stale   = $this->queryParam("accepts_stale") ?? '0';
         $origin  = null;
         $url     = $this->queryParam("redirect_uri");
+        $responseType = $this->queryParam("response_type") ?? 'php';
+
+        if (!empty($this->queryParam("client_id")) && empty($client)) {
+            $client = $this->resolveAppIdToString($this->queryParam("client_id"));
+        }
+
         if (is_null($url) || is_null($client)) {
-            exit("<b>Error:</b> redirect_uri and client_name params are required.");
+            exit("<b>Error:</b> redirect_uri and client_name (or client_id) params are required.");
         }
 
         if ($url != "about:blank") {
@@ -476,10 +651,101 @@ final class VKAPIPresenter extends OpenVKPresenter
             }
         }
 
+        if (!in_array($responseType, ['php', 'token'])) {
+            exit("<b>Error:</b> response_type can equal 'php' or 'token' only.");
+        }
+
         $this->template->clientName     = $client;
         $this->template->usePostMessage = $postmsg == '1';
         $this->template->acceptsStale   = $stale == '1';
         $this->template->origin         = $origin;
         $this->template->redirectUri    = $url;
+        $this->template->responseType   = $responseType;
+    }
+
+    public function renderTwoFactorLogin()
+    {
+        $base64 = $this->requestParam("data");
+        if (empty($base64)) {
+            exit("<b>Error:</b> Empty request.");
+        }
+
+        $decoded = base64_decode($base64);
+
+        if ($decoded == false) {
+            exit("<b>Error:</b> Invalid base64 data.");
+        }
+
+        $parsed = json_decode($decoded);
+
+        if (!is_array($parsed) && empty($parsed->login) && empty($parsed->password) && empty($parsed->client_name)) {
+            exit("<b>Error:</b> Invalid login data.");
+        }
+
+        $chUser = DB::i()->getContext()->table("ChandlerUsers")->where("login", $parsed->login)->fetch();
+        if (!$chUser) {
+            exit("<b>Error:</b> Invalid login and password.");
+        }
+
+        $auth = Authenticator::i();
+        if (!$auth->verifyCredentials($chUser->id, $parsed->password)) {
+            exit("<b>Error:</b> Invalid login and password.");
+        }
+
+        $uId  = $chUser->related("profiles.user")->fetch()->id;
+        $user = (new Users())->get($uId);
+        $platform = $parsed->client_name;
+
+        $this->template->base64 = $base64;
+        $this->template->platform = $platform;
+
+        $code = $this->requestParam("code");
+        if ($user->is2faEnabled() && empty($code)) {
+            // intended
+        } elseif ($user->is2faEnabled() && !empty($code)) {
+            if ($code === (new Totp())->GenerateToken(Base32::decode($user->get2faSecret())) || !empty($user->use2faBackupCode((int) $code))) {
+                $token = new APIToken();
+                $token->setUser($user);
+                $token->setPlatform($platform ?? "api"); // since this is a browser we will just throw "api"
+                $token->save();
+                $this->redirect('/blank.html#access_token=' . $token->getFormattedToken() . '&expires_in=0&user_id=' . $uId);
+            } else {
+                $this->flashFail("err", tr('incorrect_code'), tr('incorrect_2fa_code'));
+            }
+        } else {
+            $token = new APIToken();
+            $token->setUser($user);
+            $token->setPlatform($platform ?? "api");
+            $token->save();
+            $this->redirect('/blank.html#access_token=' . $token->getFormattedToken() . '&expires_in=0&user_id=' . $uId);
+        }
+    }
+
+    private function resolveAppIdToString(?string $id = ""): ?string
+    {
+        switch ($id) {
+            case '4083558':
+                return "VFeed";
+            case '2685278':
+                return "Kate Mobile";
+            case '3680547':
+                return "VK for iOS";
+            case '2274003':
+                return "VK for Android";
+            default:
+                return "unknown";
+        }
+    }
+
+    /*
+     * This is the way to get around some App Store copyright rules
+     * for (maybe) official and third party apps, something
+     * Durov's team maybe did when their app was gone from App Store
+     * in 2014. Now it's deleted via EU sanctions, but that's
+     * another story to tell.
+     */
+    private function isMusicAvailable(int $id): bool
+    {
+        return (bool) !in_array($id, OPENVK_ROOT_CONF["openvk"]["preferences"]["music"]["notAvailableFor"] ?? []);
     }
 }
