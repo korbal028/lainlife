@@ -229,6 +229,7 @@
 "attachment" = "Вложение";
 "post_as_group" = "От имени сообщества";
 "comment_as_group" = "От имени сообщества";
+"rss" = "RSS"
 
 "add_source" = "Добавление источника";
 "set_source" = "Указать источник";
@@ -292,6 +293,7 @@
 
 "change_geo_name" = "Изменить название точки";
 "change_geo_name_new" = "Новое название";
+
 
 /* Friends */
 

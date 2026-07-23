@@ -18,7 +18,7 @@ final class AudioPresenter extends OpenVKPresenter
     private $audios;
     protected $presenterName = "audios";
 
-    public const MAX_AUDIO_SIZE = 25000000;
+    public const MAX_AUDIO_SIZE = 104857600;
 
     public function __construct(Audios $audios)
     {

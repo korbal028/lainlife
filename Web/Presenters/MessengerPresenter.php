@@ -79,18 +79,50 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->correspondent = $correspondent;
     }
 
-    public function renderEvents(int $randNum): void
-    {
-        $this->assertUserLoggedIn();
+private const MAX_LONGPOLL_PER_USER = 3;   // сколько одновременных long-poll разрешено одному юзеру
+private const LONGPOLL_TIMEOUT_SEC  = 30;  // максимальное время ожидания события
 
+public function renderEvents(int $randNum): void
+{
+    $this->assertUserLoggedIn();
+
+    $userId  = $this->user->id;
+    $lockKey = "longpoll:count:{$userId}";
+
+    // --- лимит на юзера ---
+    $current = (int) apcu_fetch($lockKey);
+    if ($current >= self::MAX_LONGPOLL_PER_USER) {
+        http_response_code(429);
         header("Content-Type: application/json");
-        $this->signaler->listen(function ($event, $id) {
-            exit(json_encode([[
-                "UUID"  => $id,
-                "event" => $event->getLongPoolSummary(),
-            ]]));
-        }, $this->user->id);
+        header("Retry-After: 5");
+        echo json_encode(["error" => "Too many concurrent long-poll connections"]);
+        return;
     }
+    apcu_inc($lockKey, 1) ?: apcu_store($lockKey, 1);
+
+    // гарантированно уменьшаем счётчик, даже если скрипт упадёт/оборвётся по exit()
+    register_shutdown_function(static function () use ($lockKey) {
+        apcu_dec($lockKey);
+    });
+
+    header("Content-Type: application/json");
+    set_time_limit(0); // таймаут контролируем сами, PHP-лимит не должен нас прерывать раньше времени
+
+    // --- сам long-poll с дедлайном ---
+    $deadline = time() + self::LONGPOLL_TIMEOUT_SEC;
+
+    $this->signaler->listen(function ($event, $id) {
+        echo json_encode([[
+            "UUID"  => $id,
+            "event" => $event->getLongPoolSummary(),
+        ]]);
+        exit;
+    }, $userId, $deadline); // <-- см. примечание ниже про $deadline
+
+    // если signaler сам умеет по таймауту вернуть управление без события —
+    // отдаём пустой ответ 204, клиент сам переоткроет соединение
+    http_response_code(204);
+}
 
     public function renderVKEvents(int $id): void
     {

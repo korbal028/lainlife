@@ -348,6 +348,7 @@ final class VKAPIPresenter extends OpenVKPresenter
         exit($result);
     }
 
+
     public function renderTokenLogin(): void
     {
         if ($this->requestParam("grant_type") !== "password") {
@@ -369,10 +370,37 @@ final class VKAPIPresenter extends OpenVKPresenter
         $uId  = $chUser->related("profiles.user")->fetch()->id;
         $user = (new Users())->get($uId);
 
+        $platform     = $this->requestParam("client_name");
+        $platform   ??= $this->resolveAppIdToString($this->requestParam("client_id"));
+
+        // багфикс ориг хуйни openvk))
+        // валидируем client_name (то бишь $platform)
+        if (!is_null($platform)) {
+            // максимальная длина имени клиента
+            if (mb_strlen($platform) > 128) {
+                $this->fail(102, "client_name is too long", "internal", "acquireToken");
+            }
+
+            // запрещаем управляющие символы
+            if (preg_match('/[\x00-\x1F\x7F]/', $platform)) {
+                $this->fail(102, "Invalid characters in client_name", "internal", "acquireToken");
+            }
+
+            // разрешаем только безопасные символы
+            if (!preg_match('/^[a-zA-Z0-9 _.\-]+$/u', $platform)) {
+                $this->fail(102, "Invalid client_name format", "internal", "acquireToken");
+            }
+        }
+
         $code = $this->requestParam("code");
         if ($user->is2faEnabled() && !($code === (new Totp())->GenerateToken(Base32::decode($user->get2faSecret())) || $user->use2faBackupCode((int) $code))) {
-            if ($this->requestParam("2fa_supported") == "1") {
-                $this->twofaFail($user->getId());
+            if (empty($code)) {
+                $data = (object) [
+                    "login" => $this->requestParam("username"),
+                    "password" => $this->requestParam("password"),
+                    "client_name" => $platform,
+                ];
+                $this->twofaFail($user->getId(), json_encode($data));
             } else {
                 $this->fail(28, "Invalid 2FA code", "internal", "acquireToken");
             }
@@ -380,7 +408,6 @@ final class VKAPIPresenter extends OpenVKPresenter
 
         $token        = null;
         $tokenIsStale = true;
-        $platform     = $this->requestParam("client_name");
         $acceptsStale = $this->requestParam("accepts_stale");
         if ($acceptsStale == "1") {
             if (is_null($platform)) {
