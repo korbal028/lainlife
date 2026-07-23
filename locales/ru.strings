@@ -982,6 +982,7 @@
 "broadcast_audio" = "Транслировать аудио в статус";
 "sure_delete_playlist" = "Вы действительно хотите удалить этот плейлист?";
 "edit_audio" = "Редактировать аудиозапись";
+"audio_edit_album" = "Плейлист";
 "audios_group" = "Аудиозаписи группы";
 "playlists_group" = "Плейлисты группы";
 
@@ -1033,6 +1034,7 @@
 "nt_yours_adjective" = "вашим";
 "nt_yours_feminitive_adjective" = "вашей";
 "nt_post_nominative" = "пост";
+"nt_comment_nominative" = "комментарий";
 "nt_post_instrumental" = "постом";
 "nt_note_instrumental" = "заметкой";
 "nt_photo_instrumental" = "фотографией";
@@ -1047,6 +1049,12 @@
 "nt_mention_in_topic" = "в обсуждении";
 "nt_post_small" = "запись";
 "nt_sent_gift" = "отправил вам подарок";
+"notif_3_14_18" = "Вам написали на стене";
+"notif_0_14_18" = "Вашу запись оценили";
+"notif_0_6_18" = "Ваш комментарий оценили";
+"notif_4_18_14" = "Ваc упомянул пользователь";
+"notif_4_5_14" = "Ваc упомянуло сообщество";
+"notif_2_14_18" = "Вам оставили комментарий";
 
 /* Time */
 
@@ -1717,7 +1725,7 @@
 
 "admin_overview_registrated_users_one" = "зарегистрированный пользователь:";
 "admin_overview_registrated_users_other" = "зарегистрированных пользователей, из них:";
-"online" = "в сети";
+"online" = "Онлайн";
 "active_one" = "активный";
 "active_other" = "активных";
 "verified_one" = "верифицированный";
@@ -1809,23 +1817,23 @@
 "on_this_instance_are" = "На этой инстанции:";
 "about_links" = "Ссылки";
 "instance_links" = "Ссылки инстанции:";
-"about_users_one" = "<b>1</b> пользователь";
+"about_users_one" = "<b>$1</b> пользователь";
 "about_users_few" = "<b>$1</b> пользователя";
 "about_users_many" = "<b>$1</b> пользователей";
 "about_users_other" = "<b>$1</b> пользователей";
-"about_online_users_one" = "<b>1</b> пользователь в сети";
+"about_online_users_one" = "<b>$1</b> пользователь в сети";
 "about_online_users_few" = "<b>$1</b> пользователя в сети";
 "about_online_users_many" = "<b>$1</b> пользователей в сети";
 "about_online_users_other" = "<b>$1</b> пользователей в сети";
-"about_active_users_one" = "<b>1</b> активный пользователь";
+"about_active_users_one" = "<b>$1</b> активный пользователь";
 "about_active_users_few" = "<b>$1</b> активных пользователя";
 "about_active_users_many" = "<b>$1</b> активных пользователей";
 "about_active_users_other" = "<b>$1</b> активных пользователей";
-"about_groups_one" = "<b>1</b> группа";
+"about_groups_one" = "<b>$1</b> группа";
 "about_groups_few" = "<b>$1</b> группы";
 "about_groups_many" = "<b>$1</b> групп";
 "about_groups_other" = "<b>$1</b> групп";
-"about_wall_posts_one" = "<b>1</b> запись на стенах";
+"about_wall_posts_one" = "<b>$1</b> запись на стенах";
 "about_wall_posts_few" = "<b>$1</b> записи на стенах";
 "about_wall_posts_many" = "<b>$1</b> записей на стенах";
 "about_wall_posts_other" = "<b>$1</b> записей на стенах";
@@ -2274,7 +2282,7 @@
 "shared_succ_video" = "Видео появится на вашей стене. Нажмите на уведомление, чтобы перейти к записи.";
 "watch_in_window" = "Смотреть в окне";
 
-"comments_load_timeout" = "Возможно, инстанция упала."; 
+"comments_load_timeout" = "Возможно, инстанция упала.";
 
 "my" = "Мои";
 "enter_a_name_or_artist" = "Введите название или автора...";

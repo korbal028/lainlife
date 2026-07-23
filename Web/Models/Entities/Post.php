@@ -24,7 +24,7 @@ class Post extends Postable
         ];
 
         if ((sizeof(DB::i()->getContext()->table("likes")->where($searchData)) > 0) !== $liked) {
-            if ($this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club) && !$this instanceof Comment) {
+            if ($this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club)) {
                 (new LikeNotification($this->getOwner(false), $this, $user))->emit();
             }
 
@@ -324,7 +324,7 @@ class Post extends Postable
     {
         $liked = parent::toggleLike($user);
 
-        if (!$user->isPrivateLikes() && $this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club) && !$this instanceof Comment) {
+        if (!$user->isPrivateLikes() && $this->getOwner(false)->getId() !== $user->getId() && !($this->getOwner() instanceof Club)) {
             (new LikeNotification($this->getOwner(false), $this, $user))->emit();
         }
 
@@ -373,8 +373,8 @@ class Post extends Postable
         $res = (object) [];
 
         $res->id      = $this->getVirtualId();
-        $res->to_id   = $this->getOwner() instanceof Club ? $this->getOwner()->getId() * -1 : $this->getOwner()->getId();
-        $res->from_id = $res->to_id;
+        $res->to_id   = $this->getWallOwner()->getRealId();
+        $res->from_id = $this->getOwner()->getRealId();
         $res->date    = $this->getPublicationTime()->timestamp();
         $res->text    = $this->getText(false);
         $res->attachments = []; # todo

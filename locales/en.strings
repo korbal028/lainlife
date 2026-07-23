@@ -1025,6 +1025,7 @@
 "broadcast_audio" = "Broadcast audio to status";
 "sure_delete_playlist" = "Are you sure you want to delete this playlist?";
 "edit_audio" = "Edit audio";
+"audio_edit_album" = "Playlist";
 "audios_group" = "Audios from group";
 "playlists_group" = "Playlists from group";
 
@@ -1079,6 +1080,7 @@
 "nt_yours_adjective" = "your";
 "nt_yours_feminitive_adjective" = "your";
 "nt_post_nominative" = "post";
+"nt_comment_nominative" = "comment";
 "nt_post_instrumental" = "post";
 "nt_note_instrumental" = "note";
 "nt_photo_instrumental" = "photo";
@@ -1092,6 +1094,13 @@
 "nt_mention_in_note" = "in discussion of this note";
 "nt_mention_in_topic" = "in the discussion";
 "nt_sent_gift" = "sent you a gift";
+"notif_3_14_18" = "They wrote on your wall";
+"notif_0_14_18" = "Your post has been liked";
+"notif_0_6_18" = "Someone liked your comment";
+"notif_4_18_14" = "A user mentioned you";
+"notif_4_5_14" = "A group mentioned you";
+"notif_2_14_18" = "You have been left a comment";
+
 
 "nt_post_small" = "post";
 

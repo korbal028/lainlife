@@ -274,6 +274,10 @@ final class AudioPresenter extends OpenVKPresenter
             $this->flashFail("err", tr("error"), tr("ffmpeg_not_installed"), null, $isAjax);
         }
 
+        if ($playlist) {
+            $audio->setAlbum($playlist);
+        }
+
         $audio->save();
 
         if ($playlist) {
@@ -724,6 +728,7 @@ final class AudioPresenter extends OpenVKPresenter
                 $genre     = empty($this->postParam("genre")) ? "undefined" : $this->postParam("genre");
                 $nsfw      = (int) ($this->postParam("explicit") ?? 0) === 1;
                 $unlisted  = (int) ($this->postParam("unlisted") ?? 0) === 1;
+                $album_id  = (int) ($this->postParam("album_id") ?? 0);
                 if (empty($performer) || empty($name) || iconv_strlen($performer . $name) > 128) { # FQN of audio must not be more than 128 chars
                     $this->flashFail("err", tr("error"), tr("error_insufficient_info"), null, true);
                 }
@@ -734,6 +739,16 @@ final class AudioPresenter extends OpenVKPresenter
                 $audio->setGenre($genre);
                 $audio->setExplicit($nsfw);
                 $audio->setSearchability($unlisted);
+                if ($album_id > 0) {
+                    $audio->setAlbumId($album_id);
+
+                    $playlist = (new Audios())->getPlaylist($album_id);
+                    if ($playlist && !$playlist->hasAudio($audio)) {
+                        $playlist->add($audio);
+                    }
+                } else {
+                    $audio->setAlbumId(0);
+                }
                 $audio->setEdited(time());
                 $audio->save();
 
@@ -860,7 +875,6 @@ final class AudioPresenter extends OpenVKPresenter
 
         $pagesCount = ceil($audiosCount / $perPage);
 
-        # костылёк для получения плееров в пикере аудиозаписей
         if ((int) ($this->postParam("returnPlayers")) === 1) {
             $this->template->audios = $audios;
             $this->template->page = $page;
@@ -873,21 +887,19 @@ final class AudioPresenter extends OpenVKPresenter
         $audiosArr = [];
 
         foreach ($audios as $audio) {
-            $output_array = [];
-            $output_array['id'] = $audio->getId();
-            $output_array['name'] = $audio->getTitle();
-            $output_array['performer'] = $audio->getPerformer();
+            $obj = $audio->toVkApiStruct($this->user->identity);
+            $obj->id = $audio->getId();
+            $obj->name = $audio->getTitle();
+            $obj->performer = $audio->getPerformer();
+            $obj->length = $audio->getLength();
+            $obj->available = $audio->isAvailable();
 
             if (!$audio->isWithdrawn()) {
-                $output_array['keys'] = $audio->getKeys();
-                $output_array['url'] = $audio->getUrl();
+                $obj->keys = $audio->getKeys();
+                $obj->url = $audio->getUrl();
             }
 
-            $output_array['length'] = $audio->getLength();
-            $output_array['available'] = $audio->isAvailable();
-            $output_array['withdrawn'] = $audio->isWithdrawn();
-
-            $audiosArr[] = $output_array;
+            $audiosArr[] = $obj;
         }
 
         $resultArr = [

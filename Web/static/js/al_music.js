@@ -47,12 +47,52 @@ class AudioTrack {
         this.item = item
     }
 
+    getTitle() {
+        return this.item.name
+    }
+
+    getPerformer() {
+        return this.item.performer
+    }
+
+    getPerformers() {
+        return this.item.performer.split(',')
+    }
+
     getName() {
         return `${this.item.performer} — ${this.item.name}`
     }
 
     getId() {
         return this.item.id
+    }
+
+    getPlaylistCover() {
+        if (this.item.album) {
+            return this.item.album.cover_url
+        }
+
+        return "/assets/packages/static/openvk/img/song.jpg"
+    }
+
+    getPlaylistName() {
+        if (this.item.album) {
+            return this.item.album.title
+        }
+
+        return 'ovk audios'
+    }
+
+    getPlaylistURL() {
+        if (this.item.album) {
+            return '/playlist'+this.item.album.owner_id + '_' + this.item.album.id
+        }
+
+        return '#'
+    }
+
+    hasPlaylist() {
+        return this.item.album != null
     }
 }
 
@@ -67,6 +107,7 @@ window.player = new class {
 
     __linked_player_id = null
     current_track_id = 0
+    _fading = false
     tracks = []
 
     // 0 - shows remaining time before end
@@ -155,6 +196,10 @@ window.player = new class {
         }
 
         this.audioPlayer.onvolumechange = () => {
+            if (this._fading == true) {
+                return
+            }
+
             const volume = this.audioPlayer.volume;
             const ps = Math.ceil((volume * 100) / 1);
 
@@ -238,7 +283,7 @@ window.player = new class {
                 form_data.append('context_entity', this.context.object.entity_id)
                 break
             case 'classic_search_context':
-                // tidi riwriti
+                // todo rewrite
                 form_data.append('context', this.context.object.name)
                 form_data.append('context_entity', JSON.stringify({
                     'order': this.context.object.order,
@@ -379,6 +424,7 @@ window.player = new class {
 
         document.querySelectorAll('audio').forEach(el => el.pause())
 
+        this._volumeFade(false)
         await this.audioPlayer.play()
         this.__setFavicon()
         this.__updateFace()
@@ -390,10 +436,51 @@ window.player = new class {
             return
         }
 
-        this.audioPlayer.pause()
+        this._volumeFade(true)
+
+        setTimeout(() => {
+            this.audioPlayer.pause()
+            this.__updateFace()
+        }, 150)
         this.__setFavicon('paused')
-        this.__updateFace()
         navigator.mediaSession.playbackState = "paused"
+    }
+
+    _volumeFade(down = false, interval = 15) {
+        const step = 0.03
+
+        if (!this.audioPlayer || this._fading) {
+            return
+        }
+
+        const current_volume = this.audioPlayer.volume
+
+        if (down) {
+            this.audioPlayer.volume = current_volume
+        } else {
+            this.audioPlayer.volume = 0
+        }
+
+        this._fading = true
+
+        const _i = setInterval(() => {
+            let done = false
+            if (down) {
+                this.audioPlayer.volume = Math.max(0, this.audioPlayer.volume - step)
+
+                done = this.audioPlayer.volume == 0
+            } else {
+                this.audioPlayer.volume = Math.min(1, this.audioPlayer.volume + step)
+
+                done = this.audioPlayer.volume >= current_volume
+            }
+
+            if (done) {
+                this.audioPlayer.volume = current_volume
+                this._fading = false
+                clearInterval(_i)
+            }
+        }, interval);
     }
 
     async playPreviousTrack() {
@@ -601,7 +688,11 @@ window.player = new class {
     }
 
     __updateFace() {
-        const _c = this.currentTrack
+        let _c = null
+        if (this.currentTrack) { 
+            _c = new AudioTrack(this.currentTrack)
+        }
+
         const prev_button = this.uiPlayer.find('.nextButton')
         const next_button = this.uiPlayer.find('.backButton')
 
@@ -651,9 +742,9 @@ window.player = new class {
         }
 
         if(_c) {
-            this.uiPlayer.find('.trackInfo .trackName span').html(escapeHtml(_c.name))
+            this.uiPlayer.find('.trackInfo .trackName span').html(escapeHtml(_c.getTitle()))
             this.uiPlayer.find('.trackInfo .trackPerformers').html('')
-            const performers = _c.performer.split(', ')
+            const performers = _c.getPerformers()
             const lastPerformer = performers[performers.length - 1]
             performers.forEach(performer => {
                 this.uiPlayer.find('.trackInfo .trackPerformers').append(
@@ -664,10 +755,21 @@ window.player = new class {
             this.uiPlayer.find('.trackInfo .trackPerformers').html(`<a>${tr('track_unknown')}</a>`)
         }
 
+        if (u('.bigPlayer #album_info').length > 0) {
+            if (_c.hasPlaylist() && u('.playlistInfo').length == 0) {
+                u('.bigPlayer').addClass('album_shown')
+                u('.bigPlayer #album_info img').attr('src', _c.getPlaylistCover())
+                u('.bigPlayer #album_info #album_embed_name').html(escapeHtml(ovk_proc_strtr(_c.getPlaylistName(), 60)))
+                u('.bigPlayer #album_info a').attr('href', _c.getPlaylistURL())
+            } else {
+                u('.bigPlayer').removeClass('album_shown')
+            }
+        }
+
         if(this.ajaxPlayer.length > 0) {
             if(_c) {
-                this.ajaxPlayer.find('#aj_player_track_title b').html(escapeHtml(_c.performer))
-                this.ajaxPlayer.find('#aj_player_track_title span').html(escapeHtml(_c.name))
+                this.ajaxPlayer.find('#aj_player_track_title b').html(escapeHtml(_c.getPerformer()))
+                this.ajaxPlayer.find('#aj_player_track_title span').html(escapeHtml(_c.getTitle()))
             }
         }
 
@@ -690,12 +792,13 @@ window.player = new class {
     
     __updateMediaSession() {
         const album = document.querySelector(".playlistBlock")
-        const cur = this.currentTrack
+        const cur = new AudioTrack(this.currentTrack)
+
         navigator.mediaSession.metadata = new MediaMetadata({
-            title: escapeHtml(cur.name),
-            artist: escapeHtml(cur.performer),
-            album: album == null ? "OpenVK Audios" : escapeHtml(album.querySelector(".playlistInfo h4").innerHTML),
-            artwork: [{ src: album == null ? "/assets/packages/static/openvk/img/song.jpg" : album.querySelector(".playlistCover img").src }],
+            title: escapeHtml(cur.getName()),
+            artist: escapeHtml(cur.getPerformer()),
+            album: cur.getPlaylistName(),
+            artwork: [{ src: cur.getPlaylistCover()}],
         })
     }
 
@@ -1290,7 +1393,8 @@ u(document).on('contextmenu', '.bigPlayer, .audioEmbed, #ajax_audio_player', (e)
             <a id='audio_ctx_mute' ${window.player.audioPlayer.muted ? `class='pressed'` : ''}>${tr('mute_tip_noun')}</a>
             ` : ''}
             ${ctx_type == 'mini_player' ? `
-            <a style='display:none;' id='audio_ctx_play_next'>${tr('audio_ctx_play_next')}</a>    
+            <a style='display:none;' id='audio_ctx_play_next'>${tr('audio_ctx_play_next')}</a>
+            <a id='audio_ctx_link_playlist'>${tr('playlist')}</a>
             ` : ''}
             <a id='audio_ctx_add_to_group'>${tr('audio_ctx_add_to_group')}</a>
             <a id='audio_ctx_add_to_playlist'>${tr('audio_ctx_add_to_playlist')}</a>
@@ -1398,6 +1502,82 @@ u(document).on('contextmenu', '.bigPlayer, .audioEmbed, #ajax_audio_player', (e)
     ctx_u.find('#audio_ctx_show_count').on('click', (ev) => {
         window.player.bigPlayer_toggleCountBlock()
     })
+    ctx_u.find('#audio_ctx_link_playlist').on('click', async (ev) => {
+        let track_id = 0
+        let owner_id = 0
+        if(ctx_type == 'main_player') {
+            if(window.player.current_track_id == 0) {
+                return
+            }
+
+            track_id = window.player.current_track_id
+        } else {
+            const player = u(ev.target).closest('.audioEmbed')
+            track_id = Number(player.attr('data-realid'))
+            owner_id = Number(player.attr('data-owner-id'))
+        }
+
+        const audios = await window.OVKAPI.call('audio.getById', {
+            'audios': track_id
+        })
+        const audio = audios.items[0]
+        let id = audio.album_id
+        if (typeof id === 'string' && id.includes('_')) {
+             id = id.split('_')[1];
+        }
+
+        const final_owner_id = owner_id || audio.owner_id
+
+        if (!audio.editable) {
+            if (id) {
+                window.router.route('/playlist' + id)
+            }
+            return
+        }
+
+        const albums = await window.OVKAPI.call('audio.getAlbums', {
+            'count': 100,
+            'owner_id': final_owner_id
+        })
+
+        let options = `<option value="0">${tr('none')}</option>`
+        albums.items.forEach(album => {
+            const isSelected = (String(album.id) === String(id)) ? 'selected' : '';
+            options += `<option value="${album.id}" ${isSelected}>${escapeHtml(album.title)}</option>`
+        })
+
+        let body = u(`
+            <div>
+                <div>
+                    <div class="playlist_data"></div>
+                </div>
+                <div style="display: flex;align-items: center;gap: 3px;">
+                    <span>${tr('album')}</span>
+                    <select id="playlist_id" style="width: 50%;">
+                        ${options}
+                    </select>
+                </div>
+            </div>
+        `)
+        const msg = new CMessageBox({
+            title: tr('audio_edit_album'),
+            body: body.html(),
+            buttons: [tr('ok'), tr('cancel')],
+            callbacks: [async () => {
+                const new_id = msg.getNode().find('#playlist_id').nodes[0].value
+
+                try {
+                    await window.OVKAPI.call('audio.moveToAlbum', {
+                        'do_link': 1,
+                        'audio_ids': track_id,
+                        'album_id': new_id
+                    })
+                } catch(e) {
+                    makeError(e.message)
+                }
+            }, () => {}]
+        })
+    })
 })
 
 u(document).on("click", ".musicIcon.edit-icon", (e) => {
@@ -1407,9 +1587,10 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
     const name = e.target.dataset.title
     const genre = player.dataset.genre
     const lyrics = e.target.dataset.lyrics
-    
-    MessageBox(tr("edit_audio"), `
-        <div>
+    const album_id = e.currentTarget.dataset.albumId
+    const owner_id = e.currentTarget.dataset.ownerId
+
+    MessageBox(tr("edit_audio"), `        <div>
             ${tr("performer")}
             <input name="performer" maxlength="256" type="text" value="${escapeHtml(performer)}">
         </div>
@@ -1422,6 +1603,13 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
         <div style="margin-top: 11px">
             ${tr("genre")}
             <select name="genre"></select>
+        </div>
+
+        <div style="margin-top: 11px">
+            ${tr("album")}
+            <select name="album_id">
+                <option value="0">${tr('none')}</option>
+            </select>
         </div>
 
         <div style="margin-top: 11px">
@@ -1440,6 +1628,7 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
             const t_name   = $(".ovk-diag-body input[name=name]").val();
             const t_perf   = $(".ovk-diag-body input[name=performer]").val();
             const t_genre  = $(".ovk-diag-body select[name=genre]").val();
+            const t_album  = $(".ovk-diag-body select[name=album_id]").val();
             const t_lyrics = $(".ovk-diag-body textarea[name=lyrics]").val();
             const t_explicit = document.querySelector(".ovk-diag-body input[name=explicit]").checked;
             const t_unlisted = document.querySelector(".ovk-diag-body input[name=searchable]").checked;
@@ -1451,6 +1640,7 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
                     name: t_name,
                     performer: t_perf,
                     genre: t_genre,
+                    album_id: t_album,
                     lyrics: t_lyrics,
                     unlisted: Number(t_unlisted),
                     explicit: Number(t_explicit),
@@ -1467,6 +1657,7 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
                         e.target.setAttribute("data-lyrics", escapeHtml(response.new_info.lyrics_unformatted))
                         e.target.setAttribute("data-explicit", Number(response.new_info.explicit))
                         e.target.setAttribute("data-searchable", Number(!response.new_info.unlisted))
+                        e.target.setAttribute("data-album-id", t_album)
                         player.setAttribute("data-genre", response.new_info.genre)
                         
                         let name = player.querySelector(".title")
@@ -1518,6 +1709,16 @@ u(document).on("click", ".musicIcon.edit-icon", (e) => {
             <option value="${elGenre}" ${elGenre == genre ? "selected" : ""}>${elGenre}</option>
         `)
     })
+
+    const album_select = document.querySelector(".ovk-diag-body select[name=album_id]");
+    (async () => {
+        const res = await window.OVKAPI.call('audio.getAlbums', {'count': 100, 'owner_id': owner_id})
+        res.items.forEach(album => {
+            album_select.insertAdjacentHTML("beforeend", `
+                <option value="${album.id}" ${String(album.id) === String(album_id) ? "selected" : ""}>${escapeHtml(album.title)}</option>
+            `)
+        })
+    })()
 
     u(".ovk-diag-body #_fullyDeleteAudio").on("click", (e) => {
         MessageBox(tr('confirm'), tr('confirm_deleting_audio'), [tr('yes'), tr('no')], [() => {

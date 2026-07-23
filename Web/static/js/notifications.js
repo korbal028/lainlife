@@ -4,8 +4,20 @@ var _n_counter = 0;
 
 var counter = 0;
 
+window.baseTitle = document.title;
+
+function updateTitle() {
+    document.title = counter > 0 ? `(${counter}) ${window.baseTitle}` : window.baseTitle;
+}
+
+window.setBaseTitle = function(title) {
+    window.baseTitle = title;
+    updateTitle();
+};
+
 window.addEventListener("focus", () => {
-    document.title = document.title.replace(/^\([0-9]+\) /, ""); // remove notification counter xD
+    counter = 0;
+    updateTitle();
 });
 
 function NewNotification(title, body, avatar = null, callback = () => {}, time = 5000, count = true) {
@@ -41,17 +53,29 @@ function NewNotification(title, body, avatar = null, callback = () => {}, time =
         return u("#n"+id);
     }
 
+    let closed = false;
+
     function __closeNotification() {
+        if(closed) {
+            return;
+        }
+
         if(document.visibilityState != "visible")
             return setTimeout(() => {__closeNotification()}, time); // delay notif deletion
         
+        closed = true;
+        if(count && counter > 0) {
+            counter--;
+            updateTitle();
+        }
+
         getPrototype().addClass('disappears');
         return setTimeout(() => {getPrototype().remove()}, 500);
     }
 
     if(count == true) {
         counter++;
-        document.title = `(${counter}) ${document.title}`;
+        updateTitle();
     }
     
     setTimeout(() => {__closeNotification()}, time);
