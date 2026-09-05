@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace openvk\VKAPI\Handlers;
 
 use openvk\Web\Events\{NewMessageEvent, TypingEvent};
-use openvk\Web\Models\Entities\{Correspondence, Message};
+use openvk\Web\Models\Entities\{Correspondence, Message, Photo, Video, Audio, Note, Document};
 use openvk\Web\Models\Repositories\{Messages as MSGRepo, Users as USRRepo};
 use openvk\VKAPI\Structures\{Message as APIMsg, Conversation as APIConvo};
 use openvk\VKAPI\Handlers\Users as APIUsers;
@@ -47,6 +47,40 @@ final class Messages extends VKAPIRequestHandler
             "text"    => $fwd->getText(false),
             "date"    => $fwd->getSendTime()->timestamp(),
         ];
+    }
+
+    /**
+     * Build a minimal VK-API-shaped attachments array for a message, just
+     * enough for clients to tell what kind of attachment it is (used e.g.
+     * for dialog list previews when the message itself has no text).
+     */
+    private function buildAttachmentsStruct(Message $message): array
+    {
+        $attachments = [];
+        foreach ($message->getChildren() as $attachment) {
+            if ($attachment instanceof Photo) {
+                $type = "photo";
+            } elseif ($attachment instanceof Video) {
+                $type = "video";
+            } elseif ($attachment instanceof Audio) {
+                $type = "audio";
+            } elseif ($attachment instanceof Document) {
+                $type = "doc";
+            } elseif ($attachment instanceof Note) {
+                $type = "note";
+            } else {
+                $type = "unknown";
+            }
+
+            $item = (object) ["type" => $type];
+            if ($attachment instanceof Photo) {
+                $item->url = $attachment->getURLBySizeId("tiny");
+            }
+
+            $attachments[] = $item;
+        }
+
+        return $attachments;
     }
 
     public function getById(string $message_ids, int $preview_length = 0, int $extended = 0): object
@@ -295,6 +329,8 @@ final class Messages extends VKAPIRequestHandler
                 $lastMessagePreview->body       = $lastMessage->getText(false);
                 $lastMessagePreview->text       = $lastMessage->getText(false);
                 $lastMessagePreview->emoji      = true;
+                $lastMessagePreview->attachments   = $this->buildAttachmentsStruct($lastMessage);
+                $lastMessagePreview->reply_message = $this->buildReplyStruct($lastMessage);
 
                 if ($extended == 1) {
                     $users[] = $peer->getId();
