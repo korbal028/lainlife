@@ -50,34 +50,45 @@ final class Messages extends VKAPIRequestHandler
     }
 
     /**
-     * Build a minimal VK-API-shaped attachments array for a message, just
-     * enough for clients to tell what kind of attachment it is (used e.g.
-     * for dialog list previews when the message itself has no text).
+     * Build a VK-API-shaped attachments array for a message, following the
+     * same {type, <type>: {...}} envelope convention as Wall.php, so clients
+     * can reuse their existing post-attachment renderer for messages too.
      */
     private function buildAttachmentsStruct(Message $message): array
     {
         $attachments = [];
         foreach ($message->getChildren() as $attachment) {
             if ($attachment instanceof Photo) {
-                $type = "photo";
+                $attachments[] = (object) [
+                    "type"  => "photo",
+                    "photo" => [
+                        "id"       => $attachment->getVirtualId(),
+                        "owner_id" => $attachment->getOwner()->getId(),
+                        "date"     => $attachment->getPublicationTime()->timestamp(),
+                        "sizes"    => !is_null($attachment->getVkApiSizes()) ? array_values($attachment->getVkApiSizes()) : null,
+                        "text"     => "",
+                    ],
+                ];
             } elseif ($attachment instanceof Video) {
-                $type = "video";
+                $attachments[] = $attachment->getApiStructure($this->getUser());
             } elseif ($attachment instanceof Audio) {
-                $type = "audio";
+                $attachments[] = (object) [
+                    "type"  => "audio",
+                    "audio" => $attachment->toVkApiStruct($this->getUser()),
+                ];
             } elseif ($attachment instanceof Document) {
-                $type = "doc";
+                $attachments[] = (object) [
+                    "type" => "doc",
+                    "doc"  => $attachment->toVkApiStruct($this->getUser()),
+                ];
             } elseif ($attachment instanceof Note) {
-                $type = "note";
+                $attachments[] = (object) [
+                    "type" => "note",
+                    "note" => $attachment->toVkApiStruct(),
+                ];
             } else {
-                $type = "unknown";
+                $attachments[] = (object) ["type" => "unknown"];
             }
-
-            $item = (object) ["type" => $type];
-            if ($attachment instanceof Photo) {
-                $item->url = $attachment->getURLBySizeId("tiny");
-            }
-
-            $attachments[] = $item;
         }
 
         return $attachments;
@@ -111,6 +122,7 @@ final class Messages extends VKAPIRequestHandler
             $rMsg->text       = $message->getText(false);
             $rMsg->emoji      = true;
             $rMsg->reply_message = $this->buildReplyStruct($message);
+            $rMsg->attachments   = $this->buildAttachmentsStruct($message);
 
             if ($preview_length > 0) {
                 $rMsg->body = ovk_proc_strtr($rMsg->body, $preview_length);
@@ -459,6 +471,7 @@ final class Messages extends VKAPIRequestHandler
             $rMsg->text       = $message->getText(false);
             $rMsg->emoji      = true;
             $rMsg->reply_message = $this->buildReplyStruct($message);
+            $rMsg->attachments   = $this->buildAttachmentsStruct($message);
 
             $results[] = $rMsg;
         }
