@@ -177,6 +177,44 @@ final class Photos extends VKAPIRequestHandler
         ];
     }
 
+    public function getMessagesUploadServer(): object
+    {
+        $this->requireUser();
+
+        return (object) [
+            "upload_url" => $this->getPhotoUploadUrl("photo", 0),
+            "album_id"   => 0,
+            "user_id"    => $this->getUser()->getId(),
+        ];
+    }
+
+    public function saveMessagesPhoto(string $photo, string $hash): array
+    {
+        $this->requireUser();
+        $imagePath = $this->getImagePath($photo, $hash, $uploader, $group);
+
+        try {
+            $photoEntity = new Photo();
+            $photoEntity->setOwner($this->getUser()->getId());
+            $photoEntity->setCreated(time());
+            $photoEntity->setFile([
+                "tmp_name" => $imagePath,
+                "error" => 0,
+            ]);
+            $photoEntity->save();
+        } catch (ImageException | InvalidStateException $e) {
+            $this->fail(129, "Invalid image file");
+        } finally {
+            if (file_exists($imagePath)) {
+                @unlink($imagePath);
+            }
+        }
+
+        return [
+            $photoEntity->toVkApiStruct(),
+        ];
+    }
+
     public function getUploadServer(?int $album_id = null): object
     {
         $this->requireUser();
