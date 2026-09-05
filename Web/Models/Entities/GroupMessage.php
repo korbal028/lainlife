@@ -204,4 +204,5 @@ class GroupMessage extends RowModel
 
     use Traits\TRichText;
     use Traits\TAttachmentHost;
+    use Traits\TMessagePreview;
 }

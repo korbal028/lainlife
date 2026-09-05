@@ -32,7 +32,7 @@
                     <div class="crp-entry--message">
                         <div class="crp-entry--message---text">
                             {if $chat->getLastMessage()}
-                                {$chat->getLastMessage()->getText()|noescape}
+                                {$chat->getLastMessage()->getPreviewText()|noescape}
                             {/if}
                         </div>
                     </div>

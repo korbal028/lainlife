@@ -2499,3 +2499,10 @@
 "nospam_templates" = "Активные шаблоны noSpam";
 "verified_groups" = "верифицированный";
 "banned_groups" = "заблокированный";
+"msg_preview_photo" = "Фотография";
+"msg_preview_video" = "Видео";
+"msg_preview_audio" = "Музыка";
+"msg_preview_document" = "Документ";
+"msg_preview_note" = "Заметка";
+"msg_preview_forwarded" = "Пересланное сообщение";
+"msg_preview_attachment" = "Вложение";

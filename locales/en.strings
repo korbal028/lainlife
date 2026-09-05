@@ -2569,3 +2569,10 @@
 "timezone--765" = "(GMT+12:45): Chatham Islands";
 "timezone--780" = "(GMT+13): Nukualofa, Apia";
 "timezone--840" = "(GMT+14): Kiritimati, Line Islands";
+"msg_preview_photo" = "Photo";
+"msg_preview_video" = "Video";
+"msg_preview_audio" = "Music";
+"msg_preview_document" = "Document";
+"msg_preview_note" = "Note";
+"msg_preview_forwarded" = "Forwarded message";
+"msg_preview_attachment" = "Attachment";

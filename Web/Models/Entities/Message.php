@@ -226,4 +226,5 @@ function isForwarded(): bool
     
     use Traits\TRichText;
     use Traits\TAttachmentHost;
+    use Traits\TMessagePreview;
 }
