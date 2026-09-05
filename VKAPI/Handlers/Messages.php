@@ -30,6 +30,25 @@ final class Messages extends VKAPIRequestHandler
         return $user_id;
     }
 
+    private function buildReplyStruct(Message $message): ?object
+    {
+        if (!$message->isForwarded()) {
+            return null;
+        }
+
+        $fwd = $message->getForwardedMessage();
+        if (!$fwd || $fwd->isDeleted()) {
+            return null;
+        }
+
+        return (object) [
+            "id"      => $fwd->getId(),
+            "from_id" => $fwd->getSender()->getId(),
+            "text"    => $fwd->getText(false),
+            "date"    => $fwd->getSendTime()->timestamp(),
+        ];
+    }
+
     public function getById(string $message_ids, int $preview_length = 0, int $extended = 0): object
     {
         $this->requireUser();
@@ -57,6 +76,7 @@ final class Messages extends VKAPIRequestHandler
             $rMsg->body       = $message->getText(false);
             $rMsg->text       = $message->getText(false);
             $rMsg->emoji      = true;
+            $rMsg->reply_message = $this->buildReplyStruct($message);
 
             if ($preview_length > 0) {
                 $rMsg->body = ovk_proc_strtr($rMsg->body, $preview_length);
@@ -81,7 +101,8 @@ final class Messages extends VKAPIRequestHandler
         string $message = "",
         int $sticker_id = -1,
         int $forGodSakePleaseDoNotReportAboutMyOnlineActivity = 0,
-        string $attachment = ""
+        string $attachment = "",
+        int $reply_to = 0
     ) { # интересно почему не attachments
         $this->requireUser();
         $this->willExecuteWriteAction();
@@ -96,7 +117,7 @@ final class Messages extends VKAPIRequestHandler
             $this->fail(-151, "Stickers are not implemented");
         }
 
-        if (empty($message) && empty($attachment)) {
+        if (empty($message) && empty($attachment) && $reply_to <= 0) {
             $this->fail(100, "Message text is empty or invalid");
         }
 
@@ -130,10 +151,21 @@ final class Messages extends VKAPIRequestHandler
             $this->fail(945, "This chat is disabled because of privacy settings");
         }
 
+        $repliedMsg = null;
+        if ($reply_to > 0) {
+            $repliedMsg = (new MSGRepo())->get($reply_to);
+            if (!$repliedMsg || $repliedMsg->isDeleted() || ($repliedMsg->getSender()->getId() !== $this->getUser()->getId() && $repliedMsg->getRecipient()->getId() !== $this->getUser()->getId())) {
+                $this->fail(15, "Access to replied message denied");
+            }
+        }
+
         # Finally we get to send a message!
         $chat = new Correspondence($this->getUser(), $peer);
         $msg  = new Message();
         $msg->setContent($message);
+        if ($repliedMsg) {
+            $msg->setForwarded_from($repliedMsg->getId());
+        }
 
         $msg = $chat->sendMessage($msg, true);
         if (!$msg) {
@@ -390,6 +422,7 @@ final class Messages extends VKAPIRequestHandler
             $rMsg->body       = $message->getText(false);
             $rMsg->text       = $message->getText(false);
             $rMsg->emoji      = true;
+            $rMsg->reply_message = $this->buildReplyStruct($message);
 
             $results[] = $rMsg;
         }
