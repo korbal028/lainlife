@@ -144,7 +144,7 @@
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
                         <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
-                            <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress }"></textarea>
+                            <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress, input: onTextareaInput }"></textarea>
 
                             <div class="post-buttons" style="display: block; margin-top:6px;">
                                 <div class="post-horizontal" style="display: none;"></div>
@@ -240,11 +240,15 @@
                         ta.blur(); //Fix update
                         model.sendMessage(model);
                         ta.focus();
-                        
+
                         return false;
                     }
                 }
-                
+
+                return true;
+            };
+            this.onTextareaInput = () => {
+                window.Msg.sendTypingActivity();
                 return true;
             };
         }
@@ -364,6 +368,19 @@
                 }
             }
             
+            // Троттлинг: шлём не чаще раза в 3 секунды, пока юзер печатает, а не на каждый keystroke
+            sendTypingActivity() {
+                let now = Date.now();
+                if(this.lastTypingSentAt && now - this.lastTypingSentAt < 3000) return;
+                this.lastTypingSentAt = now;
+
+                let xhr = new XMLHttpRequest();
+                xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/typing.json", true);
+                let fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                xhr.send(fd);
+            }
+
             setTypingStatus() {
                 if (this.typeEl.style.display == "block" && this.typeTimer !== null) {
                     clearTimeout(this.typeTimer);

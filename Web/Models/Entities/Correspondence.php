@@ -261,6 +261,12 @@ class Correspondence
         if ($ids[0] !== $ids[1]) {
             $event = new TypingEvent($ids[0]);
             (SignalManager::i())->triggerEvent($event, $ids[1]);
+
+            // читается MessengerPresenter::apiSync() при поллинге; централизовано здесь,
+            // а не в веб-презентере, чтобы работало и для VKAPI messages.setActivity (Matcha и т.п.)
+            if (function_exists("apcu_store")) {
+                apcu_store("typing:{$ids[0]}:{$ids[1]}", 1, 5);
+            }
         }
 
         return true;

@@ -288,12 +288,6 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
-        // ключ читается apiSync() у собеседника при поллинге; короткий TTL = индикатор сам погаснет,
-        // если печатающий перестанет слать эти запросы (JS шлёт их, пока юзер печатает)
-        if (function_exists("apcu_store")) {
-            apcu_store("typing:{$this->user->id}:{$sel->getId()}", 1, 5);
-        }
-
         $cor = new Correspondence($this->user->identity, $sel);
         $result = $cor->sendTypingEvent();
         header("HTTP/1.1 202 Accepted");
