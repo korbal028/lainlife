@@ -79,50 +79,10 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->correspondent = $correspondent;
     }
 
-private const MAX_LONGPOLL_PER_USER = 3;   // сколько одновременных long-poll разрешено одному юзеру
-private const LONGPOLL_TIMEOUT_SEC  = 30;  // максимальное время ожидания события
-
-public function renderEvents(int $randNum): void
-{
-    $this->assertUserLoggedIn();
-
-    $userId  = $this->user->id;
-    $lockKey = "longpoll:count:{$userId}";
-
-    // --- лимит на юзера ---
-    $current = (int) apcu_fetch($lockKey);
-    if ($current >= self::MAX_LONGPOLL_PER_USER) {
-        http_response_code(429);
-        header("Content-Type: application/json");
-        header("Retry-After: 5");
-        echo json_encode(["error" => "Too many concurrent long-poll connections"]);
-        return;
-    }
-    apcu_inc($lockKey, 1) ?: apcu_store($lockKey, 1);
-
-    // гарантированно уменьшаем счётчик, даже если скрипт упадёт/оборвётся по exit()
-    register_shutdown_function(static function () use ($lockKey) {
-        apcu_dec($lockKey);
-    });
-
-    header("Content-Type: application/json");
-    set_time_limit(0); // таймаут контролируем сами, PHP-лимит не должен нас прерывать раньше времени
-
-    // третий аргумент listen() — это ДЛИТЕЛЬНОСТЬ ожидания в секундах (см. renderVKEvents),
-    // а не абсолютный дедлайн; ранее сюда передавался time()+N, из-за чего long-poll
-    // висел до принудительного обрыва инфраструктурой вместо контролируемых 30 секунд
-    $this->signaler->listen(function ($event, $id) {
-        echo json_encode([[
-            "UUID"  => $id,
-            "event" => $event->getLongPoolSummary(),
-        ]]);
-        exit;
-    }, $userId, self::LONGPOLL_TIMEOUT_SEC);
-
-    // если signaler сам умеет по таймауту вернуть управление без события —
-    // отдаём пустой ответ 204, клиент сам переоткроет соединение
-    http_response_code(204);
-}
+    // renderEvents()/маршрут "/im{num}" (long-poll на signaler->listen) удалены: веб-мессенджер
+    // теперь синхронизируется коротким поллингом через renderApiSync() ниже — это не держит
+    // воркер сервера открытым и не зависит от Redis/SQLite сигнального слоя Chandler.
+    // renderVKEvents() ниже НЕ трогали — это отдельный протокол для VK-API совместимых клиентов.
 
     public function renderVKEvents(int $id): void
     {
@@ -185,6 +145,59 @@ public function renderEvents(int $randNum): void
 
         header("Content-Type: application/json");
         exit(json_encode($messages));
+    }
+
+    // короткий поллинг вместо long-poll: клиент дёргает этот эндпоинт каждые несколько секунд
+    // вместо блокирующего signaler->listen(), который зависел от Redis/SQLite сигнального слоя
+    // и не доставлял события в реальном времени
+    public function renderApiSync(int $sel, int $lastMsg): void
+    {
+        $this->assertUserLoggedIn();
+
+        $correspondent = $this->getCorrespondent($sel);
+        if (!$correspondent) {
+            $this->notFound();
+        }
+
+        $since = (int) ($this->queryParam("since") ?? 0);
+        $now   = time();
+
+        $correspondence = new Correspondence($this->user->identity, $correspondent);
+
+        $messages = [];
+        foreach ($correspondence->getMessages(1, $lastMsg === 0 ? null : $lastMsg, null, 0) as $message) {
+            $simple = $message->simplify();
+            $this->enrichAttachmentsWithHTML($message, $simple);
+            $messages[] = $simple;
+        }
+
+        $edited  = [];
+        $deleted = [];
+        if ($since > 0) {
+            foreach ($correspondence->getChangedMessages($since) as $message) {
+                if ($message->isDeleted()) {
+                    $deleted[] = $message->getId();
+                } else {
+                    $simple = $message->simplify();
+                    $this->enrichAttachmentsWithHTML($message, $simple);
+                    $edited[] = $simple;
+                }
+            }
+        }
+
+        $typing = false;
+        if (function_exists("apcu_fetch")) {
+            $typing = (bool) apcu_fetch("typing:{$correspondent->getId()}:{$this->user->id}");
+        }
+
+        header("Content-Type: application/json");
+        exit(json_encode([
+            "ts"       => $now,
+            "messages" => $messages,
+            "edited"   => $edited,
+            "deleted"  => $deleted,
+            "typing"   => $typing,
+        ]));
     }
 
     public function renderApiWriteMessage(int $sel): void
@@ -270,6 +283,12 @@ public function renderEvents(int $randNum): void
         if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
+        }
+
+        // ключ читается apiSync() у собеседника при поллинге; короткий TTL = индикатор сам погаснет,
+        // если печатающий перестанет слать эти запросы (JS шлёт их, пока юзер печатает)
+        if (function_exists("apcu_store")) {
+            apcu_store("typing:{$this->user->id}:{$sel->getId()}", 1, 5);
         }
 
         $cor = new Correspondence($this->user->identity, $sel);
@@ -372,6 +391,7 @@ public function renderEvents(int $randNum): void
         }
 
         $msg->setDeleted(1);
+        $msg->setEdited(time()); // используется как метка "изменено" для поллинга (apiSync)
         $msg->save();
 
         $recipient = $msg->getRecipient();

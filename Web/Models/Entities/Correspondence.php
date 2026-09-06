@@ -133,6 +133,38 @@ class Correspondence
     }
 
     /**
+     * Get messages that were edited or deleted (soft-deleted) after $since.
+     * Used for polling-based sync instead of long-poll/signaler push.
+     *
+     * @returns Message[] - messages touched (edited or deleted) since $since, deleted included
+     */
+    public function getChangedMessages(int $since): array
+    {
+        $connection = DatabaseConnection::i()->getConnection();
+        $msgs = $connection->query(
+            "SELECT * FROM `messages`
+             WHERE (`edited` > ?)
+               AND (
+                 (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
+                 OR
+                 (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
+               )
+             ORDER BY `edited` ASC",
+            $since,
+            get_class($this->correspondents[0]), get_class($this->correspondents[1]),
+            $this->correspondents[0]->getId(), $this->correspondents[1]->getId(),
+            get_class($this->correspondents[1]), get_class($this->correspondents[0]),
+            $this->correspondents[1]->getId(), $this->correspondents[0]->getId()
+        );
+
+        return array_map(function ($message) {
+            $message = new ActiveRow((array) $message, $this->messages);
+
+            return new Message($message);
+        }, iterator_to_array($msgs));
+    }
+
+    /**
      * Get last message from correspondence.
      *
      * @returns Message|null - message, if any

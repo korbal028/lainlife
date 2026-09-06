@@ -90,10 +90,15 @@ class Message extends RowModel
     {
         $edited = $this->getRecord()->edited;
         if(is_null($edited)) return NULL;
-        
+
         return new DateTime($edited);
     }
-    
+
+    function isDeleted(): bool
+    {
+        return (bool) $this->getRecord()->deleted;
+    }
+
 
 function getForwardedMessage(): ?Message
 {
