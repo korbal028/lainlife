@@ -302,6 +302,9 @@
                             if(data) {
                                 (data.messages || []).forEach(message => {
                                     if(this.newestId >= message.uuid) return;
+                                    // подстраховка от гонки, если запрос на отправку своего же
+                                    // сообщения ещё не успел продвинуть newestId к моменту этого тика
+                                    if(window.messages().some(m => m.uuid === message.uuid)) return;
                                     this.addMessage(message);
                                     this.newestId = message.uuid;
                                 });
@@ -623,7 +626,11 @@
                     }
                     
                     console.debug("Message sent, updating view.");
-                    that._patchMessage(tempId, JSON.parse(xhr.responseText));
+                    let sentMessage = JSON.parse(xhr.responseText);
+                    that._patchMessage(tempId, sentMessage);
+                    // без этого следующий тик поллинга видит только что отправленное сообщение
+                    // как "новое" (id > newestId) и добавляет его повторно
+                    if(sentMessage.uuid > that.newestId) that.newestId = sentMessage.uuid;
                     
                     document.body.querySelectorAll(".bsdn").forEach(el => {
                         if(!el.querySelector(".bdsn-hydrated")) {
