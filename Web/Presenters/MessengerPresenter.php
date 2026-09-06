@@ -164,8 +164,11 @@ final class MessengerPresenter extends OpenVKPresenter
 
         $correspondence = new Correspondence($this->user->identity, $correspondent);
 
+        // CAP_BEHAVIOUR_START_MESSAGE_ID => `id` > $lastMsg (в отличие от apiGetMessages/_loadHistory,
+        // которым нужны СТАРЫЕ сообщения для пагинации вверх, здесь нужны НОВЫЕ — те, что пришли
+        // после последнего известного клиенту id); reverse=true отдаёт их в хронологическом порядке
         $messages = [];
-        foreach ($correspondence->getMessages(1, $lastMsg === 0 ? null : $lastMsg, null, 0) as $message) {
+        foreach ($correspondence->getMessages(Correspondence::CAP_BEHAVIOUR_START_MESSAGE_ID, $lastMsg === 0 ? null : $lastMsg, null, 0, true) as $message) {
             $simple = $message->simplify();
             $this->enrichAttachmentsWithHTML($message, $simple);
             $messages[] = $simple;

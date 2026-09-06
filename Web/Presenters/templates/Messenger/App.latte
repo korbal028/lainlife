@@ -254,7 +254,8 @@
                 this.ko       = ko.applyBindings(new MessengerViewModel(messages));
                 this.appEl    = document.querySelector(".messenger-app--messages");
                 this.typeEl   = document.querySelector(".messenger-app--typing-status");
-                this.offset   = 0;
+                this.offset   = 0; // курсор для обратной пагинации истории (самое старое загруженное id)
+                this.newestId = 0; // курсор для поллинга новых сообщений (самое новое известное id)
                 this.lastSync = Math.floor(Date.now() / 1000);
 
                 this.typingTimer = null;
@@ -273,7 +274,12 @@
                 let messages    = JSON.parse(xhr.responseText);
                 let lastMessage = messages[messages.length - 1];
                 if(typeof lastMessage !== "undefined") this.offset = lastMessage.uuid;
-                
+
+                // newestId выставляется только один раз, при первой (самой свежей) подгрузке —
+                // последующие вызовы _loadHistory() (пагинация вверх) отдают более старые сообщения
+                // и не должны сдвигать курсор поллинга назад
+                if(this.newestId === 0 && messages.length > 0) this.newestId = messages[0].uuid;
+
                 this.prependMessages(messages);
             }
             
@@ -283,7 +289,7 @@
             _setupPolling(intervalMs = 3500) {
                 let poll = () => {
                     let xhr = new XMLHttpRequest();
-                    xhr.open("GET", `/im/api/sync${ {$correspondent->getId()} }/${ this.offset }.json?since=${ this.lastSync }`, true);
+                    xhr.open("GET", `/im/api/sync${ {$correspondent->getId()} }/${ this.newestId }.json?since=${ this.lastSync }`, true);
                     xhr.onload = () => {
                         if(xhr.status === 200 && xhr.responseText) {
                             let data = null;
@@ -295,9 +301,9 @@
 
                             if(data) {
                                 (data.messages || []).forEach(message => {
-                                    if(this.offset >= message.uuid) return;
+                                    if(this.newestId >= message.uuid) return;
                                     this.addMessage(message);
-                                    this.offset = message.uuid;
+                                    this.newestId = message.uuid;
                                 });
 
                                 (data.edited || []).forEach(message => {
