@@ -280,37 +280,60 @@
                     let xhr = new XMLHttpRequest();
                     xhr.open("GET", "/im12", true);
                     xhr.onload = () => {
-                        let data = JSON.parse(xhr.responseText);
-                        data.forEach(event => {
-                            event = event.event;
-                            if(event.type === "newMessage") {
-                                if(event.message.sender.id !== {$correspondent->getId()})
-                                    return;
-                                if(this.offset >= event.message.uuid)
-                                    return void(console.warn("Gay message recieved, skipping. [-WHeterosexual]"));
-                                this.addMessage(event.message);
-                                this.offset = event.message.uuid;
-                            } else if(event.type === "deleteMessage") {
-                                window.messages.remove(m => m.uuid === event.msgId);
-                            } else if(event.type === "editMessage") {
-                                let msgs = window.messages();
-                                for(let i = 0; i < msgs.length; i++) {
-                                    if(msgs[i].uuid === event.message.uuid) {
-                                        let updated = Object.assign({}, msgs[i], {
-                                            text: event.message.text,
-                                            timing: event.message.timing
-                                        });
-                                        window.messages.splice(i, 1, updated);
-                                        break;
+                        // 429 — превышен лимит одновременных long-poll'ов на юзера, ждём перед повтором
+                        if(xhr.status === 429) {
+                            setTimeout(listenLongpool, 5000);
+                            return;
+                        }
+
+                        // 204 (штатный таймаут ожидания) и любой другой нестандартный ответ
+                        // приходят с пустым/невалидным телом — это не ошибка, просто переоткрываем поллинг
+                        let data = null;
+                        if(xhr.status === 200 && xhr.responseText) {
+                            try {
+                                data = JSON.parse(xhr.responseText);
+                            } catch(e) {
+                                data = null;
+                            }
+                        }
+
+                        if(Array.isArray(data)) {
+                            data.forEach(event => {
+                                event = event.event;
+                                if(event.type === "newMessage") {
+                                    if(event.message.sender.id !== {$correspondent->getId()})
+                                        return;
+                                    if(this.offset >= event.message.uuid)
+                                        return void(console.warn("Gay message recieved, skipping. [-WHeterosexual]"));
+                                    this.addMessage(event.message);
+                                    this.offset = event.message.uuid;
+                                } else if(event.type === "deleteMessage") {
+                                    window.messages.remove(m => m.uuid === event.msgId);
+                                } else if(event.type === "editMessage") {
+                                    let msgs = window.messages();
+                                    for(let i = 0; i < msgs.length; i++) {
+                                        if(msgs[i].uuid === event.message.uuid) {
+                                            let updated = Object.assign({}, msgs[i], {
+                                                text: event.message.text,
+                                                timing: event.message.timing
+                                            });
+                                            window.messages.splice(i, 1, updated);
+                                            break;
+                                        }
+                                    }
+                                } else if(event.type === "typing") {
+                                    if(event.message === {$correspondent->getId()}) {
+                                        this.setTypingStatus();
                                     }
                                 }
-                            } else if(event.type === "typing") {
-                                if(event.message === {$correspondent->getId()}) {
-                                    this.setTypingStatus();
-                                }
-                            }
-                        });
+                            });
+                        }
+
                         listenLongpool();
+                    };
+                    // сетевая ошибка/обрыв соединения — не долбим сервер в цикле, ждём и переподключаемся
+                    xhr.onerror = () => {
+                        setTimeout(listenLongpool, 3000);
                     };
                     xhr.send();
                 };

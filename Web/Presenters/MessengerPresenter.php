@@ -108,16 +108,16 @@ public function renderEvents(int $randNum): void
     header("Content-Type: application/json");
     set_time_limit(0); // таймаут контролируем сами, PHP-лимит не должен нас прерывать раньше времени
 
-    // --- сам long-poll с дедлайном ---
-    $deadline = time() + self::LONGPOLL_TIMEOUT_SEC;
-
+    // третий аргумент listen() — это ДЛИТЕЛЬНОСТЬ ожидания в секундах (см. renderVKEvents),
+    // а не абсолютный дедлайн; ранее сюда передавался time()+N, из-за чего long-poll
+    // висел до принудительного обрыва инфраструктурой вместо контролируемых 30 секунд
     $this->signaler->listen(function ($event, $id) {
         echo json_encode([[
             "UUID"  => $id,
             "event" => $event->getLongPoolSummary(),
         ]]);
         exit;
-    }, $userId, $deadline); // <-- см. примечание ниже про $deadline
+    }, $userId, self::LONGPOLL_TIMEOUT_SEC);
 
     // если signaler сам умеет по таймауту вернуть управление без события —
     // отдаём пустой ответ 204, клиент сам переоткроет соединение
