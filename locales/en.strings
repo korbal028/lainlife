@@ -1414,6 +1414,9 @@
 "messages_error_1" = "Message not delivered";
 "messages_error_1_description" = "There was a general error in sending this message...";
 
+/* Rich text */
+"spoiler" = "Spoiler";
+
 /* Polls */
 "poll" = "Poll";
 "create_poll" = "Create poll";

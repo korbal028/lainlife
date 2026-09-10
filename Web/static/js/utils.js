@@ -317,6 +317,47 @@ function short_geo_name(address_osm)
     return escapeHtml(final_arr.join(', '))
 }
 
+function togglePostSpoiler(el) {
+    el.classList.toggle('revealed')
+}
+
+function wrapTextareaSelection(textarea, before, after) {
+    const start = textarea.selectionStart
+    const end = textarea.selectionEnd
+    const value = textarea.value
+    const selected = value.substring(start, end)
+
+    textarea.value = value.substring(0, start) + before + selected + after + value.substring(end)
+
+    if(selected.length > 0) {
+        textarea.selectionStart = start + before.length
+        textarea.selectionEnd = start + before.length + selected.length
+    } else {
+        textarea.selectionStart = textarea.selectionEnd = start + before.length
+    }
+
+    textarea.dispatchEvent(new Event('input', { bubbles: true }))
+}
+
+document.addEventListener('keydown', function(e) {
+    const target = e.target
+    if(!target || target.tagName !== 'TEXTAREA' || !target.classList.contains('small-textarea')) return
+    if(!(e.ctrlKey || e.metaKey)) return
+
+    const key = e.key.toLowerCase()
+    let marker = null
+
+    if(!e.shiftKey && key === 'b') marker = '**'
+    else if(!e.shiftKey && key === 'i') marker = '*'
+    else if(!e.shiftKey && key === 'u') marker = '__'
+    else if(e.shiftKey && key === 'x') marker = '~~'
+    else if(e.shiftKey && key === 'p') marker = '||'
+    else return
+
+    e.preventDefault()
+    wrapTextareaSelection(target, marker, marker)
+})
+
 function expandText(item)
 {
     if (item.parentElement.querySelector(".really_text").classList.contains("collapsed_text")) {

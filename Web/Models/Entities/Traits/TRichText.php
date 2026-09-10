@@ -64,6 +64,30 @@ trait TRichText
         return preg_replace("%\p{M}{3,}%Xu", "", $text);
     }
 
+    private function formatRichText(string $text): string
+    {
+        // Spoiler: ||text||
+        $text = preg_replace_callback("%\|\|((?:(?!\|\|).)+?)\|\|%Xsu", function (array $m): string {
+            $label = htmlspecialchars(tr("spoiler"), ENT_DISALLOWED | ENT_XHTML);
+
+            return "<span class='post-spoiler' onclick='togglePostSpoiler(this)'><span class='post-spoiler-label'>$label</span><span class='post-spoiler-content'>$m[1]</span></span>";
+        }, $text);
+
+        // Bold: **text**
+        $text = preg_replace("%\*\*((?:(?!\*\*).)+?)\*\*%Xsu", "<b>$1</b>", $text);
+
+        // Underline: __text__
+        $text = preg_replace("%__((?:(?!__).)+?)__%Xsu", "<u>$1</u>", $text);
+
+        // Strikethrough: ~~text~~
+        $text = preg_replace("%~~((?:(?!~~).)+?)~~%Xsu", "<s>$1</s>", $text);
+
+        // Italic: *text*
+        $text = preg_replace("%\*((?:(?!\*).)+?)\*%Xsu", "<i>$1</i>", $text);
+
+        return $text;
+    }
+
     public function resolveMentions(array $skipUsers = []): \Traversable
     {
         $contentColumn = property_exists($this, "overrideContentColumn") ? $this->overrideContentColumn : "content";
@@ -148,6 +172,7 @@ trait TRichText
                 }, $text);
 
                 $text = $this->formatEmojis($text);
+                $text = $this->formatRichText($text);
             }
 
             $text = $this->removeZalgo($text);

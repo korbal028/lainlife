@@ -1344,6 +1344,9 @@
 "messages_error_1_description" = "При отправке этого сообщения произошла ошибка общего характера...";
 "message_user_typing" = "$1 набирает сообщение...";
 
+/* Rich text */
+"spoiler" = "Спойлер";
+
 /* Polls */
 "poll" = "Опрос";
 "create_poll" = "Новый опрос";

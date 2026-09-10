@@ -4586,3 +4586,24 @@ hr {
 .collapse_button {
     display: block;
 }
+
+.post-spoiler {
+    cursor: pointer;
+}
+.post-spoiler .post-spoiler-label {
+    display: inline-block;
+    padding: 0 6px;
+    border-radius: 3px;
+    background: #e2e2e2;
+    color: #626262;
+    font-size: 11px;
+}
+.post-spoiler.revealed .post-spoiler-label {
+    display: none;
+}
+.post-spoiler .post-spoiler-content {
+    display: none;
+}
+.post-spoiler.revealed .post-spoiler-content {
+    display: inline;
+}
