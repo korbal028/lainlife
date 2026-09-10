@@ -212,6 +212,7 @@
 "wall" = "Wall";
 "post" = "Post";
 "write" = "Write";
+"rich_text_hint" = "You can format text: **bold**, *italic*, __underline__, ~~strikethrough~~, ||spoiler||";
 "publish" = "Publish";
 "delete" = "Delete";
 "comments" = "Comments";
