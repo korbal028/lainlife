@@ -58,7 +58,24 @@ class Notifications implements Handler
 
             $event = end($events);
             $newCursor = $event['id'];
-            $payload = (object) $event['data']['data'];
+            $eventData = $event['data'];
+
+            if (($eventData['kind'] ?? null) === "message") {
+                $msg = (object) $eventData['data'];
+                $session->set("notifs_cursor", $newCursor);
+
+                $resolve([
+                    "kind"     => "message",
+                    "title"    => $msg->title,
+                    "body"     => $msg->body,
+                    "ava"      => $msg->ava,
+                    "url"      => $msg->url,
+                    "priority" => 1,
+                ]);
+                return;
+            }
+
+            $payload = (object) $eventData['data'];
 
             $notification = $this->notifs->fromArray((array) $payload);
 

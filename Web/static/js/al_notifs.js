@@ -29,6 +29,29 @@ function incrementNotificationsCounter() {
     });
 }
 
+function incrementMessagesCounter() {
+    document.querySelectorAll('a[href="/im"]').forEach(link => {
+
+        let counterObject = link.querySelector('object');
+
+        if (!counterObject) {
+            counterObject = document.createElement('object');
+            counterObject.type = 'internal/link';
+            counterObject.innerHTML = ' (<b>1</b>)';
+            link.appendChild(counterObject);
+        } else {
+            counterObject.classList.remove('zero_counter');
+            const bTag = counterObject.querySelector('b');
+            if (bTag) {
+                let currentCount = parseInt(bTag.textContent) || 0;
+                bTag.textContent = currentCount + 1;
+            } else {
+                counterObject.innerHTML = ' (<b>1</b>)';
+            }
+        }
+    });
+}
+
 async function setupNotificationListener() {
     console.info("Setting up notifications listener...");
     
@@ -45,8 +68,16 @@ async function setupNotificationListener() {
                 if (!isFirstRequest) {
                     playNotifSound();
                     console.info("New notification", notif);
-                    NewNotification(notif.title, notif.body, notif.ava, Function.noop, (notif.priority || 1) * 6000);
-                    incrementNotificationsCounter();
+
+                    if (notif.kind === "message") {
+                        NewNotification(notif.title, notif.body, notif.ava, function() {
+                            window.location.href = notif.url;
+                        }, (notif.priority || 1) * 6000);
+                        incrementMessagesCounter();
+                    } else {
+                        NewNotification(notif.title, notif.body, notif.ava, Function.noop, (notif.priority || 1) * 6000);
+                        incrementNotificationsCounter();
+                    }
                 } else {
                     console.info("First request: skipping alert (syncing cursor)");
                 }

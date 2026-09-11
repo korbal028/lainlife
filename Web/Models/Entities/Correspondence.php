@@ -12,6 +12,7 @@ use openvk\Web\Models\Entities\Message;
 use openvk\Web\Models\Entities\User;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Repositories\Users;
+use openvk\Web\Util\NotificationBroker;
 use Nette\Database\Table\ActiveRow;
 
 /**
@@ -244,9 +245,50 @@ class Correspondence
         if ($ids[0] !== $ids[1]) {
             $event = new NewMessageEvent($message);
             (SignalManager::i())->triggerEvent($event, $ids[1]);
+
+            $this->pushMessageNotification($message, $ids[0], $ids[1], $classes[0]);
         }
 
         return $message;
+    }
+
+    /**
+     * Pushes a live toast notification about a new message to the recipient,
+     * via the same broker/poll pipeline used for likes/comments (al_notifs.js).
+     * Doesn't touch the /notifications feed - messages keep their own unread counter.
+     */
+    private function pushMessageNotification(Message $message, int $senderId, int $recipientId, string $senderClass): void
+    {
+        $notifConf = OPENVK_ROOT_CONF["openvk"]["credentials"]["notificationsBroker"] ?? [];
+        if (!($notifConf["enable"] ?? false)) {
+            return;
+        }
+
+        $sender = $message->getSender();
+        if (!$sender) {
+            return;
+        }
+
+        $preview = trim(strip_tags($message->getPreviewText()));
+        if (iconv_strlen($preview) > 100) {
+            $preview = iconv_substr($preview, 0, 100) . "…";
+        }
+
+        $senderUrlId = $senderClass === Club::class ? $senderId * -1 : $senderId;
+
+        try {
+            NotificationBroker::i()->push($recipientId, [
+                "kind" => "message",
+                "data" => [
+                    "title" => $sender->getCanonicalName(),
+                    "body"  => $preview,
+                    "ava"   => $sender->getAvatarUrl(),
+                    "url"   => "/im?sel=$senderUrlId",
+                ],
+            ]);
+        } catch (\Throwable $e) {
+            error_log("Message notification push error: " . $e->getMessage());
+        }
     }
 
     /**
