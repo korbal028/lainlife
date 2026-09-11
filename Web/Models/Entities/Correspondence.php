@@ -13,7 +13,6 @@ use openvk\Web\Models\Entities\User;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Repositories\Users;
 use openvk\Web\Util\NotificationBroker;
-use openvk\Web\Util\DateTime;
 use Nette\Database\Table\ActiveRow;
 
 /**
@@ -257,6 +256,12 @@ class Correspondence
      * Pushes a live toast notification about a new message to the recipient,
      * via the same broker/poll pipeline used for likes/comments (al_notifs.js).
      * Doesn't touch the /notifications feed - messages keep their own unread counter.
+     *
+     * Only raw, language-agnostic data is pushed here (this runs in the SENDER's
+     * request/session). Title/body translation and relative time formatting are
+     * done later in ServiceAPI\Notifications::fetch(), which runs in the
+     * RECIPIENT's session - otherwise the notification ends up in the sender's
+     * language/timezone instead of the recipient's.
      */
     private function pushMessageNotification(Message $message, int $senderId, int $recipientId, string $senderClass): void
     {
@@ -276,16 +281,16 @@ class Correspondence
         }
 
         $senderUrlId = $senderClass === Club::class ? $senderId * -1 : $senderId;
-        $time = (string) (new DateTime());
 
         try {
             NotificationBroker::i()->push($recipientId, [
                 "kind" => "message",
                 "data" => [
-                    "title" => tr("notif_new_message_title", $sender->getCanonicalName()),
-                    "body"  => "$preview<div class='nobold'>$time</div>",
-                    "ava"   => $sender->getAvatarUrl(),
-                    "url"   => "/im?sel=$senderUrlId",
+                    "senderName" => $sender->getCanonicalName(),
+                    "body"       => $preview,
+                    "ava"        => $sender->getAvatarUrl(),
+                    "url"        => "/im?sel=$senderUrlId",
+                    "timestamp"  => time(),
                 ],
             ]);
         } catch (\Throwable $e) {

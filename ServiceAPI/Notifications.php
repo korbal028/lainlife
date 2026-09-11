@@ -8,6 +8,7 @@ use Latte\Engine as TemplatingEngine;
 use openvk\Web\Models\Entities\User;
 use openvk\Web\Models\Repositories\{Notifications as N};
 use openvk\Web\Util\NotificationBroker;
+use openvk\Web\Util\DateTime;
 use Chandler\Session\Session;
 
 class Notifications implements Handler
@@ -64,10 +65,12 @@ class Notifications implements Handler
                 $msg = (object) $eventData['data'];
                 $session->set("notifs_cursor", $newCursor);
 
+                $time = (string) (new DateTime((int) $msg->timestamp));
+
                 $resolve([
                     "kind"     => "message",
-                    "title"    => $msg->title,
-                    "body"     => $msg->body,
+                    "title"    => tr("notif_new_message_title", $msg->senderName),
+                    "body"     => "$msg->body<div class='nobold'>$time</div>",
                     "ava"      => $msg->ava,
                     "url"      => $msg->url,
                     "priority" => 1,

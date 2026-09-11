@@ -100,7 +100,20 @@ class Localizator
 
         $array = @self::parse(dirname(__FILE__) . "/../../locales/$lang.strings");
 
-        return $array[$id] ?? "@$id";
+        if (isset($array[$id])) {
+            return $array[$id];
+        }
+
+        # A lot of locales are incomplete; rather than leaking "@key" to users
+        # of those languages, fall back to the default locale for that one key.
+        if ($lang !== static::DEFAULT_LANG) {
+            $fallback = @self::parse(dirname(__FILE__) . "/../../locales/" . static::DEFAULT_LANG . ".strings");
+            if (isset($fallback[$id])) {
+                return $fallback[$id];
+            }
+        }
+
+        return "@$id";
     }
 
     public function export($lang = null): ?array
