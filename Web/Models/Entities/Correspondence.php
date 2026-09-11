@@ -13,6 +13,7 @@ use openvk\Web\Models\Entities\User;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Repositories\Users;
 use openvk\Web\Util\NotificationBroker;
+use openvk\Web\Util\DateTime;
 use Nette\Database\Table\ActiveRow;
 
 /**
@@ -275,13 +276,14 @@ class Correspondence
         }
 
         $senderUrlId = $senderClass === Club::class ? $senderId * -1 : $senderId;
+        $time = (string) (new DateTime());
 
         try {
             NotificationBroker::i()->push($recipientId, [
                 "kind" => "message",
                 "data" => [
-                    "title" => $sender->getCanonicalName(),
-                    "body"  => $preview,
+                    "title" => tr("notif_new_message_title", $sender->getCanonicalName()),
+                    "body"  => "$preview<div class='nobold'>$time</div>",
                     "ava"   => $sender->getAvatarUrl(),
                     "url"   => "/im?sel=$senderUrlId",
                 ],
