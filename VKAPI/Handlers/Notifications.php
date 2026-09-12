@@ -119,6 +119,15 @@ final class Notifications extends VKAPIRequestHandler
                 $currentId = $event['id'];
                 $rawPayload = $event['data'];
 
+                if (($rawPayload['kind'] ?? null) === "message") {
+                    // Message notifications are delivered to mobile clients via
+                    // the regular VK LongPoll (messages.getLongPollServer) channel,
+                    // not through this feed - fromArray() below doesn't understand
+                    // this payload shape and would throw on it.
+                    $res->new_lastId = $currentId;
+                    continue;
+                }
+
                 $notification = (new Notifs())->fromArray($rawPayload);
 
                 if (!$notification) {
