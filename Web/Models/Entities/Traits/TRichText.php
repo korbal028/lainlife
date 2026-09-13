@@ -28,7 +28,7 @@ trait TRichText
 
             $image  = "https://abs.twimg.com/emoji/v2/72x72/$point.png";
             $image  = "<img src='$image' alt='$emoji[emoji]' ";
-            $image .= "style='max-height:12px; padding-left: 2pt; padding-right: 2pt; vertical-align: bottom;' />";
+            $image .= "style='max-height:20px; padding-left: 2pt; padding-right: 2pt; vertical-align: middle;' />";
 
             $text = str_replace($emoji["emoji"], $image, $text);
         }
