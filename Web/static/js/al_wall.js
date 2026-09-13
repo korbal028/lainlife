@@ -1026,7 +1026,7 @@ u(document).on("click", "#editPost", async (e) => {
                                     ${tr('attach')}
                                 </a>
                                 
-                                <div class="wallAttachmentMenu hidden">
+                                <div id="wallAttachmentMenu" class="wallAttachmentMenu hidden">
                                     <a class="header menu_toggler">
                                         ${tr('attach')}
                                     </a>
@@ -2030,7 +2030,7 @@ async function repost(id, repost_type = 'post') {
                                     ${tr('attach')}
                                 </a>
                                 
-                                <div class="wallAttachmentMenu hidden">
+                                <div id="wallAttachmentMenu" class="wallAttachmentMenu hidden">
                                     <a class="header menu_toggler">
                                         ${tr('attach')}
                                     </a>
