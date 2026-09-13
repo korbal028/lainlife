@@ -3163,8 +3163,17 @@ $(document).on("click", "#iSmiles", async (e) => {
 
     $(".smile").on("click", function() {
         let smileCode = $(this).data("smile");
-        let textArea = $(form).find("textarea[name='text']");
+        // В мессенджере/беседах текстовое поле называется "message" (не "text") и
+        // привязано через knockout - обычный .val() не обновит observable, поэтому
+        // после установки значения дополнительно шлём input/change, чтобы value-биндинг
+        // подхватил новое содержимое.
+        let textArea = $(form).find("textarea[name='text'], textarea[name='message']");
         textArea.val(textArea.val() + " :" + escapeHTML(smileCode) + ": ");
+        let el = textArea.get(0);
+        if(el) {
+            el.dispatchEvent(new Event("input", { bubbles: true }));
+            el.dispatchEvent(new Event("change", { bubbles: true }));
+        }
         closeMessageBox();
     });
 
