@@ -2009,7 +2009,7 @@ h4.gift_cat_header {
 
 #wallAttachmentMenu {
     position: absolute;
-    min-width: 94px;
+    min-width: 160px;
     border: 1px solid darkgrey;
     background-color: white;
     z-index: 32;
@@ -2021,12 +2021,15 @@ h4.gift_cat_header {
 
 #wallAttachmentMenu>a {
     display: flex;
+    align-items: center;
     gap: 5px;
     padding: 2px 6px;
     cursor: pointer;
+    white-space: nowrap;
 }
 
 #wallAttachmentMenu>a>img {
+    flex-shrink: 0;
     vertical-align: middle;
 }
 
