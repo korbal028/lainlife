@@ -3120,14 +3120,15 @@ $(document).on("click", "#iSmiles", async (e) => {
         // файлов в этом форке (отсюда битые картинки и путаница с тем, как вообще
         // добавлять смайлики).
         let kolobki = [
-            "SHABLON_padonak_01", "SHABLON_padonak_02", "SHABLON_padonak_03", "acute", "air_kiss", "angel", "bad", "bb", "beach", "beee", "big_boss",
-            "biggrin", "blum", "blum3", "blush", "boast", "bomb", "boredom", "buba", "buba_phone", "bye", "clapping", "cray", "cray2", "crazy",
-            "curtsey", "dance", "dance2", "dance3", "dance4", "dash1", "dash2", "dash3", "declare", "diablo", "dirol", "don-t_mention", "download",
+            "SHABLON_padonak_01", "SHABLON_padonak_02", "SHABLON_padonak_03", "acute", "aggressive", "agree", "air_kiss", "angel", "bad", "bb",
+            "beach", "beee", "big_boss", "biggrin", "black_eye", "blum", "blum2", "blum3", "blush", "blush2", "boast", "bomb", "boredom", "buba",
+            "buba_phone", "bye", "clapping", "cray", "cray2", "crazy", "curtsey", "dance", "dance2", "dance3", "dance4", "dash1", "dash2", "dash3",
+            "declare", "derisive", "diablo", "dirol", "dntknw", "don-t_mention", "download",
             "drinks", "english_en", "feminist", "feminist_en", "first_move", "flirt", "focus", "fool", "friends", "gamer1", "gamer2", "gamer3",
             "gamer4", "girl_blum", "girl_cray", "girl_cray2", "girl_cray3", "girl_crazy", "girl_dance", "girl_devil", "girl_drink1", "girl_drink3",
             "girl_drink4", "girl_haha", "girl_hide", "girl_hospital", "girl_impossible", "girl_in_love", "girl_mad", "girl_pinkglassesf",
             "girl_prepare_fish", "girl_sad", "girl_sigh", "girl_smile", "girl_to_take_umbrage", "girl_to_take_umbrage2", "girl_wacko", "girl_wink",
-            "girl_witch", "give_heart", "give_heart2", "give_rose", "good", "good2", "good3", "hang1", "hang2", "hang3", "heart", "heat", "help",
+            "girl_witch", "give_heart", "give_heart2", "give_rose", "grin", "good", "good2", "good3", "hang1", "hang2", "hang3", "heart", "heat", "help",
             "hi", "hunter", "hysteric", "i-m_so_happy", "ireful1", "ireful2", "ireful3", "king", "kiss", "kiss2", "kiss3", "laugh1", "laugh2",
             "laugh3", "laugh4", "lazy", "lol", "lol2", "mail1", "mamba", "man_in_love", "mda", "mega_shok", "moil", "mosking", "music", "music2",
             "nea", "negative", "new_russian", "ok", "on_the_quiet", "on_the_quiet2", "padonak", "paint2", "paint3", "paratrooper",
