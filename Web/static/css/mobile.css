@@ -1004,7 +1004,7 @@
         height: 36px;
     }
 
-    #wallAttachmentMenu {
+    .wallAttachmentMenu {
         top: 0;
         left: 0;
         margin-top: -17px;
@@ -1016,7 +1016,7 @@
         z-index: 297;
     }
 
-    #wallAttachmentMenu > a {
+    .wallAttachmentMenu > a {
         padding: 5px 6px;
         font-size: 12px;
     }

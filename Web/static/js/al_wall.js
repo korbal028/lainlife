@@ -42,7 +42,7 @@ function initGraffiti(event) {
 
 u(document).on('click', '.menu_toggler', (e) => {
     const post_buttons = $(e.target).closest('.post-buttons')
-    const wall_attachment_menu = post_buttons.find('#wallAttachmentMenu')
+    const wall_attachment_menu = post_buttons.find('.wallAttachmentMenu')
     if(wall_attachment_menu.is('.hidden')) {
         wall_attachment_menu.css({ opacity: 0 });
         wall_attachment_menu.toggleClass('hidden').fadeTo(250, 1);
@@ -1026,7 +1026,7 @@ u(document).on("click", "#editPost", async (e) => {
                                     ${tr('attach')}
                                 </a>
                                 
-                                <div id="wallAttachmentMenu" class="hidden">
+                                <div class="wallAttachmentMenu hidden">
                                     <a class="header menu_toggler">
                                         ${tr('attach')}
                                     </a>
@@ -2030,7 +2030,7 @@ async function repost(id, repost_type = 'post') {
                                     ${tr('attach')}
                                 </a>
                                 
-                                <div id="wallAttachmentMenu" class="hidden">
+                                <div class="wallAttachmentMenu hidden">
                                     <a class="header menu_toggler">
                                         ${tr('attach')}
                                     </a>

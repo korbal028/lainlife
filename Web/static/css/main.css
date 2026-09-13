@@ -2007,7 +2007,7 @@ h4.gift_cat_header {
     background-color: #000;
 }
 
-#wallAttachmentMenu {
+.wallAttachmentMenu {
     position: absolute;
     min-width: 160px;
     border: 1px solid darkgrey;
@@ -2019,7 +2019,7 @@ h4.gift_cat_header {
     user-select: none;
 }
 
-#wallAttachmentMenu>a {
+.wallAttachmentMenu>a {
     display: flex;
     align-items: center;
     gap: 5px;
@@ -2028,16 +2028,16 @@ h4.gift_cat_header {
     white-space: nowrap;
 }
 
-#wallAttachmentMenu>a>img {
+.wallAttachmentMenu>a>img {
     flex-shrink: 0;
     vertical-align: middle;
 }
 
-#wallAttachmentMenu>a:hover {
+.wallAttachmentMenu>a:hover {
     background-color: #f0f0f0;
 }
 
-#wallAttachmentMenu>.header {
+.wallAttachmentMenu>.header {
     padding: 6px 15px;
     background-color: #eee;
     text-align: center;
