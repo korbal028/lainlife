@@ -41,9 +41,24 @@ function initGraffiti(event) {
 }
 
 u(document).on('click', '.menu_toggler', (e) => {
+    const trigger = e.target.closest('.menu_toggler')
     const post_buttons = $(e.target).closest('.post-buttons')
     const wall_attachment_menu = post_buttons.find('.wallAttachmentMenu')
     if(wall_attachment_menu.is('.hidden')) {
+        // У постов стоит overflow:hidden (обрезка/скругление контента), из-за чего
+        // абсолютно спозиционированное меню обрезалось по нижней границе поста.
+        // На десктопе позиционируем через position:fixed относительно самого триггера,
+        // чтобы меню рисовалось поверх остального контента, а не обрезалось постом.
+        // Мобильную раскладку (меню на всю ширину, см. mobile.css) не трогаем.
+        if(trigger && !window.matchMedia('(max-width: 770px)').matches) {
+            const rect = trigger.getBoundingClientRect();
+            wall_attachment_menu.css({
+                position: 'fixed',
+                top: (rect.bottom + 2) + 'px',
+                left: rect.left + 'px',
+                margin: 0
+            });
+        }
         wall_attachment_menu.css({ opacity: 0 });
         wall_attachment_menu.toggleClass('hidden').fadeTo(250, 1);
     } else {
