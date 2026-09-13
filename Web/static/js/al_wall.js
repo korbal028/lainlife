@@ -3100,52 +3100,37 @@ $(document).on("click", "#iSmiles", async (e) => {
     }
 
     function generateSmileHTML() {
-        let kolobki = {
-            'smile': 'smile', 'sad': 'sad', 'music': 'music', 'ok': 'ok', 'acute': 'acute', 'aggressive': 'aggressive', 'agree': 'agree', 'aikido': 'aikido', 'air_kiss': 'air_kiss',
-            'alcoholic': 'alcoholic', 'angel': 'angel', 'bad': 'bad', 'dirol': 'dirol',
-            'beach': 'beach', 'beee': 'beee', 'big_boss': 'big_boss', 'black_eye': 'black_eye',
-            'blind': 'blind', 'blum2': 'blum2', 'blum3': 'blum3', 'blush2': 'blush2', 'boast': 'boast',
-            'boredom': 'boredom', 'brunette': 'brunette', 'buba': 'buba', 'buba_phone': 'buba_phone', 'fu': 'bad',
-            'censored': 'censored', 'clapping': 'clapping', 'comando': 'comando', 'cray': 'cray', 'cray2': 'cray2',
-            'kek': 'crazy', 'curtsey': 'curtsey', 'dance': 'dance', 'dance2': 'dance2',
-            'dance3': 'dance3', 'dance4': 'dance4', 'dash1': 'dash1',
-            'declare': 'declare', 'don-t_mention': 'don-t_mention', 'download': 'download',
-            'pivo': 'drinks', 'dwarf': 'dwarf', 'elf': 'elf', 'facepalm': 'facepalm',
-            'first_move': 'first_move', 'flirt': 'flirt', 'focus': 'focus', 'fool': 'fool', 'friends': 'friends',
-            'gamer1': 'gamer1', 'gamer2': 'gamer2', 'gamer3': 'gamer3', 'gamer4': 'gamer4', 'give_heart': 'give_heart',
-            'give_rose': 'give_rose', 'good': 'good', 'good2': 'good2', 'good3': 'good3', 'heat': 'heat', 'help': 'help',
-            'hi': 'hi', 'hunter': 'hunter', 'hysteric': 'hysteric', 'i-m_so_happy': 'i-m_so_happy', 'ireful1': 'ireful1',
-            'ireful2': 'ireful2', 'ireful3': 'ireful3', 'jester': 'jester', 'king': 'king', 'king2': 'king2',
-            'kiss': 'kiss', 'kiss2': 'kiss2', 'kiss3': 'kiss3', 'laugh1': 'laugh1', 'laugh2': 'laugh2', 'laugh3': 'laugh3',
-            'lazy': 'lazy', 'lazy2': 'lazy2', 'lazy3': 'lazy3', 'locomotive': 'locomotive', 'mail1': 'mail1', 'mamba': 'mamba',
-            'man_in_love': 'man_in_love', 'love': 'love', 'mda': 'mda', 'orc': 'orc',
-            'paint': 'paint', 'patsak': 'patsak', 'pilot': 'pilot', 'pioneer': 'pioneer', 'pleasantry': 'pleasantry',
-            'popcorm1': 'popcorm1', 'preved': 'preved', 'protest': 'protest', 'queen': 'queen', 'rabbi': 'rabbi', 'read': 'read',
-            'resent': 'resent', 'lool': 'rofl', 'sarcasm': 'sarcasm', 'sarcastic': 'sarcastic', 'scare': 'scare',
-            'sclerosis': 'sclerosis', 'scout': 'scout', 'scout_en': 'scout_en', 'scratch_one-s_head': 'scratch_one-s_head',
-            'search': 'search', 'secret': 'secret', 'shout': 'shout', 'slow': 'slow', 'slow_en': 'slow_en', 'smoke': 'smoke',
-            'snooks': 'snooks', 'sorry': 'sorry', 'sorry2': 'sorry2', 'spruce_up': 'spruce_up', 'stinker': 'stinker',
-            'stop': 'stop', 'sun_bespectacled': 'sun_bespectacled', 'superman': 'superman', 'superman2': 'superman2',
-            'superstition': 'superstition', 'swoon': 'swoon', 'swoon2': 'swoon2', 'take_example': 'take_example',
-            'taunt': 'taunt', 'tease': 'tease', 'telephone': 'telephone', 'tender': 'tender', 'thank_you': 'thank_you',
-            'thank_you2': 'thank_you2', 'this': 'this', 'tommy': 'tommy', 'to_babruysk': 'to_babruysk', 'to_become_senile': 'to_become_senile',
-            'to_clue': 'to_clue', 'to_keep_order': 'to_keep_order', 'to_pick_ones_nose': 'to_pick_ones_nose', 'to_pick_ones_nose2': 'to_pick_ones_nose2',
-            'to_pick_ones_nose3': 'to_pick_ones_nose3', 'to_pick_ones_nose_eat': 'to_pick_ones_nose_eat', 'to_take_umbrage': 'to_take_umbrage',
-            'training1': 'training1', 'triniti': 'triniti', 'umnik': 'umnik', 'umnik2': 'umnik2', 'vampire': 'vampire', 'victory': 'victory',
-            'vinsent': 'vinsent', 'wacko': 'wacko', 'wacko2': 'wacko2', 'warning': 'warning', 'warning2': 'warning2', 'whistle': 'whistle',
-            'whistle2': 'whistle2', 'whistle3': 'whistle3', 'wild': 'wild', 'wink3': 'wink3', 'wizard': 'wizard', 'yahoo': 'yahoo',
-            'yes2': 'yes2', 'yes3': 'yes3', 'yes4': 'yes4', 'yu': 'yu'
-        };
+        // Список соответствует реальным файлам в Web/static/img/kolobki - раньше тут был
+        // список из upstream openvk, у которого больше трети кодов не совпадало с именами
+        // файлов в этом форке (отсюда битые картинки и путаница с тем, как вообще
+        // добавлять смайлики).
+        let kolobki = [
+            "SHABLON_padonak_01", "SHABLON_padonak_02", "SHABLON_padonak_03", "acute", "air_kiss", "angel", "bad", "bb", "beach", "beee", "big_boss",
+            "biggrin", "blum", "blum3", "blush", "boast", "bomb", "boredom", "buba", "buba_phone", "bye", "clapping", "cray", "cray2", "crazy",
+            "curtsey", "dance", "dance2", "dance3", "dance4", "dash1", "dash2", "dash3", "declare", "diablo", "dirol", "don-t_mention", "download",
+            "drinks", "english_en", "feminist", "feminist_en", "first_move", "flirt", "focus", "fool", "friends", "gamer1", "gamer2", "gamer3",
+            "gamer4", "girl_blum", "girl_cray", "girl_cray2", "girl_cray3", "girl_crazy", "girl_dance", "girl_devil", "girl_drink1", "girl_drink3",
+            "girl_drink4", "girl_haha", "girl_hide", "girl_hospital", "girl_impossible", "girl_in_love", "girl_mad", "girl_pinkglassesf",
+            "girl_prepare_fish", "girl_sad", "girl_sigh", "girl_smile", "girl_to_take_umbrage", "girl_to_take_umbrage2", "girl_wacko", "girl_wink",
+            "girl_witch", "give_heart", "give_heart2", "give_rose", "good", "good2", "good3", "hang1", "hang2", "hang3", "heart", "heat", "help",
+            "hi", "hunter", "hysteric", "i-m_so_happy", "ireful1", "ireful2", "ireful3", "king", "kiss", "kiss2", "kiss3", "laugh1", "laugh2",
+            "laugh3", "laugh4", "lazy", "lol", "lol2", "mail1", "mamba", "man_in_love", "mda", "mega_shok", "moil", "mosking", "music", "music2",
+            "nea", "negative", "new_russian", "ok", "on_the_quiet", "on_the_quiet2", "padonak", "paint2", "paint3", "paratrooper",
+            "paratrooper_girl", "pardon", "parting", "party", "party2", "pilot", "pioneer", "pioneer_smoke", "pleasantry", "popcorm1", "popcorm2",
+            "prankster2", "preved", "punish", "rofl", "rtfm", "russian_ru", "sad", "sarcastic", "sarcastic_blum", "sarcastic_hand", "scare", "scaut",
+            "scaut_en", "scratch_one-s_head", "search", "secret", "sensored", "shok", "shout", "slow", "smile", "smoke", "soldier", "soldier_girl",
+            "sorry", "sorry2", "spiteful", "spruce_up", "stinker", "suicide2", "sun_bespectacled", "superstition", "swoon", "tease", "tender",
+            "thank_you2", "this", "to_babruysk", "to_become_senile", "to_pick_ones_nose", "to_pick_ones_nose2", "to_take_umbrage", "training1",
+            "treaten", "umnik2", "unknw", "vampire", "vava", "victory", "wacko", "wacko2", "whistle3", "wink", "wink2", "wink3", "wizard", "yahoo",
+            "yes", "yes3", "yess", "yu",
+        ];
 
         let smileHTML = "";
-        for (let emoji in kolobki) {
-            if (kolobki.hasOwnProperty(emoji)) {
-                let file = kolobki[emoji];
-                smileHTML += `
-                    <a href="javascript:void(0);" class="smile" data-smile="${escapeHTML(emoji)}">
-                        <img src="/assets/packages/static/openvk/kolobki/${escapeHTML(file)}.gif" alt="${escapeHTML(emoji)}" style="padding: 6px;"/>
-                    </a>`;
-            }
+        for (let emoji of kolobki) {
+            smileHTML += `
+                <a href="javascript:void(0);" class="smile" data-smile="${escapeHTML(emoji)}">
+                    <img src="/assets/packages/static/openvk/img/kolobki/${escapeHTML(emoji)}.gif" alt=":${escapeHTML(emoji)}:" style="padding: 6px;"/>
+                </a>`;
         }
 
         return smileHTML;
@@ -3164,7 +3149,7 @@ $(document).on("click", "#iSmiles", async (e) => {
     $(".smile").on("click", function() {
         let smileCode = $(this).data("smile");
         let textArea = $(form).find("textarea[name='text']");
-        textArea.val(textArea.val() + " " + escapeHTML(smileCode));
+        textArea.val(textArea.val() + " :" + escapeHTML(smileCode) + ": ");
         closeMessageBox();
     });
 

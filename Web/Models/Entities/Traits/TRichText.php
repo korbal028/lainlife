@@ -36,6 +36,44 @@ trait TRichText
         return $text;
     }
 
+    /**
+     * Converts :codename: into the classic "kolobki" smiley GIFs.
+     *
+     * Unlike the old upstream implementation (which matched bare words like
+     * "good"/"this"/"sad" anywhere in the text - silently mangling normal
+     * sentences), this requires the colon delimiters, same as Skype/Discord/
+     * Slack-style emoticon codes, so it never fires on ordinary text.
+     *
+     * The available codes are read straight off the res/img/kolobki directory
+     * instead of a hardcoded name list: the list openvk/vepurovk ship in code
+     * doesn't actually match the filenames in this fork's kolobki pack (over
+     * a third of the hardcoded names have no matching file), so hardcoding it
+     * again would just recreate the same broken-image mess.
+     */
+    private function formatKolobki(string $text): string
+    {
+        $contentColumn = property_exists($this, "overrideContentColumn") ? $this->overrideContentColumn : "content";
+        if (iconv_strlen($this->getRecord()->{$contentColumn}) > OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["emojiProcessingLimit"]) {
+            return $text;
+        }
+
+        static $available = null;
+        if ($available === null) {
+            $available = [];
+            foreach (glob(__DIR__ . "/../../../static/img/kolobki/*.gif") ?: [] as $path) {
+                $available[basename($path, ".gif")] = true;
+            }
+        }
+
+        return preg_replace_callback("%:([A-Za-z0-9_-]++):%", function (array $m) use ($available): string {
+            if (!isset($available[$m[1]])) {
+                return $m[0];
+            }
+
+            return "<img src='/assets/packages/static/openvk/img/kolobki/$m[1].gif' alt=':$m[1]:' style='max-height:30px; padding-left:2pt; padding-right:2pt; vertical-align: middle;' />";
+        }, $text);
+    }
+
     private function formatLinks(string &$text): string
     {
         return preg_replace_callback(
@@ -172,6 +210,7 @@ trait TRichText
                 }, $text);
 
                 $text = $this->formatEmojis($text);
+                $text = $this->formatKolobki($text);
                 $text = $this->formatRichText($text);
             }
 

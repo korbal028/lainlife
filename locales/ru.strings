@@ -1348,6 +1348,8 @@
 
 /* Rich text */
 "spoiler" = "Спойлер";
+"smiles" = "Смайлики";
+"selecting_smile" = "Выбор смайлика";
 
 /* Polls */
 "poll" = "Опрос";

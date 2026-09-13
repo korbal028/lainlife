@@ -1418,6 +1418,8 @@
 
 /* Rich text */
 "spoiler" = "Spoiler";
+"smiles" = "Smiles";
+"selecting_smile" = "Selecting Smiles";
 
 /* Polls */
 "poll" = "Poll";
