@@ -105,7 +105,13 @@ class Post extends Postable
             return $orig_source;
         }
 
-        return $this->formatLinks($orig_source);
+        // formatLinks() only wraps the URL-looking prefix it can match in an <a> tag and
+        // passes everything else through completely untouched - the templates render this
+        // with |noescape, so an attacker-supplied source like "https://x?q="><script>...
+        // would inject raw HTML/JS straight into every viewer's page (this is exactly how
+        // the "source" field was used for a stored XSS in the wild). Escape first, same as
+        // TRichText::getText() already does before running formatLinks() on user text.
+        return $this->formatLinks(htmlspecialchars($orig_source, ENT_QUOTES));
     }
 
     public function setSource(string $source)
