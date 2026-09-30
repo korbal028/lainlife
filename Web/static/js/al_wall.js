@@ -40,6 +40,16 @@ function initGraffiti(event) {
     });
 }
 
+let _attachMenuReposition = null;
+
+function _stopTrackingAttachMenuScroll() {
+    if(_attachMenuReposition) {
+        window.removeEventListener('scroll', _attachMenuReposition, true);
+        window.removeEventListener('resize', _attachMenuReposition);
+        _attachMenuReposition = null;
+    }
+}
+
 u(document).on('click', '.menu_toggler', (e) => {
     const trigger = e.target.closest('.menu_toggler')
     const post_buttons = $(e.target).closest('.post-buttons')
@@ -50,18 +60,30 @@ u(document).on('click', '.menu_toggler', (e) => {
         // На десктопе позиционируем через position:fixed относительно самого триггера,
         // чтобы меню рисовалось поверх остального контента, а не обрезалось постом.
         // Мобильную раскладку (меню на всю ширину, см. mobile.css) не трогаем.
+        _stopTrackingAttachMenuScroll();
         if(trigger && !window.matchMedia('(max-width: 770px)').matches) {
-            const rect = trigger.getBoundingClientRect();
-            wall_attachment_menu.css({
-                position: 'fixed',
-                top: (rect.bottom + 2) + 'px',
-                left: rect.left + 'px',
-                margin: 0
-            });
+            const reposition = () => {
+                const rect = trigger.getBoundingClientRect();
+                wall_attachment_menu.css({
+                    position: 'fixed',
+                    top: (rect.bottom + 2) + 'px',
+                    left: rect.left + 'px',
+                    margin: 0
+                });
+            };
+            reposition();
+            // position:fixed не следит за скроллом сам по себе (координаты
+            // вычислены один раз в момент клика) - без этого меню "отклеивалось"
+            // от кнопки при прокрутке страницы. capture:true нужен чтобы ловить
+            // scroll и у вложенных прокручиваемых контейнеров, не только у window.
+            _attachMenuReposition = reposition;
+            window.addEventListener('scroll', _attachMenuReposition, true);
+            window.addEventListener('resize', _attachMenuReposition);
         }
         wall_attachment_menu.css({ opacity: 0 });
         wall_attachment_menu.toggleClass('hidden').fadeTo(250, 1);
     } else {
+        _stopTrackingAttachMenuScroll();
         wall_attachment_menu.fadeTo(250, 0, function () {
             $(this).toggleClass('hidden');
         });
