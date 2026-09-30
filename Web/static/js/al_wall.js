@@ -2018,7 +2018,13 @@ u(document).on('click', '.post.post-nsfw .post-content', (e) => {
 
 u(document).on('focusin', '#write', (e) => {
     const target = u(e.target).closest('#write')
-    target.find('.post-buttons').attr('style', 'display:block')
+    // .attr('style', ...) заменяет весь атрибут style целиком, а не добавляет
+    // к нему свойство - это стирало инлайновый margin-top у .post-buttons
+    // (например margin-top:6px в мессенджере), и кнопки необратимо съезжали
+    // на эту величину при первом фокусе. У Umbrella.js нет .css(), поэтому
+    // трогаем style.display напрямую - это меняет только одно свойство.
+    const postButtonsNode = target.find('.post-buttons').nodes[0]
+    if (postButtonsNode) postButtonsNode.style.display = 'block'
     target.find('.small-textarea').addClass('expanded-textarea')
 })
 
