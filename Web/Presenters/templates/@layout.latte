@@ -324,6 +324,58 @@
                             <a class="psa-poster-url" n:if="\OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['enable'] && $thisUser->getLeftMenuItemStatus('poster')" href="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['link']}" >
                                 <img src="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['src']}" alt="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['caption']}" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
                             </a>
+                            {* Ротация картинок (раз в 30с) идёт на стороне nvlk.dimden.dev,
+                               с нашей стороны это просто статичный iframe. *}
+                            <div n:if="\OPENVK_ROOT_CONF['openvk']['preferences']['navLinkAds']['enable'] ?? false" style="margin-top: 10px;">
+                                <iframe src="https://nvlk.dimden.dev/" name="neolink" width="180" height="180" style="border: none; max-width: 100%;" loading="lazy" title="NavLink Ads"></iframe>
+                            </div>
+                            {php $__adPosters = \OPENVK_ROOT_CONF['openvk']['preferences']['adPosters'] ?? null}
+                            <div n:if="($__adPosters['enable'] ?? false) && !empty($__adPosters['items']) && $thisUser->getLeftMenuItemStatus('poster')"
+                                 id="psa-rotating-poster-wrap" style="margin-top: 10px;">
+                                {php
+                                    $__rpInterval = max(1, (int) ($__adPosters['rotationInterval'] ?? 30));
+                                    $__rpItems    = array_values($__adPosters['items']);
+                                    $__rpCurrent  = $__rpItems[intdiv(time(), $__rpInterval) % count($__rpItems)];
+                                }
+                                <a class="psa-poster-url" id="psa-rotating-poster-link" href="{$__rpCurrent['link']}">
+                                    <img id="psa-rotating-poster-img" src="{$__rpCurrent['src']}" alt="{$__rpCurrent['caption']}" class="psa-poster" style="max-width: 100%;" />
+                                </a>
+                                {* Данные для ротации на клиенте - сервер отрисовал текущий слот сразу
+                                   (без JS всё равно будет видно хоть что-то), а эта разметка только
+                                   переключает картинку каждые rotationInterval секунд, не дёргая бэкенд. *}
+                                <script type="application/json" id="psa-rotating-poster-data">{php echo json_encode(['interval' => $__rpInterval, 'items' => $__rpItems], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG)}</script>
+                                <script>
+                                (function() {
+                                    const dataEl = document.getElementById('psa-rotating-poster-data');
+                                    if (!dataEl) return;
+
+                                    const config = JSON.parse(dataEl.textContent);
+                                    const items = config.items || [];
+                                    const interval = config.interval || 30;
+                                    if (items.length < 2) return;
+
+                                    function applyCurrent() {
+                                        const idx = Math.floor(Date.now() / 1000 / interval) % items.length;
+                                        const item = items[idx];
+                                        const link = document.getElementById('psa-rotating-poster-link');
+                                        const img  = document.getElementById('psa-rotating-poster-img');
+                                        if (link) link.href = item.link;
+                                        if (img)  { img.src = item.src; img.alt = item.caption; }
+                                    }
+
+                                    // Подгоняем первое переключение под границу интервала (а не просто
+                                    // раз в interval секунд от момента загрузки страницы) - иначе у
+                                    // разных вкладок рассинхрон окажется в пределах interval секунд,
+                                    // в зависимости от момента захода на страницу.
+                                    const msIntoSlot  = ((Date.now() / 1000) % interval) * 1000;
+                                    const msToNextSlot = interval * 1000 - msIntoSlot;
+                                    setTimeout(function() {
+                                        applyCurrent();
+                                        setInterval(applyCurrent, interval * 1000);
+                                    }, msToNextSlot);
+                                })();
+                                </script>
+                            </div>
                             <a href="https://lainlife.org/donate" style="display:block;">
                                 <img src="https://lainlife.org/blob_a0/a085b03a25a161c79ad1241f0a25fec5805cd71eb5f9423588836c928c9fea808425e5cab612a556c8ff69ac314d2b2c3b525170154d09b75874582802496b42_cropped/large.jpeg" alt="донаты" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
                             </a>

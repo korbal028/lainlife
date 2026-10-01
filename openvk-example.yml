@@ -135,6 +135,28 @@ openvk:
             src: "https://example.org/ad_poster.jpeg"
             caption: "Ad caption"
             link: "https://example.org/product.aspx?id=10&from=ovk"
+        # Ротирующийся баннер из вебринга NavLink Ads (https://dimden.dev/navlinkads) -
+        # бесплатная сеть баннеров личных сайтов, меняет картинку раз в 30 секунд
+        # сама, без необходимости что-либо настраивать на нашей стороне. Можно
+        # включить вместо adPoster, чтобы не городить несколько статичных баннеров
+        # подряд в сайдбаре.
+        navLinkAds:
+            enable: false
+        # Свой набор баннеров, ротируемых раз в rotationInterval секунд. Текущий
+        # слот вычисляется как intdiv(time(), rotationInterval) % count(items) -
+        # одна и та же формула на сервере (для первого рендера) и в браузере
+        # (для последующих переключений), без опроса бэкенда и без БД - все
+        # посетители видят один и тот же баннер в один и тот же момент времени.
+        adPosters:
+            enable: false
+            rotationInterval: 30
+            items:
+                - src: "https://example.org/ad_poster_1.jpeg"
+                  caption: "Ad caption 1"
+                  link: "https://example.org/product-1.aspx?from=ovk"
+                - src: "https://example.org/ad_poster_2.jpeg"
+                  caption: "Ad caption 2"
+                  link: "https://example.org/product-2.aspx?from=ovk"
         siteAlert:
             enable: false
             text: "Global alert example <b>with HTML</b>"

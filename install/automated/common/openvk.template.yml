@@ -67,6 +67,18 @@ openvk:
             src: "https://example.org/ad_poster.jpeg"
             caption: "Ad caption"
             link: "https://example.org/product.aspx?id=10&from=ovk"
+        navLinkAds:
+            enable: false
+        adPosters:
+            enable: false
+            rotationInterval: 30
+            items:
+                - src: "https://example.org/ad_poster_1.jpeg"
+                  caption: "Ad caption 1"
+                  link: "https://example.org/product-1.aspx?from=ovk"
+                - src: "https://example.org/ad_poster_2.jpeg"
+                  caption: "Ad caption 2"
+                  link: "https://example.org/product-2.aspx?from=ovk"
         siteAlert:
             enable: false
             text: "Global alert example <b>with HTML</b>"
