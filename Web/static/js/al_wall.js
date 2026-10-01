@@ -810,13 +810,14 @@ u(document).handle("submit", "#_submitUserSubscriptionAction", async function(e)
         }
 
         if (msg !== null) {
-            // Ячейка (.list_view_item_actions) рассчитана на узкую кнопку и имеет
-            // min-width:unset!important - без кнопки браузер сжимает колонку почти
-            // до нуля, а глобальный word-break:break-word на body рвёт текст
-            // посимвольно, чтобы влезть. Разрешаем перенос только по словам и
-            // даём колонке реальную минимальную ширину под текст сообщения.
-            container.style.minWidth = '150px';
-            container.style.wordBreak = 'normal';
+            // Ячейка (.list_view_item_actions) рассчитана на узкую кнопку, у неё
+            // min-width:unset!important и max-width:150px - без кнопки браузер
+            // сжимает колонку, а глобальный word-break:break-word на body рвёт
+            // текст посимвольно, чтобы влезть. В оригинале это сообщение всегда
+            // в одну строку - запрещаем перенос вообще и снимаем ограничение
+            // ширины, чтобы колонка расширилась под текст, как и положено.
+            container.style.whiteSpace = 'nowrap';
+            container.style.maxWidth = 'none';
             container.innerHTML = msg;
         }
     }
