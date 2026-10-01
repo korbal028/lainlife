@@ -100,7 +100,12 @@ class Correspondence
         $params = array_merge($params[0], $params[1], array_reverse($params[0]), array_reverse($params[1]), $params[2]);
 
         if ($limit === null) {
-            DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId());
+            // Без фильтра по recipient_id это помечало прочитанными ВСЕ сообщения
+            // от этого отправителя у ЛЮБОГО его собеседника, а не только у того,
+            // кто сейчас реально открыл переписку - отсюда баг с "зависшим"
+            // непрочитанным, которое пропадало только когда кто-то ДРУГОЙ отвечал
+            // тому же отправителю (и попутно стирал счётчик не у себя, а у вас).
+            DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId() . " AND recipient_id = " . $this->correspondents[0]->getId());
         }
 
         if (is_null($cap)) {
@@ -239,7 +244,10 @@ class Correspondence
         $message->setUnread(1);
         $message->save();
 
-        DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId());
+        // $ids уже учитывает возможный reverse выше - используем именно его,
+        // а не $this->correspondents напрямую, и обязательно фильтруем по
+        // recipient_id (см. тот же фикс и объяснение в getMessages()).
+        DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $ids[1] . " AND recipient_id = " . $ids[0]);
 
         # да
         if ($ids[0] !== $ids[1]) {
