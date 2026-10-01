@@ -29,6 +29,19 @@ function incrementNotificationsCounter() {
     });
 }
 
+// Если юзер прямо сейчас открыл переписку с тем же отправителем - сообщение он
+// и так видит вживую (через лонгпул чата), всплывающий тост тут только дублирует
+// то, что уже на экране, и зря дёргает счётчик непрочитанных.
+function isViewingChatWith(senderId) {
+    if (senderId === null || typeof senderId === "undefined") return false;
+    if (location.pathname !== "/im") return false;
+
+    const sel = new URLSearchParams(location.search).get("sel");
+    if (sel === null) return false;
+
+    return parseInt(sel, 10) === parseInt(senderId, 10);
+}
+
 function incrementMessagesCounter() {
     document.querySelectorAll('a[href="/im"]').forEach(link => {
 
@@ -66,17 +79,23 @@ async function setupNotificationListener() {
             
             if (notif) {
                 if (!isFirstRequest) {
-                    playNotifSound();
-                    console.info("New notification", notif);
+                    const isOwnOpenChat = notif.kind === "message" && isViewingChatWith(notif.senderId);
 
-                    if (notif.kind === "message") {
-                        NewNotification(notif.title, notif.body, notif.ava, function() {
-                            window.location.href = notif.url;
-                        }, (notif.priority || 1) * 6000);
-                        incrementMessagesCounter();
+                    if (!isOwnOpenChat) {
+                        playNotifSound();
+                        console.info("New notification", notif);
+
+                        if (notif.kind === "message") {
+                            NewNotification(notif.title, notif.body, notif.ava, function() {
+                                window.location.href = notif.url;
+                            }, (notif.priority || 1) * 6000);
+                            incrementMessagesCounter();
+                        } else {
+                            NewNotification(notif.title, notif.body, notif.ava, Function.noop, (notif.priority || 1) * 6000);
+                            incrementNotificationsCounter();
+                        }
                     } else {
-                        NewNotification(notif.title, notif.body, notif.ava, Function.noop, (notif.priority || 1) * 6000);
-                        incrementNotificationsCounter();
+                        console.info("New message in currently open chat: skipping toast/sound", notif);
                     }
                 } else {
                     console.info("First request: skipping alert (syncing cursor)");

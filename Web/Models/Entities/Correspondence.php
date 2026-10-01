@@ -286,6 +286,7 @@ class Correspondence
             NotificationBroker::i()->push($recipientId, [
                 "kind" => "message",
                 "data" => [
+                    "senderId"   => $senderUrlId,
                     "senderName" => $sender->getCanonicalName(),
                     "body"       => $preview,
                     "ava"        => $sender->getAvatarUrl(),

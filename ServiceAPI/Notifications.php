@@ -73,6 +73,7 @@ class Notifications implements Handler
                     "body"     => "$msg->body<div class='nobold'>$time</div>",
                     "ava"      => $msg->ava,
                     "url"      => $msg->url,
+                    "senderId" => $msg->senderId ?? null,
                     "priority" => 1,
                 ]);
                 return;
