@@ -796,14 +796,28 @@ u(document).handle("submit", "#_submitUserSubscriptionAction", async function(e)
     console.log(e.target);
     const data = await fetch(u(this).attr('action'), { method: 'POST', body: new FormData(e.target) });
     if (data.ok) {
-        u(this).nodes[0].parentElement.classList.remove('loading');
-        u(this).nodes[0].parentElement.classList.remove('disable');
+        const container = u(this).nodes[0].parentElement;
+        container.classList.remove('loading');
+        container.classList.remove('disable');
+
+        let msg = null;
         if (e.target[0].value == "add") {
-            u(this).nodes[0].parentElement.innerHTML = tr("friends_add_msg");
+            msg = tr("friends_add_msg");
         } else if (e.target[0].value == "rej") {
-            u(this).nodes[0].parentElement.innerHTML = tr("friends_rej_msg");
+            msg = tr("friends_rej_msg");
         } else if (e.target[0].value == "rem") {
-            u(this).nodes[0].parentElement.innerHTML = tr("friends_rem_msg");
+            msg = tr("friends_rem_msg");
+        }
+
+        if (msg !== null) {
+            // Ячейка (.list_view_item_actions) рассчитана на узкую кнопку и имеет
+            // min-width:unset!important - без кнопки браузер сжимает колонку почти
+            // до нуля, а глобальный word-break:break-word на body рвёт текст
+            // посимвольно, чтобы влезть. Разрешаем перенос только по словам и
+            // даём колонке реальную минимальную ширину под текст сообщения.
+            container.style.minWidth = '150px';
+            container.style.wordBreak = 'normal';
+            container.innerHTML = msg;
         }
     }
 })
