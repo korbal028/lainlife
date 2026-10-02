@@ -577,7 +577,7 @@
                 "max_add_fields": {ovkGetQuirk("users.max-fields")},
                 "docs_max": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["maxSize"]},
                 "docs_allowed": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["allowedFormats"]},
-                "notification_sound": {ifset $thisUser}"{$thisUser->getNotificationSound()}"{else}"bell"{/ifset},
+                "notification_sound": {ifset $thisUser}{$thisUser->getNotificationSound()}{else}"bell"{/ifset},
             }
         </script>
 
