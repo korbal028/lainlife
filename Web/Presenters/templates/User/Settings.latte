@@ -541,19 +541,21 @@
                             <span class="nobold">{_ui_settings_notification_sound}</span>
                         </td>
                         <td>
-                            <select name="notification_sound" id="notification_sound_select">
-                                <option value="bell" {if $user->getNotificationSound() == 'bell'}selected{/if}>{_ui_settings_notification_sound_bell} ({_default})</option>
-                                <option value="skype" {if $user->getNotificationSound() == 'skype'}selected{/if}>Skype</option>
-                                <option value="icq" {if $user->getNotificationSound() == 'icq'}selected{/if}>ICQ</option>
-                                <option value="lain_msg" {if $user->getNotificationSound() == 'lain_msg'}selected{/if}>NEW MESSAGE</option>
-                                <option value="konata" {if $user->getNotificationSound() == 'konata'}selected{/if}>Konata</option>
-                                <option value="mambo" {if $user->getNotificationSound() == 'mambo'}selected{/if}>Mambo</option>
-                                <option value="lain_mail" {if $user->getNotificationSound() == 'lain_mail'}selected{/if}>Lain has new mail</option>
-                            </select>
-                            <a href="javascript:void(0)" id="notification_sound_preview" title="{_ui_settings_notification_sound_preview}"
-                               style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; margin-left:8px; vertical-align:middle; cursor:pointer;">
-                                <span style="width:0; height:0; border-style:solid; border-width:5px 0 5px 8px; border-color:transparent transparent transparent #5181b8;"></span>
-                            </a>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <select name="notification_sound" id="notification_sound_select">
+                                    <option value="bell" {if $user->getNotificationSound() == 'bell'}selected{/if}>{_ui_settings_notification_sound_bell} ({_default})</option>
+                                    <option value="skype" {if $user->getNotificationSound() == 'skype'}selected{/if}>Skype</option>
+                                    <option value="icq" {if $user->getNotificationSound() == 'icq'}selected{/if}>ICQ</option>
+                                    <option value="lain_msg" {if $user->getNotificationSound() == 'lain_msg'}selected{/if}>NEW MESSAGE</option>
+                                    <option value="konata" {if $user->getNotificationSound() == 'konata'}selected{/if}>Konata</option>
+                                    <option value="mambo" {if $user->getNotificationSound() == 'mambo'}selected{/if}>Mambo</option>
+                                    <option value="lain_mail" {if $user->getNotificationSound() == 'lain_mail'}selected{/if}>Lain has new mail</option>
+                                </select>
+                                <a href="javascript:void(0)" id="notification_sound_preview" title="{_ui_settings_notification_sound_preview}"
+                                   style="display:inline-flex; align-items:center; justify-content:center; width:20px; height:20px; flex-shrink:0; cursor:pointer;">
+                                    <span style="width:0; height:0; border-style:solid; border-width:5px 0 5px 8px; border-color:transparent transparent transparent #5181b8;"></span>
+                                </a>
+                            </div>
                         </td>
                     </tr>
                     <tr>
