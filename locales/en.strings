@@ -768,6 +768,10 @@
 "ui_settings_rating" = "Rating";
 "ui_settings_rating_show" = "Show";
 "ui_settings_rating_hide" = "Hide";
+
+"ui_settings_notification_sound" = "Notification sound";
+"ui_settings_notification_sound_bell" = "Default";
+"ui_settings_notification_sound_preview" = "Preview";
 "ui_settings_nsfw_content" = "NSFW content";
 "ui_settings_nsfw_content_dont_show" = "Don't show in global feed";
 "ui_settings_nsfw_content_blur" = "Just blur";

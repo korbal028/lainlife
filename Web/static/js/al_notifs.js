@@ -1,8 +1,34 @@
-createjs.Sound.registerSound("/assets/packages/static/openvk/audio/notify.mp3", "notification");
+// Пресеты звука уведомления. bell - исходный notify.mp3; skype/icq - отдельные
+// файлы, которые кладутся в ту же папку audio/. Выбор приходит с сервера через
+// window.openvk.notification_sound (настройка "Внешний вид" -> "Звук уведомлений").
+const NOTIF_SOUNDS = {
+    bell:      "/assets/packages/static/openvk/audio/notify.mp3",
+    skype:     "/assets/packages/static/openvk/audio/skype.mp3",
+    icq:       "/assets/packages/static/openvk/audio/icq.mp3",
+    lain_msg:  "/assets/packages/static/openvk/audio/lain_new_message.mp3",
+    konata:    "/assets/packages/static/openvk/audio/pupue.mp3",
+    mambo:     "/assets/packages/static/openvk/audio/mambo.mp3",
+    lain_mail: "/assets/packages/static/openvk/audio/lain-mail.mp3",
+};
+
+Object.entries(NOTIF_SOUNDS).forEach(([id, url]) => {
+    createjs.Sound.registerSound(url, "notification_" + id);
+});
+
+function __currentNotifSoundId() {
+    const choice = window.openvk?.notification_sound;
+    return NOTIF_SOUNDS[choice] ? choice : "bell";
+}
 
 function __actualPlayNotifSound() {
-    createjs.Sound.play("notification");
+    createjs.Sound.play("notification_" + __currentNotifSoundId());
 }
+
+// Проигрывание конкретного пресета по требованию (кнопка "Прослушать" в настройках).
+window.previewNotifSound = function(id) {
+    const soundId = NOTIF_SOUNDS[id] ? id : "bell";
+    createjs.Sound.play("notification_" + soundId);
+};
 
 window.playNotifSound = Function.noop;
 

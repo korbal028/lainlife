@@ -96,6 +96,13 @@ class User extends RowModel
         return $this->getRecord()->style_avatar;
     }
 
+    public function getNotificationSound(): string
+    {
+        $allowed = ["bell", "skype", "icq", "lain_msg", "konata", "mambo", "lain_mail"];
+        $sound = $this->getRecord()->notification_sound;
+        return in_array($sound, $allowed, true) ? $sound : "bell";
+    }
+
     public function hasMilkshakeEnabled(): bool
     {
         return (bool) $this->getRecord()->milkshake;

@@ -649,6 +649,10 @@ final class UserPresenter extends OpenVKPresenter
                     $user->setStyle_Avatar((int) $this->postParam("style_avatar"));
                 }
 
+                if (in_array($this->postParam("notification_sound"), ["bell", "skype", "icq", "lain_msg", "konata", "mambo", "lain_mail"], true)) {
+                    $user->setNotification_Sound($this->postParam("notification_sound"));
+                }
+
                 if (in_array($this->postParam("rating"), [0, 1])) {
                     $user->setShow_Rating((int) $this->postParam("rating"));
                 }
