@@ -20,7 +20,22 @@ function __currentNotifSoundId() {
     return NOTIF_SOUNDS[choice] ? choice : "bell";
 }
 
+// WebAudio-контекст засыпает (suspended), а звук уведомления играется из
+// фонового цикла опроса, а не из клика - такой play() блокируется браузером.
+// После того как пользователь хоть раз кликнул по странице, resume() снова
+// разрешён в любой момент, поэтому будим контекст прямо перед проигрыванием.
+function __resumeAudioContext() {
+    try {
+        const ctx = (createjs.WebAudioPlugin && createjs.WebAudioPlugin.context)
+                 || (createjs.Sound.activePlugin && createjs.Sound.activePlugin.context);
+        if (ctx && ctx.state === "suspended") {
+            ctx.resume();
+        }
+    } catch (e) {}
+}
+
 function __actualPlayNotifSound() {
+    __resumeAudioContext();
     createjs.Sound.play("notification_" + __currentNotifSoundId());
 }
 
@@ -232,4 +247,7 @@ async function setupNotificationListener() {
     await setupNotificationListener();
 })();
 
-u(document.body).on("click", () => window.playNotifSound = window.__actualPlayNotifSound);
+u(document.body).on("click", () => {
+    window.playNotifSound = window.__actualPlayNotifSound;
+    __resumeAudioContext();
+});
