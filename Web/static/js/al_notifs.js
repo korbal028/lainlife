@@ -49,16 +49,10 @@ function isViewingChatWith(senderId) {
 // Если такого чата в текущем (возможно, страничном) списке нет - не трогаем,
 // счётчик всё равно инкрементится отдельно.
 function updateConversationListPreview(notif) {
-    const list = document.querySelector('.crp-list');
-    if (!list || !notif || !notif.url) return;
-
-    let entry = null;
-    for (const e of list.querySelectorAll('.crp-entry')) {
-        if (e.getAttribute('data-im-url') === notif.url) { entry = e; break; }
-    }
-    if (!entry) return;
+    if (!notif || !notif.url) return;
 
     // notif.body = "<текст превью><div class='nobold'><время></div>" - разбираем
+    // на текст превью и строку времени (общая часть для обеих тем).
     const tmp = document.createElement('div');
     tmp.innerHTML = notif.body || '';
     const timeDiv = tmp.querySelector('.nobold');
@@ -66,22 +60,59 @@ function updateConversationListPreview(notif) {
     if (timeDiv) { timeStr = timeDiv.textContent; timeDiv.remove(); }
     const previewHtml = tmp.innerHTML;
 
-    const textEl = entry.querySelector('.crp-entry--message---text');
-    if (textEl) textEl.innerHTML = previewHtml;
+    const findByUrl = (container, selector) => {
+        for (const e of container.querySelectorAll(selector)) {
+            if (e.getAttribute('data-im-url') === notif.url) return e;
+        }
+        return null;
+    };
 
-    if (timeStr) {
-        const timeEl = entry.querySelector('.crp-entry--info span');
-        if (timeEl) timeEl.textContent = timeStr;
+    // Базовая тема: .crp-list / .crp-entry
+    const baseList = document.querySelector('.crp-list');
+    if (baseList) {
+        const entry = findByUrl(baseList, '.crp-entry');
+        if (!entry) return;
+
+        const textEl = entry.querySelector('.crp-entry--message---text');
+        if (textEl) textEl.innerHTML = previewHtml;
+        if (timeStr) {
+            const timeEl = entry.querySelector('.crp-entry--info span');
+            if (timeEl) timeEl.textContent = timeStr;
+        }
+        // Входящее сообщение - автор НЕ мы, значит аватарка автора (она
+        // показывается только для своих сообщений) должна исчезнуть.
+        const av = entry.querySelector('.crp-entry--message---av');
+        if (av) av.remove();
+        const msgBlock = entry.querySelector('.crp-entry--message');
+        if (msgBlock) msgBlock.classList.add('unread');
+
+        baseList.prepend(entry);
+        return;
     }
 
-    // Входящее сообщение - автор НЕ мы, значит аватарка автора (она показывается
-    // только для своих сообщений) должна исчезнуть, а блок стать "непрочитанным".
-    const av = entry.querySelector('.crp-entry--message---av');
-    if (av) av.remove();
-    const msgBlock = entry.querySelector('.crp-entry--message');
-    if (msgBlock) msgBlock.classList.add('unread');
+    // vkify16: ul.im-page--dcontent / li.nim-dialog
+    const vkList = document.querySelector('.im-page--dcontent');
+    if (vkList) {
+        const entry = findByUrl(vkList, '.nim-dialog');
+        if (!entry) return;
 
-    list.prepend(entry);
+        const textEl = entry.querySelector('.nim-dialog--inner-text');
+        if (textEl) textEl.innerHTML = previewHtml;
+        if (timeStr) {
+            const timeEl = entry.querySelector('.nim-dialog--date');
+            if (timeEl) timeEl.textContent = timeStr;
+        }
+        // В превью vkify16 показывается аватарка отправителя - у входящего это
+        // собеседник, обновляем её на пришедшую в уведомлении.
+        if (notif.ava) {
+            const avImg = entry.querySelector('.nim-dialog--who img');
+            if (avImg) avImg.src = notif.ava;
+        }
+        entry.classList.add('nim-dialog--unread');
+
+        vkList.prepend(entry);
+        return;
+    }
 }
 
 function incrementMessagesCounter() {
