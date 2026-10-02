@@ -57,8 +57,6 @@ services:
     - openvk\Web\Models\Repositories\Faves
     - openvk\Web\Presenters\MaintenancePresenter
     - openvk\Web\Presenters\NoSpamPresenter
-#    - openvk\Web\Presenters\ConversationsPresenter
-#    - openvk\Web\Models\Repositories\Conversations
     - openvk\Web\Presenters\GroupChatPresenter
     - openvk\Web\Models\Repositories\GroupChats
     - openvk\Web\Models\Repositories\GroupMessages

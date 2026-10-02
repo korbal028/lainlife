@@ -1,5 +1,6 @@
 -- Миграция: Добавление таблиц для групповых чатов
--- Версия: 00051
+-- Версия: 00062 (перенумерована с 00060 из-за коллизии с 00060-playlist-link.sql:
+-- getMigrationFiles() индексирует по номеру, одинаковые номера затирают друг друга)
 
 -- Таблица групповых чатов
 CREATE TABLE IF NOT EXISTS `group_chats` (
@@ -12,6 +13,7 @@ CREATE TABLE IF NOT EXISTS `group_chats` (
   `avatar` varchar(512) COLLATE utf8mb4_unicode_520_ci DEFAULT NULL,
   `created` bigint(20) NOT NULL,
   `deleted` tinyint(1) NOT NULL DEFAULT 0,
+  `admins` text COLLATE utf8mb4_unicode_520_ci DEFAULT NULL COMMENT 'CSV список ID админов чата',
   PRIMARY KEY (`id`),
   KEY `creator_id` (`creator_id`),
   KEY `deleted` (`deleted`)
