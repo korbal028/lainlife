@@ -247,7 +247,16 @@ async function setupNotificationListener() {
     await setupNotificationListener();
 })();
 
-u(document.body).on("click", () => {
-    window.playNotifSound = window.__actualPlayNotifSound;
-    __resumeAudioContext();
-});
+// Браузер не даёт играть звук до первого взаимодействия пользователя со
+// страницей. Разблокируем звук уведомлений на ЛЮБОЕ взаимодействие (не только
+// click по body), причём в фазе capture - чтобы сработать даже если SPA-роутер
+// гасит всплытие события на ссылках (preventDefault/stopPropagation).
+(function() {
+    function unlockNotifSound() {
+        window.playNotifSound = window.__actualPlayNotifSound;
+        __resumeAudioContext();
+    }
+    ["pointerdown", "mousedown", "keydown", "touchstart", "click"].forEach(function(evt) {
+        document.addEventListener(evt, unlockNotifSound, { capture: true, passive: true });
+    });
+})();
