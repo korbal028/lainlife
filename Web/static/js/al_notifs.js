@@ -42,6 +42,48 @@ function isViewingChatWith(senderId) {
     return parseInt(sel, 10) === parseInt(senderId, 10);
 }
 
+// На странице списка диалогов (/im без sel, Messenger/Index.latte) список
+// рендерится один раз на сервере и сам не обновляется. При входящем сообщении
+// находим его чат по data-im-url (совпадает с notif.url = /im?sel=<id>) и
+// обновляем вживую: превью, время, пометку "непрочитано", и поднимаем наверх.
+// Если такого чата в текущем (возможно, страничном) списке нет - не трогаем,
+// счётчик всё равно инкрементится отдельно.
+function updateConversationListPreview(notif) {
+    const list = document.querySelector('.crp-list');
+    if (!list || !notif || !notif.url) return;
+
+    let entry = null;
+    for (const e of list.querySelectorAll('.crp-entry')) {
+        if (e.getAttribute('data-im-url') === notif.url) { entry = e; break; }
+    }
+    if (!entry) return;
+
+    // notif.body = "<текст превью><div class='nobold'><время></div>" - разбираем
+    const tmp = document.createElement('div');
+    tmp.innerHTML = notif.body || '';
+    const timeDiv = tmp.querySelector('.nobold');
+    let timeStr = '';
+    if (timeDiv) { timeStr = timeDiv.textContent; timeDiv.remove(); }
+    const previewHtml = tmp.innerHTML;
+
+    const textEl = entry.querySelector('.crp-entry--message---text');
+    if (textEl) textEl.innerHTML = previewHtml;
+
+    if (timeStr) {
+        const timeEl = entry.querySelector('.crp-entry--info span');
+        if (timeEl) timeEl.textContent = timeStr;
+    }
+
+    // Входящее сообщение - автор НЕ мы, значит аватарка автора (она показывается
+    // только для своих сообщений) должна исчезнуть, а блок стать "непрочитанным".
+    const av = entry.querySelector('.crp-entry--message---av');
+    if (av) av.remove();
+    const msgBlock = entry.querySelector('.crp-entry--message');
+    if (msgBlock) msgBlock.classList.add('unread');
+
+    list.prepend(entry);
+}
+
 function incrementMessagesCounter() {
     document.querySelectorAll('a[href="/im"]').forEach(link => {
 
@@ -80,6 +122,12 @@ async function setupNotificationListener() {
             if (notif) {
                 if (!isFirstRequest) {
                     const isOwnOpenChat = notif.kind === "message" && isViewingChatWith(notif.senderId);
+
+                    // Список диалогов обновляем всегда (если мы на /im), независимо
+                    // от того, подавляется ли тост - он сам no-op, если списка нет.
+                    if (notif.kind === "message") {
+                        updateConversationListPreview(notif);
+                    }
 
                     if (!isOwnOpenChat) {
                         playNotifSound();
