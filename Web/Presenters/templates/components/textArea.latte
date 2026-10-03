@@ -61,8 +61,8 @@
                     if (!isset($GLOBALS["__ovk_managed_clubs"])) {
                         $GLOBALS["__ovk_managed_clubs"] = iterator_to_array($thisUser->getClubs(1, true, 1000));
                     }
+                    $managedClubs = $GLOBALS["__ovk_managed_clubs"];
                 }
-                {var $managedClubs = $GLOBALS["__ovk_managed_clubs"]}
                 <div n:if="sizeof($managedClubs) > 0" class="post-opts comment-as-group-opts">
                     {php
                         $defaultClub = (!is_null($club ?? null) && $club->canBeModifiedBy($thisUser)) ? $club : $managedClubs[0];
