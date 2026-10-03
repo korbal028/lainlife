@@ -70,6 +70,7 @@ final class CommentPresenter extends OpenVKPresenter
             $this->notFound();
         }
 
+        $club = null;
         if ($entity instanceof Post && $entity->getTargetWall() < 0) {
             $club = (new Clubs())->get(abs($entity->getTargetWall()));
         } elseif ($entity instanceof Topic) {
@@ -85,8 +86,23 @@ final class CommentPresenter extends OpenVKPresenter
         }
 
         $flags = 0;
-        if ($this->postParam("as_group") === "on" && !is_null($club) && $club->canBeModifiedBy($this->user->identity)) {
-            $flags |= 0b10000000;
+        $asClubId = null;
+        if ($this->postParam("as_group") === "on") {
+            // Приоритет у явно выбранной группы (пикер при нескольких группах);
+            // иначе - клуб самого контента (старое поведение: коммент под
+            // контентом своей группы без выбора).
+            $chosenClub = null;
+            $groupId = (int) $this->postParam("group_id");
+            if ($groupId > 0) {
+                $chosenClub = (new Clubs())->get($groupId);
+            } elseif (!is_null($club)) {
+                $chosenClub = $club;
+            }
+
+            if ($chosenClub && $chosenClub->canBeModifiedBy($this->user->identity)) {
+                $flags |= 0b10000000;
+                $asClubId = $chosenClub->getId();
+            }
         }
 
         $photo = null;
@@ -126,6 +142,9 @@ final class CommentPresenter extends OpenVKPresenter
             $comment->setContent($this->postParam("text"));
             $comment->setCreated(time());
             $comment->setFlags($flags);
+            if (!is_null($asClubId)) {
+                $comment->setClub($asClubId);
+            }
             $comment->save();
         } catch (\LengthException $ex) {
             $this->flashFail("err", tr("error_when_publishing_comment"), tr("error_comment_too_big"));

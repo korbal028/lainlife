@@ -2043,6 +2043,56 @@ u(document).on('focusin', '#write', (e) => {
     target.find('.small-textarea').addClass('expanded-textarea')
 })
 
+// Пикер группы для комментария "от имени сообщества" (когда у пользователя
+// несколько групп). Список групп лежит в window.__ovkManagedClubs (рендерится
+// один раз шаблоном textArea.latte). Открывает модалку движка, а не браузерный
+// диалог; выбор пишется в скрытое поле group_id формы и ставит галку as_group.
+function openCommentGroupPicker(gearEl) {
+    // Контейнер опций с чекбоксом, шестерёнкой и скрытым group_id. В vkify16 этот
+    // блок вынесен tippy в body (вне формы), поэтому ищем поля НЕ через форму, а
+    // внутри общего контейнера опций - это работает и в базовой теме, и в vkify16.
+    const container = u(gearEl).closest('.post-opts, .comment-as-group-opts').nodes[0] || gearEl.parentElement;
+    if (!container) return;
+
+    const clubs = window.__ovkManagedClubs || [];
+    if (clubs.length < 1) return;
+
+    const hidden = container.querySelector('input.comment-as-group-id');
+    const current = hidden ? hidden.value : String(clubs[0].id);
+
+    let body = '<div style="max-height:320px; overflow-y:auto;">';
+    clubs.forEach((c) => {
+        const checked = String(c.id) === String(current) ? 'checked' : '';
+        body += `<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; cursor:pointer;">
+            <input type="radio" name="__cgp" value="${c.id}" ${checked} />
+            <img src="${c.avatar}" style="width:32px; height:32px; border-radius:3px; flex-shrink:0;" />
+            <span>${escapeHtml(c.name)}</span>
+        </label>`;
+    });
+    body += '</div>';
+
+    const msg = new CMessageBox({
+        title: tr('choose_community'),
+        body: body,
+        close_on_buttons: false,
+        buttons: [tr('save'), tr('cancel')],
+        callbacks: [function() {
+            const sel = msg.getNode().find('input[name=__cgp]:checked').nodes[0];
+            if (sel) {
+                if (hidden) hidden.value = sel.value;
+                const chosen = clubs.find((c) => String(c.id) === String(sel.value));
+                const label = container.querySelector('.comment-group-picker-label');
+                if (label && chosen) label.textContent = '(' + chosen.name + ')';
+                const cb = container.querySelector('input[name=as_group]');
+                if (cb) cb.checked = true;
+            }
+            msg.close();
+        }, function() {
+            msg.close();
+        }]
+    });
+}
+
 async function repost(id, repost_type = 'post') {
     const repostsCount = u(`#repostsCount${id}`)
     const previousVal  = repostsCount.length > 0 ? Number(repostsCount.html()) : 0;

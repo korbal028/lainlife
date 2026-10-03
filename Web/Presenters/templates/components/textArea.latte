@@ -56,11 +56,37 @@
                 </label>
             </div>
 
-            <div n:if="!($postOpts ?? true) && !is_null($thisUser) && !is_null($club ?? NULL) && $club->canBeModifiedBy($thisUser)" class="post-opts">
-                <label>
-                    <input type="checkbox" name="as_group" /> {_comment_as_group}
-                </label>
-            </div>
+            {if !($postOpts ?? true) && !is_null($thisUser)}
+                {php
+                    if (!isset($GLOBALS["__ovk_managed_clubs"])) {
+                        $GLOBALS["__ovk_managed_clubs"] = iterator_to_array($thisUser->getClubs(1, true, 1000));
+                    }
+                }
+                {var $managedClubs = $GLOBALS["__ovk_managed_clubs"]}
+                <div n:if="sizeof($managedClubs) > 0" class="post-opts comment-as-group-opts">
+                    {php
+                        $defaultClub = (!is_null($club ?? null) && $club->canBeModifiedBy($thisUser)) ? $club : $managedClubs[0];
+                    }
+                    <label>
+                        <input type="checkbox" name="as_group" /> {_comment_as_group}
+                    </label>
+                    {if sizeof($managedClubs) > 1}
+                        <a href="javascript:void(0)" class="comment-group-picker-gear" onclick="openCommentGroupPicker(this)" title="{_choose_community}" style="margin-left:4px; text-decoration:none;">⚙</a>
+                        <span class="comment-group-picker-label" style="margin-left:4px; color:#777; font-size:11px;">({$defaultClub->getName()})</span>
+                    {/if}
+                    <input type="hidden" name="group_id" value="{$defaultClub->getId()}" class="comment-as-group-id" />
+                </div>
+                {php
+                    if (!isset($GLOBALS["__ovk_mc_rendered"]) && sizeof($managedClubs) > 1) {
+                        $GLOBALS["__ovk_mc_rendered"] = true;
+                        $__mc = [];
+                        foreach ($managedClubs as $mc) {
+                            $__mc[] = ["id" => $mc->getId(), "name" => $mc->getName(), "avatar" => $mc->getAvatarUrl("miniscule")];
+                        }
+                        echo "<script>window.__ovkManagedClubs = " . json_encode($__mc, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG) . ";</script>";
+                    }
+                }
+            {/if}
 
             <input type="hidden" name="horizontal_attachments" value="" autocomplete="off" />
             <input type="hidden" name="vertical_attachments" value="" autocomplete="off" />

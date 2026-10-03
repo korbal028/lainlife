@@ -45,6 +45,17 @@ class Comment extends Post
     public function getOwner(bool $honourFlags = true, bool $real = false): RowModel
     {
         if ($honourFlags && $this->isPostedOnBehalfOfGroup()) {
+            // Явно выбранная группа (коммент от имени любой своей группы под
+            // любым контентом) имеет приоритет. Если её нет - старое поведение:
+            // вывести группу из контента (коммент под контентом самой группы).
+            $clubId = $this->getRecord()->club;
+            if (!is_null($clubId)) {
+                $club = (new Clubs())->get((int) $clubId);
+                if ($club) {
+                    return $club;
+                }
+            }
+
             if ($this->getTarget() instanceof Post) {
                 return (new Clubs())->get(abs($this->getTarget()->getTargetWall()));
             }
@@ -64,6 +75,11 @@ class Comment extends Post
         }
 
         return $this->getOwner()->getId() == $user->getId() ||
+               // реальный автор (не группа-от-имени) всегда может удалить свой коммент -
+               // иначе коммент-от-группы под чужим контентом было бы не удалить автору
+               $this->getOwner(false)->getId() == $user->getId() ||
+               // управляющий группой, от имени которой оставлен коммент, тоже может удалить
+               ($this->isPostedOnBehalfOfGroup() && $this->getOwner() instanceof Club && $this->getOwner()->canBeModifiedBy($user)) ||
                $this->getTarget()->getOwner()->getId() == $user->getId() ||
                $this->getTarget() instanceof Post && $this->getTarget()->getTargetWall() < 0 && (new Clubs())->get(abs($this->getTarget()->getTargetWall()))->canBeModifiedBy($user) ||
                $this->getTarget() instanceof Topic && $this->getTarget()->canBeModifiedBy($user);

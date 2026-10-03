@@ -246,6 +246,7 @@
 "attachment" = "Attachment";
 "post_as_group" = "Post as group";
 "comment_as_group" = "Comment as group";
+"choose_community" = "Choose a community";
 
 "add_source" = "Add source";
 "set_source" = "Apply source";

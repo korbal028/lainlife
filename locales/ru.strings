@@ -231,6 +231,7 @@
 "attachment" = "Вложение";
 "post_as_group" = "От имени сообщества";
 "comment_as_group" = "От имени сообщества";
+"choose_community" = "Выберите сообщество";
 "rss" = "RSS"
 
 "add_source" = "Добавление источника";
