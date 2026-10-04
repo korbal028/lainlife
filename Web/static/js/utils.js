@@ -182,12 +182,25 @@ function getRemainingTime(fullTime, time) {
     return "-" + fmtTime(timer)
 }
 
-function serializeForm(form, submitter = null) 
+function serializeForm(form, submitter = null)
 {
     const u_ = u(form)
-    const inputs = u_.find('input, textarea, button, select')
+    const inputNodes = u_.find('input, textarea, button, select').nodes.slice()
+    // Поля, связанные с формой через атрибут form="<id>", но лежащие вне её в DOM
+    // (например контент tippy-тултипа, вынесенный в body) - u(form).find() их не
+    // видит, а нативная отправка учла бы. Добавляем их вручную, как делает браузер.
+    const formEl = u_.nodes[0]
+    if(formEl && formEl.id) {
+        try {
+            document.querySelectorAll(`[form="${(window.CSS && CSS.escape) ? CSS.escape(formEl.id) : formEl.id}"]`).forEach(el => {
+                if(inputNodes.indexOf(el) === -1) {
+                    inputNodes.push(el)
+                }
+            })
+        } catch(e) {}
+    }
     let fd = new FormData()
-    inputs.nodes.forEach(inp => {
+    inputNodes.forEach(inp => {
         if(!inp || !inp.name) {
             return
         }

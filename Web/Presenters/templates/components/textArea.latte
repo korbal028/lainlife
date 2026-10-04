@@ -71,7 +71,9 @@
                         <input type="checkbox" name="as_group" /> {_comment_as_group}
                     </label>
                     {if sizeof($managedClubs) > 1}
-                        <a href="javascript:void(0)" class="comment-group-picker-gear" onclick="openCommentGroupPicker(this)" title="{_choose_community}" style="margin-left:4px; text-decoration:none;">⚙</a>
+                        <a href="javascript:void(0)" class="comment-group-picker-gear" onclick="openCommentGroupPicker(this)" title="{_choose_community}" style="margin-left:4px; text-decoration:none; vertical-align:middle;">
+                            <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/actions/configure.png" alt="{_choose_community}" style="vertical-align:middle;" />
+                        </a>
                         <span class="comment-group-picker-label" style="margin-left:4px; color:#777; font-size:11px;">({$defaultClub->getName()})</span>
                     {/if}
                     <input type="hidden" name="group_id" value="{$defaultClub->getId()}" class="comment-as-group-id" />
