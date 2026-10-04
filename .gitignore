@@ -19,3 +19,6 @@ data/knowledgebase/*
 
 .idea
 .php-cs-fixer.cache
+
+openvk.yml.save
+*.save
