@@ -2060,12 +2060,17 @@ function openCommentGroupPicker(gearEl) {
     const hidden = container.querySelector('input.comment-as-group-id');
     const current = hidden ? hidden.value : String(clubs[0].id);
 
+    // Форма аватарки по настройке "Внешний вид" -> "Аватарки":
+    // 0 - произвольные (скруглённые), 1 - квадратные, 2 - круглые.
+    const avatarStyle = window.openvk ? window.openvk.avatar_style : 0;
+    const avatarRadius = avatarStyle === 1 ? '0' : (avatarStyle === 2 ? '50%' : '3px');
+
     let body = '<div style="max-height:320px; overflow-y:auto;">';
     clubs.forEach((c) => {
         const checked = String(c.id) === String(current) ? 'checked' : '';
         body += `<label style="display:flex; align-items:center; gap:8px; padding:6px 4px; cursor:pointer;">
             <input type="radio" name="__cgp" value="${c.id}" ${checked} />
-            <img src="${c.avatar}" style="width:32px; height:32px; border-radius:3px; flex-shrink:0;" />
+            <img src="${c.avatar}" style="width:32px; height:32px; object-fit:cover; border-radius:${avatarRadius}; flex-shrink:0;" />
             <span>${escapeHtml(c.name)}</span>
         </label>`;
     });

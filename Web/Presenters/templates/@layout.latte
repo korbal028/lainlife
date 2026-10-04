@@ -578,6 +578,7 @@
                 "docs_max": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["maxSize"]},
                 "docs_allowed": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["allowedFormats"]},
                 "notification_sound": {ifset $thisUser}{$thisUser->getNotificationSound()}{else}"bell"{/ifset},
+                "avatar_style": {ifset $thisUser}{$thisUser->getStyleAvatar()}{else}0{/ifset},
             }
         </script>
 
