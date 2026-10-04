@@ -22,3 +22,4 @@ data/knowledgebase/*
 
 openvk.yml.save
 *.save
+*.bak
