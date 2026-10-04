@@ -100,11 +100,6 @@ class Correspondence
         $params = array_merge($params[0], $params[1], array_reverse($params[0]), array_reverse($params[1]), $params[2]);
 
         if ($limit === null) {
-            // Без фильтра по recipient_id это помечало прочитанными ВСЕ сообщения
-            // от этого отправителя у ЛЮБОГО его собеседника, а не только у того,
-            // кто сейчас реально открыл переписку - отсюда баг с "зависшим"
-            // непрочитанным, которое пропадало только когда кто-то ДРУГОЙ отвечал
-            // тому же отправителю (и попутно стирал счётчик не у себя, а у вас).
             DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId() . " AND recipient_id = " . $this->correspondents[0]->getId());
         }
 
@@ -244,9 +239,6 @@ class Correspondence
         $message->setUnread(1);
         $message->save();
 
-        // $ids уже учитывает возможный reverse выше - используем именно его,
-        // а не $this->correspondents напрямую, и обязательно фильтруем по
-        // recipient_id (см. тот же фикс и объяснение в getMessages()).
         DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $ids[1] . " AND recipient_id = " . $ids[0]);
 
         # да
@@ -260,17 +252,6 @@ class Correspondence
         return $message;
     }
 
-    /**
-     * Pushes a live toast notification about a new message to the recipient,
-     * via the same broker/poll pipeline used for likes/comments (al_notifs.js).
-     * Doesn't touch the /notifications feed - messages keep their own unread counter.
-     *
-     * Only raw, language-agnostic data is pushed here (this runs in the SENDER's
-     * request/session). Title/body translation and relative time formatting are
-     * done later in ServiceAPI\Notifications::fetch(), which runs in the
-     * RECIPIENT's session - otherwise the notification ends up in the sender's
-     * language/timezone instead of the recipient's.
-     */
     private function pushMessageNotification(Message $message, int $senderId, int $recipientId, string $senderClass): void
     {
         $notifConf = OPENVK_ROOT_CONF["openvk"]["credentials"]["notificationsBroker"] ?? [];

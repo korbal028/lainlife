@@ -1,6 +1,3 @@
-// Пресеты звука уведомления. bell - исходный notify.mp3; skype/icq - отдельные
-// файлы, которые кладутся в ту же папку audio/. Выбор приходит с сервера через
-// window.openvk.notification_sound (настройка "Внешний вид" -> "Звук уведомлений").
 const NOTIF_SOUNDS = {
     bell:      "/assets/packages/static/openvk/audio/notify.mp3",
     skype:     "/assets/packages/static/openvk/audio/skype.mp3",
@@ -20,10 +17,6 @@ function __currentNotifSoundId() {
     return NOTIF_SOUNDS[choice] ? choice : "bell";
 }
 
-// WebAudio-контекст засыпает (suspended), а звук уведомления играется из
-// фонового цикла опроса, а не из клика - такой play() блокируется браузером.
-// После того как пользователь хоть раз кликнул по странице, resume() снова
-// разрешён в любой момент, поэтому будим контекст прямо перед проигрыванием.
 function __resumeAudioContext() {
     try {
         const ctx = (createjs.WebAudioPlugin && createjs.WebAudioPlugin.context)
@@ -39,7 +32,6 @@ function __actualPlayNotifSound() {
     createjs.Sound.play("notification_" + __currentNotifSoundId());
 }
 
-// Проигрывание конкретного пресета по требованию (кнопка "Прослушать" в настройках).
 window.previewNotifSound = function(id) {
     const soundId = NOTIF_SOUNDS[id] ? id : "bell";
     createjs.Sound.play("notification_" + soundId);
@@ -70,9 +62,6 @@ function incrementNotificationsCounter() {
     });
 }
 
-// Если юзер прямо сейчас открыл переписку с тем же отправителем - сообщение он
-// и так видит вживую (через лонгпул чата), всплывающий тост тут только дублирует
-// то, что уже на экране, и зря дёргает счётчик непрочитанных.
 function isViewingChatWith(senderId) {
     if (senderId === null || typeof senderId === "undefined") return false;
     if (location.pathname !== "/im") return false;
@@ -83,17 +72,9 @@ function isViewingChatWith(senderId) {
     return parseInt(sel, 10) === parseInt(senderId, 10);
 }
 
-// На странице списка диалогов (/im без sel, Messenger/Index.latte) список
-// рендерится один раз на сервере и сам не обновляется. При входящем сообщении
-// находим его чат по data-im-url (совпадает с notif.url = /im?sel=<id>) и
-// обновляем вживую: превью, время, пометку "непрочитано", и поднимаем наверх.
-// Если такого чата в текущем (возможно, страничном) списке нет - не трогаем,
-// счётчик всё равно инкрементится отдельно.
 function updateConversationListPreview(notif) {
     if (!notif || !notif.url) return;
 
-    // notif.body = "<текст превью><div class='nobold'><время></div>" - разбираем
-    // на текст превью и строку времени (общая часть для обеих тем).
     const tmp = document.createElement('div');
     tmp.innerHTML = notif.body || '';
     const timeDiv = tmp.querySelector('.nobold');
@@ -108,7 +89,6 @@ function updateConversationListPreview(notif) {
         return null;
     };
 
-    // Базовая тема: .crp-list / .crp-entry
     const baseList = document.querySelector('.crp-list');
     if (baseList) {
         const entry = findByUrl(baseList, '.crp-entry');
@@ -120,8 +100,6 @@ function updateConversationListPreview(notif) {
             const timeEl = entry.querySelector('.crp-entry--info span');
             if (timeEl) timeEl.textContent = timeStr;
         }
-        // Входящее сообщение - автор НЕ мы, значит аватарка автора (она
-        // показывается только для своих сообщений) должна исчезнуть.
         const av = entry.querySelector('.crp-entry--message---av');
         if (av) av.remove();
         const msgBlock = entry.querySelector('.crp-entry--message');
@@ -131,7 +109,6 @@ function updateConversationListPreview(notif) {
         return;
     }
 
-    // vkify16: ul.im-page--dcontent / li.nim-dialog
     const vkList = document.querySelector('.im-page--dcontent');
     if (vkList) {
         const entry = findByUrl(vkList, '.nim-dialog');
@@ -143,8 +120,6 @@ function updateConversationListPreview(notif) {
             const timeEl = entry.querySelector('.nim-dialog--date');
             if (timeEl) timeEl.textContent = timeStr;
         }
-        // В превью vkify16 показывается аватарка отправителя - у входящего это
-        // собеседник, обновляем её на пришедшую в уведомлении.
         if (notif.ava) {
             const avImg = entry.querySelector('.nim-dialog--who img');
             if (avImg) avImg.src = notif.ava;
@@ -195,8 +170,6 @@ async function setupNotificationListener() {
                 if (!isFirstRequest) {
                     const isOwnOpenChat = notif.kind === "message" && isViewingChatWith(notif.senderId);
 
-                    // Список диалогов обновляем всегда (если мы на /im), независимо
-                    // от того, подавляется ли тост - он сам no-op, если списка нет.
                     if (notif.kind === "message") {
                         updateConversationListPreview(notif);
                     }
@@ -247,10 +220,6 @@ async function setupNotificationListener() {
     await setupNotificationListener();
 })();
 
-// Браузер не даёт играть звук до первого взаимодействия пользователя со
-// страницей. Разблокируем звук уведомлений на ЛЮБОЕ взаимодействие (не только
-// click по body), причём в фазе capture - чтобы сработать даже если SPA-роутер
-// гасит всплытие события на ссылках (preventDefault/stopPropagation).
 (function() {
     function unlockNotifSound() {
         window.playNotifSound = window.__actualPlayNotifSound;

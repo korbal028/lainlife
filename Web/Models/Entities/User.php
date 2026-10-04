@@ -758,10 +758,6 @@ class User extends RowModel
 
     public function getUnreadMessagesCount(): int
     {
-        // Удаление сообщения - мягкое (deleted=1, см. MessengerPresenter::renderApiDeleteMessage),
-        // отправитель помечает его прочитанным некому: получатель открыть и
-        // прочитать удалённое сообщение больше не может, поэтому unread=1 так
-        // и остаётся навсегда, раздувая счётчик непрочитанных задним числом.
         return sizeof(DatabaseConnection::i()->getContext()->table("messages")->where(["recipient_id" => $this->getId(), "unread" => 1, "deleted" => 0]));
     }
 

@@ -88,9 +88,6 @@ final class CommentPresenter extends OpenVKPresenter
         $flags = 0;
         $asClubId = null;
         if ($this->postParam("as_group") === "on") {
-            // Приоритет у явно выбранной группы (пикер при нескольких группах);
-            // иначе - клуб самого контента (старое поведение: коммент под
-            // контентом своей группы без выбора).
             $chosenClub = null;
             $groupId = (int) $this->postParam("group_id");
             if ($groupId > 0) {
@@ -168,8 +165,6 @@ final class CommentPresenter extends OpenVKPresenter
 
         if ($entity->getOwner()->getId() !== $this->user->identity->getId()) {
             if (($owner = $entity->getOwner()) instanceof User) {
-                // Автор уведомления - getOwner() коммента: группа, если коммент
-                // оставлен от её имени, иначе реальный пользователь.
                 (new CommentNotification($owner, $comment, $entity, $comment->getOwner()))->emit();
             }
         }

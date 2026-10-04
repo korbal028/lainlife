@@ -186,9 +186,6 @@ function serializeForm(form, submitter = null)
 {
     const u_ = u(form)
     const inputNodes = u_.find('input, textarea, button, select').nodes.slice()
-    // Поля, связанные с формой через атрибут form="<id>", но лежащие вне её в DOM
-    // (например контент tippy-тултипа, вынесенный в body) - u(form).find() их не
-    // видит, а нативная отправка учла бы. Добавляем их вручную, как делает браузер.
     const formEl = u_.nodes[0]
     if(formEl && formEl.id) {
         try {

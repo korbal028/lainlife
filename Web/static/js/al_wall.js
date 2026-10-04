@@ -55,11 +55,6 @@ u(document).on('click', '.menu_toggler', (e) => {
     const post_buttons = $(e.target).closest('.post-buttons')
     const wall_attachment_menu = post_buttons.find('.wallAttachmentMenu')
     if(wall_attachment_menu.is('.hidden')) {
-        // У постов стоит overflow:hidden (обрезка/скругление контента), из-за чего
-        // абсолютно спозиционированное меню обрезалось по нижней границе поста.
-        // На десктопе позиционируем через position:fixed относительно самого триггера,
-        // чтобы меню рисовалось поверх остального контента, а не обрезалось постом.
-        // Мобильную раскладку (меню на всю ширину, см. mobile.css) не трогаем.
         _stopTrackingAttachMenuScroll();
         if(trigger && !window.matchMedia('(max-width: 770px)').matches) {
             const reposition = () => {
@@ -72,10 +67,6 @@ u(document).on('click', '.menu_toggler', (e) => {
                 });
             };
             reposition();
-            // position:fixed не следит за скроллом сам по себе (координаты
-            // вычислены один раз в момент клика) - без этого меню "отклеивалось"
-            // от кнопки при прокрутке страницы. capture:true нужен чтобы ловить
-            // scroll и у вложенных прокручиваемых контейнеров, не только у window.
             _attachMenuReposition = reposition;
             window.addEventListener('scroll', _attachMenuReposition, true);
             window.addEventListener('resize', _attachMenuReposition);
@@ -2033,24 +2024,12 @@ u(document).on('click', '.post.post-nsfw .post-content', (e) => {
 
 u(document).on('focusin', '#write', (e) => {
     const target = u(e.target).closest('#write')
-    // .attr('style', ...) заменяет весь атрибут style целиком, а не добавляет
-    // к нему свойство - это стирало инлайновый margin-top у .post-buttons
-    // (например margin-top:6px в мессенджере), и кнопки необратимо съезжали
-    // на эту величину при первом фокусе. У Umbrella.js нет .css(), поэтому
-    // трогаем style.display напрямую - это меняет только одно свойство.
     const postButtonsNode = target.find('.post-buttons').nodes[0]
     if (postButtonsNode) postButtonsNode.style.display = 'block'
     target.find('.small-textarea').addClass('expanded-textarea')
 })
 
-// Пикер группы для комментария "от имени сообщества" (когда у пользователя
-// несколько групп). Список групп лежит в window.__ovkManagedClubs (рендерится
-// один раз шаблоном textArea.latte). Открывает модалку движка, а не браузерный
-// диалог; выбор пишется в скрытое поле group_id формы и ставит галку as_group.
 function openCommentGroupPicker(gearEl) {
-    // Контейнер опций с чекбоксом, шестерёнкой и скрытым group_id. В vkify16 этот
-    // блок вынесен tippy в body (вне формы), поэтому ищем поля НЕ через форму, а
-    // внутри общего контейнера опций - это работает и в базовой теме, и в vkify16.
     const container = u(gearEl).closest('.post-opts, .comment-as-group-opts').nodes[0] || gearEl.parentElement;
     if (!container) return;
 
@@ -2060,8 +2039,6 @@ function openCommentGroupPicker(gearEl) {
     const hidden = container.querySelector('input.comment-as-group-id');
     const current = hidden ? hidden.value : String(clubs[0].id);
 
-    // Форма аватарки по настройке "Внешний вид" -> "Аватарки":
-    // 0 - произвольные (скруглённые), 1 - квадратные, 2 - круглые.
     const avatarStyle = window.openvk ? window.openvk.avatar_style : 0;
     const avatarRadius = avatarStyle === 1 ? '0' : (avatarStyle === 2 ? '50%' : '3px');
 

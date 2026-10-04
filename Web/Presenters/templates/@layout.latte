@@ -324,8 +324,6 @@
                             <a class="psa-poster-url" n:if="\OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['enable'] && $thisUser->getLeftMenuItemStatus('poster')" href="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['link']}" >
                                 <img src="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['src']}" alt="{php echo \OPENVK_ROOT_CONF['openvk']['preferences']['adPoster']['caption']}" class="psa-poster" style="max-width: 100%; margin-top: 10px;" />
                             </a>
-                            {* Ротация картинок (раз в 30с) идёт на стороне nvlk.dimden.dev,
-                               с нашей стороны это просто статичный iframe. *}
                             <div n:if="\OPENVK_ROOT_CONF['openvk']['preferences']['navLinkAds']['enable'] ?? false" style="margin-top: 10px;">
                                 <iframe src="https://nvlk.dimden.dev/" name="neolink" width="180" height="180" style="border: none; max-width: 100%;" loading="lazy" title="NavLink Ads"></iframe>
                             </div>
@@ -340,9 +338,6 @@
                                 <a class="psa-poster-url" id="psa-rotating-poster-link" href="{$__rpCurrent['link']}">
                                     <img id="psa-rotating-poster-img" src="{$__rpCurrent['src']}" alt="{$__rpCurrent['caption']}" class="psa-poster" style="max-width: 100%;" />
                                 </a>
-                                {* Данные для ротации на клиенте - сервер отрисовал текущий слот сразу
-                                   (без JS всё равно будет видно хоть что-то), а эта разметка только
-                                   переключает картинку каждые rotationInterval секунд, не дёргая бэкенд. *}
                                 <script type="application/json" id="psa-rotating-poster-data">{php echo json_encode(['interval' => $__rpInterval, 'items' => $__rpItems], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_HEX_TAG)}</script>
                                 <script>
                                 (function() {
@@ -363,10 +358,6 @@
                                         if (img)  { img.src = item.src; img.alt = item.caption; }
                                     }
 
-                                    // Подгоняем первое переключение под границу интервала (а не просто
-                                    // раз в interval секунд от момента загрузки страницы) - иначе у
-                                    // разных вкладок рассинхрон окажется в пределах interval секунд,
-                                    // в зависимости от момента захода на страницу.
                                     const msIntoSlot  = ((Date.now() / 1000) % interval) * 1000;
                                     const msToNextSlot = interval * 1000 - msIntoSlot;
                                     setTimeout(function() {

@@ -1,8 +1,3 @@
--- Миграция: Добавление таблиц для групповых чатов
--- Версия: 00062 (перенумерована с 00060 из-за коллизии с 00060-playlist-link.sql:
--- getMigrationFiles() индексирует по номеру, одинаковые номера затирают друг друга)
-
--- Таблица групповых чатов
 CREATE TABLE IF NOT EXISTS `group_chats` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `name` varchar(255) COLLATE utf8mb4_unicode_520_ci NOT NULL,
@@ -19,7 +14,6 @@ CREATE TABLE IF NOT EXISTS `group_chats` (
   KEY `deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
--- Таблица сообщений групповых чатов
 CREATE TABLE IF NOT EXISTS `group_messages` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `chat_id` bigint(20) UNSIGNED NOT NULL,
@@ -39,7 +33,6 @@ CREATE TABLE IF NOT EXISTS `group_messages` (
   KEY `deleted` (`deleted`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_520_ci;
 
--- Таблица вложений к сообщениям групповых чатов
 CREATE TABLE IF NOT EXISTS `group_msg_attachments` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `message` bigint(20) UNSIGNED NOT NULL,
