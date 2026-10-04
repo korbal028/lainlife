@@ -168,7 +168,9 @@ final class CommentPresenter extends OpenVKPresenter
 
         if ($entity->getOwner()->getId() !== $this->user->identity->getId()) {
             if (($owner = $entity->getOwner()) instanceof User) {
-                (new CommentNotification($owner, $comment, $entity, $this->user->identity))->emit();
+                // Автор уведомления - getOwner() коммента: группа, если коммент
+                // оставлен от её имени, иначе реальный пользователь.
+                (new CommentNotification($owner, $comment, $entity, $comment->getOwner()))->emit();
             }
         }
 

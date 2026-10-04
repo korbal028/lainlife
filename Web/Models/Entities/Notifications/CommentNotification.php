@@ -10,7 +10,9 @@ final class CommentNotification extends Notification
 {
     protected $actionCode = 2;
 
-    public function __construct(User $recipient, Comment $comment, $postable, User $commenter)
+    // $commenter без жёсткого типа: обычно User, но для коммента от имени группы
+    // сюда приходит Club (чтобы в уведомлении автором показывалась группа).
+    public function __construct(User $recipient, Comment $comment, $postable, $commenter)
     {
         parent::__construct($recipient, $postable, $commenter, time(), ovk_proc_strtr(strip_tags($comment->getText()), 400));
     }
