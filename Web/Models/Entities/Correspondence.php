@@ -72,7 +72,8 @@ class Correspondence
      */
     public function clearForOwner(): void
     {
-        [$cond, ...$params] = $this->getPairCondition();
+        $params = $this->getPairCondition();
+        $cond   = array_shift($params);
         $lastId = DatabaseConnection::i()->getConnection()->query("SELECT MAX(`id`) AS id FROM `messages` WHERE $cond", ...$params)->fetch()->id;
 
         (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], [
@@ -88,7 +89,8 @@ class Correspondence
      */
     public function deleteForAll(): void
     {
-        [$cond, ...$params] = $this->getPairCondition();
+        $params = $this->getPairCondition();
+        $cond   = array_shift($params);
         DatabaseConnection::i()->getConnection()->query("UPDATE `messages` SET `deleted` = 1, `edited` = ? WHERE `deleted` = 0 AND $cond", time(), ...$params);
 
         (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], [
@@ -357,13 +359,16 @@ class Correspondence
         $ids     = [$this->correspondents[0]->getId(), $this->correspondents[1]->getId()];
 
         if ($ids[0] !== $ids[1]) {
-            $event = new TypingEvent($ids[0]);
-            (SignalManager::i())->triggerEvent($event, $ids[1]);
-
             // читается MessengerPresenter::apiSync() при поллинге; централизовано здесь,
             // а не в веб-презентере, чтобы работало и для VKAPI messages.setActivity (Matcha и т.п.)
             if (function_exists("apcu_store")) {
                 apcu_store("typing:{$ids[0]}:{$ids[1]}", 1, 5);
+            }
+
+            try {
+                (SignalManager::i())->triggerEvent(new TypingEvent($ids[0]), $ids[1]);
+            } catch (\Throwable $e) {
+                error_log("Typing event error: " . $e->getMessage());
             }
         }
 
