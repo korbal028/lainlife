@@ -141,6 +141,8 @@
                     }
                 };
 
+                let openedMenu = null;
+
                 tippy.delegate(".crp-list", {
                     target: ".crp-entry--menu-dots",
                     animation: "up_down",
@@ -149,10 +151,18 @@
                     content: "",
                     allowHTML: true,
                     interactive: true,
-                    interactiveDebounce: 300,
+                    interactiveDebounce: 100,
+                    delay: [400, 0],
                     appendTo: () => document.body,
 
+                    onHidden(tip) {
+                        if(openedMenu === tip) openedMenu = null;
+                    },
+
                     onShow(tip) {
+                        if(openedMenu && openedMenu !== tip) openedMenu.hide();
+                        openedMenu = tip;
+
                         const entry = tip.reference.closest(".crp-entry");
                         const menu  = u(`
                             <div style="margin: -6px -10px;">

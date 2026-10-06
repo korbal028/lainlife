@@ -699,6 +699,6 @@ ul {
     background: #111322;
 }
 
-.crp-menu-tooltip .like_tooltip_body a:hover {
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a:hover {
     background: #272138;
 }

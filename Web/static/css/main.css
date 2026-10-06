@@ -1273,31 +1273,36 @@ table.User {
     display: block;
 }
 
-.crp-menu-tooltip .like_tooltip_head span {
-    max-width: 160px;
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_head {
+    width: 150px;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_head span {
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
-.crp-menu-tooltip .like_tooltip_body {
-    padding: 4px 0;
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body {
+    padding: 3px 0;
 }
 
-.crp-menu-tooltip .like_tooltip_body a {
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a {
     display: block;
     height: auto;
-    padding: 5px 10px;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 14px;
     cursor: pointer;
     white-space: nowrap;
 }
 
-.crp-menu-tooltip .like_tooltip_body a:hover {
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a:hover {
     background: #e1e7ed;
     text-decoration: none;
 }
 
-.crp-menu-tooltip .like_tooltip_body a.crp-menu-danger {
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a.crp-menu-danger {
     color: #c0392b;
 }
 
