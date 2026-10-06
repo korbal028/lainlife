@@ -1269,38 +1269,35 @@ table.User {
     color: #2b587a;
 }
 
-.crp-entry--menu-list {
-    display: none;
-    position: absolute;
-    right: 0;
-    top: 100%;
-    z-index: 10;
-    min-width: 180px;
-    padding: 4px 0;
-    background: #fff;
-    border: 1px solid #c5d0db;
-    border-radius: 3px;
-    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
-}
-
-.crp-entry--menu:hover .crp-entry--menu-list {
+.crp-entry--menu:has([aria-expanded="true"]) {
     display: block;
 }
 
-.crp-entry--menu-list a {
-    display: block;
-    padding: 5px 12px;
-    color: #2b587a;
+.crp-menu-tooltip .like_tooltip_head span {
+    max-width: 160px;
+    overflow: hidden;
     white-space: nowrap;
-    cursor: pointer;
+    text-overflow: ellipsis;
 }
 
-.crp-entry--menu-list a:hover {
+.crp-menu-tooltip .like_tooltip_body {
+    padding: 4px 0;
+}
+
+.crp-menu-tooltip .like_tooltip_body a {
+    display: block;
+    height: auto;
+    padding: 5px 10px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.crp-menu-tooltip .like_tooltip_body a:hover {
     background: #e1e7ed;
     text-decoration: none;
 }
 
-.crp-entry--menu-list a.crp-entry--menu-danger {
+.crp-menu-tooltip .like_tooltip_body a.crp-menu-danger {
     color: #c0392b;
 }
 

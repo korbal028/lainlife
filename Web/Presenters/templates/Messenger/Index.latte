@@ -61,12 +61,6 @@
                 </div>
                 <div class="crp-entry--menu" onmousedown="event.stopPropagation();">
                     <div class="crp-entry--menu-dots">&#8943;</div>
-                    <div class="crp-entry--menu-list">
-                        <a data-act="{$settings['pinned'] ? 'unpin' : 'pin'}">{$settings['pinned'] ? tr("messenger_unpin_chat") : tr("messenger_pin_chat")}</a>
-                        <a data-act="archive">{_messenger_archive_chat}</a>
-                        <a data-act="{$settings['muted'] ? 'unmute' : 'mute'}">{$settings['muted'] ? tr("messenger_unmute_chat") : tr("messenger_mute_chat")}</a>
-                        <a data-act="delete" class="crp-entry--menu-danger">{_messenger_delete_chat}</a>
-                    </div>
                 </div>
             </div>
             {/foreach}
@@ -81,6 +75,7 @@
                     unpin:        {tr("messenger_unpin_chat")},
                     mute:         {tr("messenger_mute_chat")},
                     unmute:       {tr("messenger_unmute_chat")},
+                    archive:      {tr("messenger_archive_chat")},
                     deleteTitle:  {tr("messenger_delete_chat")},
                     deleteText:   {tr("messenger_delete_chat_confirm", '%NAME%')},
                     deleteForAll: {tr("messenger_delete_chat_for_all", '%NAME%')},
@@ -120,12 +115,15 @@
                     }, Function.noop]);
                 };
 
-                document.querySelectorAll(".crp-entry--menu-list a").forEach(link => link.addEventListener("click", async e => {
-                    e.preventDefault();
-                    e.stopPropagation();
+                const menuItems = entry => [
+                    entry.classList.contains("pinned") ? ["unpin", strings.unpin] : ["pin", strings.pin],
+                    ["archive", strings.archive],
+                    entry.classList.contains("muted") ? ["unmute", strings.unmute] : ["mute", strings.mute],
+                    ["delete", strings.deleteTitle],
+                ];
 
-                    const entry = link.closest(".crp-entry");
-                    const act   = link.dataset.act;
+                const onAction = async (entry, act, tip) => {
+                    tip.hide();
                     if(act === "delete") return askDelete(entry);
 
                     try {
@@ -139,12 +137,46 @@
                     } else if(act === "archive") {
                         entry.remove();
                     } else {
-                        const muted = act === "mute";
-                        entry.classList.toggle("muted", muted);
-                        link.dataset.act   = muted ? "unmute" : "mute";
-                        link.textContent   = muted ? strings.unmute : strings.mute;
+                        entry.classList.toggle("muted", act === "mute");
                     }
-                }));
+                };
+
+                tippy.delegate(".crp-list", {
+                    target: ".crp-entry--menu-dots",
+                    animation: "up_down",
+                    theme: "special vk",
+                    placement: "bottom-end",
+                    content: "",
+                    allowHTML: true,
+                    interactive: true,
+                    interactiveDebounce: 300,
+                    appendTo: () => document.body,
+
+                    onShow(tip) {
+                        const entry = tip.reference.closest(".crp-entry");
+                        const menu  = u(`
+                            <div style="margin: -6px -10px;">
+                                <div class="like_tooltip_wrapper crp-menu-tooltip">
+                                    <div class="like_tooltip_head"><span></span></div>
+                                    <div class="like_tooltip_body"></div>
+                                </div>
+                            </div>
+                        `);
+                        menu.find(".like_tooltip_head span").text(entry.dataset.name);
+
+                        menuItems(entry).forEach(([act, text]) => {
+                            const link = u(`<a></a>`).text(text);
+                            if(act === "delete") link.addClass("crp-menu-danger");
+                            link.on("click", e => {
+                                e.preventDefault();
+                                onAction(entry, act, tip);
+                            });
+                            menu.find(".like_tooltip_body").append(link);
+                        });
+
+                        tip.setContent(menu.first());
+                    },
+                });
             })();
         </script>
     {else}
