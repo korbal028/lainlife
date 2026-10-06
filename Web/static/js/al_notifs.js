@@ -105,7 +105,14 @@ function updateConversationListPreview(notif) {
         const msgBlock = entry.querySelector('.crp-entry--message');
         if (msgBlock) msgBlock.classList.add('unread');
 
-        baseList.prepend(entry);
+        // закреплённые чаты остаются сверху
+        const pinned = baseList.querySelectorAll('.crp-entry.pinned');
+        const lastPinned = pinned[pinned.length - 1];
+        if (entry.classList.contains('pinned') || !lastPinned) {
+            baseList.prepend(entry);
+        } else if (lastPinned !== entry) {
+            lastPinned.after(entry);
+        }
         return;
     }
 

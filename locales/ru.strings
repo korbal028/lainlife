@@ -1347,6 +1347,17 @@
 "search_messages" = "Поиск сообщений";
 "no_messages" = "Никто Вам не писал, пока что.";
 "saved_messages" = "Избранное";
+"messenger_pin_chat" = "Закрепить чат";
+"messenger_unpin_chat" = "Открепить чат";
+"messenger_archive_chat" = "Архивировать чат";
+"messenger_mute_chat" = "Отключить уведомления";
+"messenger_unmute_chat" = "Включить уведомления";
+"messenger_delete_chat" = "Удалить чат";
+"messenger_delete_chat_confirm" = "Вы уверены, что хотите удалить чат с <b>$1</b>? Это действие невозможно отменить.";
+"messenger_delete_chat_for_all" = "Также удалить для $1";
+"messenger_chat_pinned" = "Чат закреплён";
+"messenger_chat_muted" = "Уведомления отключены";
+"messenger_chat_action_error" = "Не удалось выполнить действие с чатом.";
 "messages_blocked" = "Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.";
 "enter_message" = "Введите сообщение";
 "messages_error_1" = "Сообщение не доставлено";

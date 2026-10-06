@@ -291,6 +291,8 @@ routes:
       handler: "Messenger->apiForwardMessage"
     - url: "/im/api/dialogs.json"
       handler: "Messenger->apiGetDialogs"
+    - url: "/im/api/dialogs/action.json"
+      handler: "Messenger->apiDialogAction"
     - url: "/search"
       handler: "Search->index"
     - url: "/search/content"

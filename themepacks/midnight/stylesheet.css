@@ -698,3 +698,16 @@ ul {
 .header_navigation #search_box #searchBoxFastTips a:hover, .header_navigation #search_box #searchBoxFastTips a:focus {
     background: #111322;
 }
+
+.crp-entry--menu-list {
+    background: #1d192b;
+    border-color: #2c2640;
+}
+
+.crp-entry--menu-list a {
+    color: #c6d2e8;
+}
+
+.crp-entry--menu-list a:hover {
+    background: #272138;
+}

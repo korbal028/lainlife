@@ -1416,6 +1416,17 @@
 "search_messages" = "Search messages";
 "no_messages" = "No one has written to you yet.";
 "saved_messages" = "Favorites";
+"messenger_pin_chat" = "Pin chat";
+"messenger_unpin_chat" = "Unpin chat";
+"messenger_archive_chat" = "Archive chat";
+"messenger_mute_chat" = "Mute notifications";
+"messenger_unmute_chat" = "Unmute notifications";
+"messenger_delete_chat" = "Delete chat";
+"messenger_delete_chat_confirm" = "Are you sure you want to delete the chat with <b>$1</b>? This action cannot be undone.";
+"messenger_delete_chat_for_all" = "Also delete for $1";
+"messenger_chat_pinned" = "Chat pinned";
+"messenger_chat_muted" = "Notifications muted";
+"messenger_chat_action_error" = "Failed to perform the chat action.";
 "messages_blocked" = "Unfortunately, your message cannot be sent due to this user's privacy settings.";
 "enter_message" = "Enter message";
 "message_user_typing" = "$1 is typing a message...";

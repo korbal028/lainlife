@@ -1215,6 +1215,95 @@ table.User {
     background-color: #f9f9f9;
 }
 
+.crp-entry {
+    position: relative;
+}
+
+.crp-entry--status {
+    position: absolute;
+    top: 8px;
+    right: 30px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.crp-entry--status img {
+    width: 12px;
+    height: 12px;
+    opacity: .6;
+}
+
+.crp-entry--muted-icon {
+    display: none;
+    width: 12px;
+    height: 12px;
+    opacity: .6;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23808080' d='M2 5.5h3L9 2v12l-4-3.5H2z'/%3E%3Cpath stroke='%23808080' stroke-width='1.5' d='M11 5.5l4 5M15 5.5l-4 5'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+.crp-entry.muted .crp-entry--muted-icon {
+    display: block;
+}
+
+.crp-entry--menu {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    display: none;
+}
+
+.crp-entry:hover .crp-entry--menu {
+    display: block;
+}
+
+.crp-entry--menu-dots {
+    padding: 0 4px;
+    font-size: 18px;
+    line-height: 18px;
+    color: #808080;
+    border-radius: 3px;
+}
+
+.crp-entry--menu:hover .crp-entry--menu-dots {
+    color: #2b587a;
+}
+
+.crp-entry--menu-list {
+    display: none;
+    position: absolute;
+    right: 0;
+    top: 100%;
+    z-index: 10;
+    min-width: 180px;
+    padding: 4px 0;
+    background: #fff;
+    border: 1px solid #c5d0db;
+    border-radius: 3px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
+.crp-entry--menu:hover .crp-entry--menu-list {
+    display: block;
+}
+
+.crp-entry--menu-list a {
+    display: block;
+    padding: 5px 12px;
+    color: #2b587a;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.crp-entry--menu-list a:hover {
+    background: #e1e7ed;
+    text-decoration: none;
+}
+
+.crp-entry--menu-list a.crp-entry--menu-danger {
+    color: #c0392b;
+}
+
 .crp-entry:first-of-type {
     border-top: 1px solid #d6d6d6;
 }
@@ -1324,7 +1413,7 @@ table.User {
     padding: 10px;
 }
 
-/* продолжение серии сообщений от одного отправителя: без аватарки и имени */
+/* сообщение в серии */
 .messenger-app--messages---message.grouped {
     margin-top: -3px;
     padding-top: 2px;

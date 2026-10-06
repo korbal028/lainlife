@@ -11,7 +11,7 @@ use openvk\Web\Events\{NewMessageEvent, TypingEvent};
 use openvk\Web\Models\Entities\Message;
 use openvk\Web\Models\Entities\User;
 use openvk\Web\Models\RowModel;
-use openvk\Web\Models\Repositories\Users;
+use openvk\Web\Models\Repositories\{Users, MessengerDialogs};
 use openvk\Web\Util\NotificationBroker;
 use Nette\Database\Table\ActiveRow;
 
@@ -47,6 +47,54 @@ class Correspondence
     {
         $this->correspondents = [$correspondent, $anotherCorrespondent];
         $this->messages       = DatabaseConnection::i()->getContext()->table("messages");
+    }
+
+    private ?int $clearedTill = null;
+
+    private function getClearedTill(): int
+    {
+        return $this->clearedTill ??= (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["cleared_till"];
+    }
+
+    private function getPairCondition(): array
+    {
+        return [
+            "((`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?) OR (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?))",
+            get_class($this->correspondents[0]), get_class($this->correspondents[1]),
+            $this->correspondents[0]->getId(), $this->correspondents[1]->getId(),
+            get_class($this->correspondents[1]), get_class($this->correspondents[0]),
+            $this->correspondents[1]->getId(), $this->correspondents[0]->getId(),
+        ];
+    }
+
+    /**
+     * Скрыть всю переписку у первого корреспондента (удаление "только для себя").
+     */
+    public function clearForOwner(): void
+    {
+        [$cond, ...$params] = $this->getPairCondition();
+        $lastId = DatabaseConnection::i()->getConnection()->query("SELECT MAX(`id`) AS id FROM `messages` WHERE $cond", ...$params)->fetch()->id;
+
+        (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], [
+            "cleared_till" => (int) $lastId,
+            "pinned"       => 0,
+            "archived"     => 0,
+        ]);
+        $this->clearedTill = (int) $lastId;
+    }
+
+    /**
+     * Удалить всю переписку у обоих корреспондентов.
+     */
+    public function deleteForAll(): void
+    {
+        [$cond, ...$params] = $this->getPairCondition();
+        DatabaseConnection::i()->getConnection()->query("UPDATE `messages` SET `deleted` = 1, `edited` = ? WHERE `deleted` = 0 AND $cond", time(), ...$params);
+
+        (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], [
+            "pinned"   => 0,
+            "archived" => 0,
+        ]);
     }
 
     /**
@@ -92,6 +140,10 @@ class Correspondence
     public function getMessages(int $capBehavior = 1, ?int $cap = null, ?int $limit = null, ?int $padding = null, bool $reverse = false): array
     {
         $query  = file_get_contents(__DIR__ . "/../sql/get-messages.tsql");
+        if ($this->getClearedTill() > 0) {
+            $query = str_replace("(`deleted` = 0)", "(`deleted` = 0)\n  AND (`id` > " . $this->getClearedTill() . ")", $query);
+        }
+
         $params = [
             [get_class($this->correspondents[0]), get_class($this->correspondents[1])],
             [$this->correspondents[0]->getId(), $this->correspondents[1]->getId()],
@@ -145,6 +197,7 @@ class Correspondence
         $msgs = $connection->query(
             "SELECT * FROM `messages`
              WHERE (`edited` > ?)
+               AND (`id` > ?)
                AND (
                  (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
                  OR
@@ -152,6 +205,7 @@ class Correspondence
                )
              ORDER BY `edited` ASC",
             $since,
+            $this->getClearedTill(),
             get_class($this->correspondents[0]), get_class($this->correspondents[1]),
             $this->correspondents[0]->getId(), $this->correspondents[1]->getId(),
             get_class($this->correspondents[1]), get_class($this->correspondents[0]),
@@ -261,6 +315,11 @@ class Correspondence
 
         $sender = $message->getSender();
         if (!$sender) {
+            return;
+        }
+
+        $recipient = $message->getRecipient();
+        if ($recipient && (new MessengerDialogs())->get($recipient, $sender)["muted"]) {
             return;
         }
 

@@ -219,9 +219,7 @@
     
     {script "js/node_modules/knockout/build/output/knockout-latest.js"}
     <script>
-        // Как в ВК: аватарка и имя показываются только у первого сообщения в серии
-        // от одного отправителя. Если между сообщениями прошло больше MSG_GROUP_INTERVAL
-        // секунд — начинается новая серия.
+        // группировка сообщений подряд от одного отправителя
         const MSG_GROUP_INTERVAL = 10 * 60;
         window.isMsgGrouped = index => {
             let msgs = window.messages();

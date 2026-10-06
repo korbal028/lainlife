@@ -9,7 +9,7 @@ use openvk\Web\Events\NewMessageEvent;
 use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Events\ForwardMessageEvent;
-use openvk\Web\Models\Repositories\{Users, Clubs, Messages};
+use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs};
 use openvk\Web\Models\Entities\{Message, Correspondence};
 
 final class MessengerPresenter extends OpenVKPresenter
@@ -51,6 +51,7 @@ final class MessengerPresenter extends OpenVKPresenter
         // бля
 
         $this->template->corresps = $correspondences;
+        $this->template->dialogSettings = (new MessengerDialogs())->getAllFor($this->user->identity);
         $this->template->paginatorConf = (object) [
             "count"   => $this->messages->getCorrespondenciesCount($this->user->identity),
             "page"    => (int) ($_GET["p"] ?? 1),
@@ -397,6 +398,61 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
 
         header("HTTP/1.1 200 OK");
+        header("Content-Type: application/json");
+        exit(json_encode(["success" => true]));
+    }
+
+    public function renderApiDialogAction(): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction(true);
+
+        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            exit();
+        }
+
+        $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $dialogs = new MessengerDialogs();
+        $me      = $this->user->identity;
+
+        switch ($this->postParam("act")) {
+            case "pin":
+                $dialogs->set($me, $correspondent, ["pinned" => 1, "archived" => 0]);
+                break;
+            case "unpin":
+                $dialogs->set($me, $correspondent, ["pinned" => 0]);
+                break;
+            case "archive":
+                $dialogs->set($me, $correspondent, ["archived" => 1, "pinned" => 0]);
+                break;
+            case "unarchive":
+                $dialogs->set($me, $correspondent, ["archived" => 0]);
+                break;
+            case "mute":
+                $dialogs->set($me, $correspondent, ["muted" => 1]);
+                break;
+            case "unmute":
+                $dialogs->set($me, $correspondent, ["muted" => 0]);
+                break;
+            case "delete":
+                $cor = new Correspondence($me, $correspondent);
+                if ($this->postParam("for_all") === "1" && $correspondent->getId() !== $me->getId()) {
+                    $cor->deleteForAll();
+                } else {
+                    $cor->clearForOwner();
+                }
+                break;
+            default:
+                header("HTTP/1.1 400 Bad Request");
+                exit();
+        }
+
         header("Content-Type: application/json");
         exit(json_encode(["success" => true]));
     }
