@@ -702,3 +702,11 @@ ul {
 .like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a:hover {
     background: #272138;
 }
+
+.like_tooltip_wrapper.crp-menu-tooltip::before {
+    border-bottom-color: #2c2640;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    border-bottom-color: #1e1a2b;
+}

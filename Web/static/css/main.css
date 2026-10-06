@@ -1279,6 +1279,30 @@ table.User {
     min-width: 150px;
 }
 
+/* стрелка к троеточию */
+.like_tooltip_wrapper.crp-menu-tooltip {
+    position: relative;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::before,
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    border: 6px solid transparent;
+    border-top: 0;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::before {
+    top: -6px;
+    border-bottom-color: #878787;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    top: -5px;
+    border-bottom-color: #fff;
+}
+
 .like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a {
     display: block;
     height: auto;
