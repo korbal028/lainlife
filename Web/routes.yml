@@ -271,6 +271,8 @@ routes:
       handler: "Topics->delete"
     - url: "/im"
       handler: "Messenger->index"
+    - url: "/im/archive"
+      handler: "Messenger->archive"
     - url: "/im/sel{num}"
       handler: "Messenger->app"
     - url: "/nim{num}"

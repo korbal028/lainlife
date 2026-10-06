@@ -45,15 +45,27 @@ final class MessengerPresenter extends OpenVKPresenter
             $this->pass("openvk!Messenger->app", $_GET["sel"]);
         }
 
+        $this->renderList(false);
+    }
+
+    public function renderArchive(): void
+    {
+        $this->assertUserLoggedIn();
+
+        $this->template->_template = "Messenger/Index.latte";
+        $this->renderList(true);
+    }
+
+    private function renderList(bool $archived): void
+    {
         $page = (int) ($_GET["p"] ?? 1);
-        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page));
+        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page, null, null, $archived));
 
-        // бля
-
+        $this->template->isArchive = $archived;
         $this->template->corresps = $correspondences;
         $this->template->dialogSettings = (new MessengerDialogs())->getAllFor($this->user->identity);
         $this->template->paginatorConf = (object) [
-            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity),
+            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
             "page"    => (int) ($_GET["p"] ?? 1),
             "amount"  => sizeof($this->template->corresps),
             "perPage" => OPENVK_DEFAULT_PER_PAGE,

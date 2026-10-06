@@ -1358,6 +1358,9 @@
 "messenger_chat_pinned" = "Чат закреплён";
 "messenger_chat_muted" = "Уведомления отключены";
 "messenger_chat_action_error" = "Не удалось выполнить действие с чатом.";
+"messenger_archive" = "Архив";
+"messenger_unarchive_chat" = "Разархивировать чат";
+"messenger_archive_empty" = "В архиве нет чатов.";
 "messages_blocked" = "Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.";
 "enter_message" = "Введите сообщение";
 "messages_error_1" = "Сообщение не доставлено";
