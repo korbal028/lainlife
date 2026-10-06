@@ -1415,6 +1415,7 @@
 
 "search_messages" = "Search messages";
 "no_messages" = "No one has written to you yet.";
+"saved_messages" = "Favorites";
 "messages_blocked" = "Unfortunately, your message cannot be sent due to this user's privacy settings.";
 "enter_message" = "Enter message";
 "message_user_typing" = "$1 is typing a message...";

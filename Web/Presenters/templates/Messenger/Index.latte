@@ -21,19 +21,29 @@
                  onmousedown="window.location.assign({$coresp->getURL()});" >
                 {var $recipient = $coresp->getCorrespondents()[1]}
                 {var $lastMsg   = $coresp->getPreviewMessage()}
+                {var $isSaved   = $recipient->getId() === $thisUser->getId()}
 
                 <div class="crp-entry--image">
-                    <img src="{$recipient->getAvatarURL('miniscule')}"
-                    alt="Фотография пользователя" loading=lazy />
+                    {if $isSaved}
+                        <img src="/assets/packages/static/openvk/img/im/saved_messages.png"
+                        alt="{_saved_messages}" loading=lazy />
+                    {else}
+                        <img src="{$recipient->getAvatarURL('miniscule')}"
+                        alt="Фотография пользователя" loading=lazy />
+                    {/if}
                 </div>
                 <div class="crp-entry--info">
-                    <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
+                    {if $isSaved}
+                        <a href="{$coresp->getURL()}">{_saved_messages}</a><br/>
+                    {else}
+                        <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
+                    {/if}
                     <span>{$lastMsg->getSendTimeHumanized()}</span>
                 </div>
-                <div n:class="crp-entry--message, $lastMsg->getUnreadState() ? unread">
+                <div n:class="crp-entry--message, !$isSaved && $lastMsg->getUnreadState() ? unread">
                     {var $_author = $lastMsg->getSender()}
 
-                    <div class="crp-entry--message---av" n:if="$_author->getId() === $thisUser->getId()">
+                    <div class="crp-entry--message---av" n:if="!$isSaved && $_author->getId() === $thisUser->getId()">
                         <img src="{$_author->getAvatarURL('miniscule')}"
                         alt="Фотография пользователя" />
                     </div>

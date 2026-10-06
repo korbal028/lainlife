@@ -1,11 +1,15 @@
 {extends "../@layout.latte"}
-{block title}{$correspondent->getCanonicalName()}{/block}
+{block title}{if $correspondent->getId() === $thisUser->getId()}{_saved_messages}{else}{$correspondent->getCanonicalName()}{/if}{/block}
 
 {block header}
     
 <a href="/im">{_my_messages}</a> »
+{if $correspondent->getId() === $thisUser->getId()}
+    {_saved_messages}
+{else}
 <a href="{$correspondent->getURL()}">{$correspondent->getCanonicalName()}</a>    
-    <div n:if="($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" style="float: right;">
+{/if}
+    <div n:if="$correspondent->getId() !== $thisUser->getId() && ($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" style="float: right;">
         {var $diff = date_diff(date_create(), date_create('@' . $online))}
         {if 5 >= $diff->i}
             <span><b>{_online}</b></span>
