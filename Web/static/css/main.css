@@ -1219,6 +1219,30 @@ table.User {
     position: relative;
 }
 
+.crp-entry.pinned {
+    cursor: grab;
+}
+
+.crp-list.crp-dragging {
+    user-select: none;
+}
+
+.crp-list.crp-dragging .crp-entry.pinned {
+    transition: transform .15s ease;
+}
+
+.crp-list.crp-dragging .crp-entry.dragging {
+    cursor: grabbing;
+    z-index: 5;
+    transition: none;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+
+.crp-list.crp-dragging .crp-entry.dropping {
+    z-index: 5;
+}
+
 .crp-entry--status {
     position: absolute;
     top: 8px;

@@ -424,18 +424,31 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
+        $dialogs = new MessengerDialogs();
+        $me      = $this->user->identity;
+
+        if ($this->postParam("act") === "reorder") {
+            $position = 1;
+            foreach (explode(",", (string) $this->postParam("order")) as $sel) {
+                $peer = $this->getCorrespondent((int) $sel);
+                if ($peer && $dialogs->get($me, $peer)["pinned"] > 0) {
+                    $dialogs->set($me, $peer, ["pinned" => $position++]);
+                }
+            }
+
+            header("Content-Type: application/json");
+            exit(json_encode(["success" => true]));
+        }
+
         $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
         if (!$correspondent) {
             header("HTTP/1.1 404 Not Found");
             exit();
         }
 
-        $dialogs = new MessengerDialogs();
-        $me      = $this->user->identity;
-
         switch ($this->postParam("act")) {
             case "pin":
-                $dialogs->set($me, $correspondent, ["pinned" => 1, "archived" => 0]);
+                $dialogs->pinToTop($me, $correspondent);
                 break;
             case "unpin":
                 $dialogs->set($me, $correspondent, ["pinned" => 0]);

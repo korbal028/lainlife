@@ -29,7 +29,7 @@
                  data-sel="{$coresp->getID()}"
                  data-name="{$isSaved ? tr('saved_messages') : $recipient->getCanonicalName()}"
                  data-self="{(int) $isSaved}"
-                 onmousedown="window.location.assign({$coresp->getURL()});" >
+                 onmousedown="if(!this.classList.contains('pinned')) window.location.assign({$coresp->getURL()});" >
 
                 <div class="crp-entry--image">
                     {if $isSaved}
@@ -88,12 +88,13 @@
                     cancelBtn:    {tr("cancel")},
                 };
 
-                const sendAction = async (sel, act, forAll = false) => {
+                const sendAction = async (sel, act, forAll = false, extra = {}) => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
                     fd.set("sel", sel);
                     fd.set("act", act);
                     fd.set("for_all", forAll ? "1" : "0");
+                    Object.entries(extra).forEach(([k, v]) => fd.set(k, v));
 
                     const res = await fetch("/im/api/dialogs/action.json", { method: "POST", body: fd });
                     if(!res.ok) throw new Error(res.status);
@@ -184,6 +185,109 @@
                         tip.setContent(menu.first());
                     },
                 });
+
+                // перетаскивание закреплённых чатов
+                const list = document.querySelector(".crp-list");
+                let drag = null;
+                let justDragged = false;
+
+                const pinnedEntries = () => [...list.querySelectorAll(".crp-entry.pinned")];
+
+                list.addEventListener("pointerdown", e => {
+                    const entry = e.target.closest(".crp-entry.pinned");
+                    if(!entry || e.button !== 0 || e.pointerType === "touch" || e.target.closest(".crp-entry--menu")) return;
+
+                    e.preventDefault();
+                    const entries = pinnedEntries();
+                    drag = {
+                        entry,
+                        entries,
+                        rects:  entries.map(el => el.getBoundingClientRect()),
+                        start:  entries.indexOf(entry),
+                        target: entries.indexOf(entry),
+                        startY: e.clientY,
+                        moved:  false,
+                    };
+                    entry.setPointerCapture(e.pointerId);
+                });
+
+                list.addEventListener("pointermove", e => {
+                    if(!drag) return;
+
+                    let dy = e.clientY - drag.startY;
+                    if(!drag.moved) {
+                        if(Math.abs(dy) < 5) return;
+                        drag.moved = true;
+                        list.classList.add("crp-dragging");
+                        drag.entry.classList.add("dragging");
+                    }
+
+                    const { rects, start } = drag;
+                    const own = rects[start];
+                    dy = Math.max(rects[0].top - own.top, Math.min(rects[rects.length - 1].bottom - own.bottom, dy));
+                    drag.entry.style.transform = `translateY(${ dy }px)`;
+
+                    const center = own.top + own.height / 2 + dy;
+                    drag.target = rects.filter((r, i) => i !== start && r.top + r.height / 2 < center).length;
+
+                    drag.entries.forEach((el, i) => {
+                        if(i === start) return;
+
+                        let shift = 0;
+                        if(i > start && i <= drag.target) shift = -own.height;
+                        if(i < start && i >= drag.target) shift = own.height;
+                        el.style.transform = shift ? `translateY(${ shift }px)` : "";
+                    });
+                });
+
+                const finishDrag = () => {
+                    if(!drag) return;
+
+                    const { entry, entries, rects, start, target, moved } = drag;
+                    drag = null;
+
+                    if(!moved) return;
+
+                    justDragged = true;
+                    setTimeout(() => justDragged = false, 300);
+
+                    const own = rects[start];
+                    const finalY = target > start
+                        ? rects[target].bottom - own.bottom
+                        : rects[target].top - own.top;
+
+                    entry.classList.remove("dragging");
+                    entry.classList.add("dropping");
+                    entry.style.transform = `translateY(${ finalY }px)`;
+
+                    setTimeout(() => {
+                        list.classList.remove("crp-dragging");
+                        entry.classList.remove("dropping");
+                        entries.forEach(el => el.style.transform = "");
+
+                        if(target === start) return;
+
+                        const anchor = entries[target];
+                        target > start ? anchor.after(entry) : anchor.before(entry);
+
+                        sendAction(0, "reorder", false, {
+                            order: pinnedEntries().map(el => el.dataset.sel).join(","),
+                        }).catch(fail);
+                    }, 150);
+                };
+
+                list.addEventListener("click", e => {
+                    const entry = e.target.closest(".crp-entry.pinned");
+                    if(!entry || e.target.closest(".crp-entry--menu")) return;
+
+                    e.preventDefault();
+                    if(justDragged) return;
+
+                    location.assign(entry.dataset.imUrl);
+                }, true);
+
+                list.addEventListener("pointerup", finishDrag);
+                list.addEventListener("pointercancel", finishDrag);
             })();
         </script>
     {else}

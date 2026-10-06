@@ -2,7 +2,8 @@ SELECT
   dt.id,
   dt.class,
   MAX(dt.time) AS time,
-  COALESCE(MAX(d.pinned), 0) AS pinned
+  COALESCE(MAX(d.pinned), 0) AS pinned,
+  COALESCE(MAX(d.pinned), 0) = 0 AS unpinned
 FROM
 (
   (
@@ -46,7 +47,8 @@ GROUP BY
   dt.id,
   dt.class
 ORDER BY
-  pinned DESC,
+  unpinned ASC,
+  pinned ASC,
   time DESC
 LIMIT
   ?

@@ -61,6 +61,17 @@ class MessengerDialogs
         return $result;
     }
 
+    public function pinToTop(RowModel $owner, RowModel $peer): void
+    {
+        $this->connection->query(
+            "UPDATE `messenger_dialogs` SET `pinned` = `pinned` + 1 WHERE `owner_type` = ? AND `owner_id` = ? AND `pinned` > 0",
+            get_class($owner),
+            $owner->getId()
+        );
+
+        $this->set($owner, $peer, ["pinned" => 1, "archived" => 0]);
+    }
+
     public function set(RowModel $owner, RowModel $peer, array $fields): void
     {
         $fields = array_intersect_key($fields, self::DEFAULTS);
