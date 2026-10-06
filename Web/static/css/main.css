@@ -1258,6 +1258,7 @@ table.User {
 }
 
 .crp-entry--menu-dots {
+    cursor: pointer;
     padding: 0 4px;
     font-size: 18px;
     line-height: 18px;
@@ -1273,18 +1274,9 @@ table.User {
     display: block;
 }
 
-.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_head {
-    width: 150px;
-}
-
-.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_head span {
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
 .like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body {
     padding: 3px 0;
+    min-width: 150px;
 }
 
 .like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a {

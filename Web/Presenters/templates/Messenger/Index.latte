@@ -141,8 +141,6 @@
                     }
                 };
 
-                let openedMenu = null;
-
                 tippy.delegate(".crp-list", {
                     target: ".crp-entry--menu-dots",
                     animation: "up_down",
@@ -151,28 +149,19 @@
                     content: "",
                     allowHTML: true,
                     interactive: true,
-                    interactiveDebounce: 100,
-                    delay: [400, 0],
+                    trigger: "click",
+                    arrow: false,
                     appendTo: () => document.body,
 
-                    onHidden(tip) {
-                        if(openedMenu === tip) openedMenu = null;
-                    },
-
                     onShow(tip) {
-                        if(openedMenu && openedMenu !== tip) openedMenu.hide();
-                        openedMenu = tip;
-
                         const entry = tip.reference.closest(".crp-entry");
                         const menu  = u(`
                             <div style="margin: -6px -10px;">
                                 <div class="like_tooltip_wrapper crp-menu-tooltip">
-                                    <div class="like_tooltip_head"><span></span></div>
                                     <div class="like_tooltip_body"></div>
                                 </div>
                             </div>
                         `);
-                        menu.find(".like_tooltip_head span").text(entry.dataset.name);
 
                         menuItems(entry).forEach(([act, text]) => {
                             const link = u(`<a></a>`).text(text);
