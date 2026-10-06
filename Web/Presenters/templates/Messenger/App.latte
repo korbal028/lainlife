@@ -23,12 +23,14 @@
     <div class="messenger-app">
         <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
             <div data-bind="foreach: messages">
-                <div class="messenger-app--messages---message" data-bind="css: { unread: !read }">
+                <div class="messenger-app--messages---message" data-bind="css: { unread: !read, grouped: window.isMsgGrouped($index()) }">
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
                     <div class="_content">
+                        <!-- ko ifnot: window.isMsgGrouped($index()) -->
                         <a href="#" data-bind="attr: { href: sender.link }">
                             <strong data-bind="text: sender.name"></strong>
                         </a>
+                        <!-- /ko -->
                         <span class="text" data-bind="html: text"></span>
                         <!-- ko if: typeof forwarded !== 'undefined' && forwarded !== null -->
                         <div class="msg-forwarded" style="border-left: 3px solid #3c3949; margin: 5px 0; padding: 5px 8px; background: rgba(60,57,73, 0.1);">
@@ -217,6 +219,21 @@
     
     {script "js/node_modules/knockout/build/output/knockout-latest.js"}
     <script>
+        // Как в ВК: аватарка и имя показываются только у первого сообщения в серии
+        // от одного отправителя. Если между сообщениями прошло больше MSG_GROUP_INTERVAL
+        // секунд — начинается новая серия.
+        const MSG_GROUP_INTERVAL = 10 * 60;
+        window.isMsgGrouped = index => {
+            let msgs = window.messages();
+            if(index < 1 || index >= msgs.length) return false;
+
+            let prev = msgs[index - 1], cur = msgs[index];
+            if(prev.sender.id !== cur.sender.id) return false;
+            if(typeof prev.timing.ts !== "number" || typeof cur.timing.ts !== "number") return false;
+
+            return (cur.timing.ts - prev.timing.ts) < MSG_GROUP_INTERVAL;
+        };
+
         function MessengerViewModel(initialMessages = []) {
             window.messages     = ko.observableArray(initialMessages);
             this.messages       = window.messages;
@@ -426,6 +443,7 @@
                     },
                     "timing": {
                         "sent": window.API.Service.getTime(),
+                        "ts": Math.floor(Date.now() / 1000),
                         "edited": null
                     },
                     "text": content,
@@ -446,6 +464,7 @@
                     },
                     "timing": {
                         "sent": window.API.Service.getTime(),
+                        "ts": Math.floor(Date.now() / 1000),
                         "edited": null
                     },
                     "text": content,

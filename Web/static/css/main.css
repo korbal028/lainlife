@@ -1324,6 +1324,17 @@ table.User {
     padding: 10px;
 }
 
+/* продолжение серии сообщений от одного отправителя: без аватарки и имени */
+.messenger-app--messages---message.grouped {
+    margin-top: -3px;
+    padding-top: 2px;
+}
+
+.messenger-app--messages---message.grouped > .ava {
+    visibility: hidden;
+    height: 0;
+}
+
 .messenger-app--input>.ava {
     width: 52px;
     height: 52px;

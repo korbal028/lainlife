@@ -220,6 +220,7 @@ function isForwarded(): bool
             ],
             "timing" => [
                 "sent"   => (string) $this->getSendTimeHumanized(),
+                "ts"     => $this->getSendTime()->timestamp(),
                 "edited" => is_null($this->getEditTime()) ? NULL : (string) $this->getEditTime(),
             ],
             "text"        => $this->getText(),
