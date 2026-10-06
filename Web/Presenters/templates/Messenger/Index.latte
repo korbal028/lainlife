@@ -1,7 +1,11 @@
 {extends "../@layout.latte"}
 {block title}{_my_messages}{/block}
 
-{block header}{_my_messages}{/block}
+{block header}{_my_messages}
+    <div style="float: right;">
+        <a href="/im?sel=0" style="font-size: 11px; color: #999;">{_saved_messages}</a>
+    </div>
+{/block}
 
 {block content}
     <div class="tabs">
