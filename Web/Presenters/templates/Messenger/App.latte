@@ -323,6 +323,7 @@
                 this.typeEl   = document.querySelector(".messenger-app--typing-status");
                 this.offset   = 0; // курсор для обратной пагинации истории (самое старое загруженное id)
                 this.newestId = 0; // курсор для поллинга новых сообщений (самое новое известное id)
+                this.historyEnd = false;
                 this.lastSync = Math.floor(Date.now() / 1000);
 
                 this.typingTimer = null;
@@ -334,11 +335,15 @@
             }
             
             _loadHistory() {
+                if(this.historyEnd) return;
+
                 let xhr = new XMLHttpRequest();
                 xhr.open("GET", "/im/api/messages" + {$correspondent->getId()} + `/${ this.offset }.json`, false);
                 xhr.send();
                 
                 let messages    = JSON.parse(xhr.responseText);
+                if(messages.length === 0) this.historyEnd = true;
+
                 let lastMessage = messages[messages.length - 1];
                 if(typeof lastMessage !== "undefined") this.offset = lastMessage.uuid;
 
@@ -369,11 +374,10 @@
                             if(data) {
                                 (data.messages || []).forEach(message => {
                                     if(this.newestId >= message.uuid) return;
-                                    // подстраховка от гонки, если запрос на отправку своего же
-                                    // сообщения ещё не успел продвинуть newestId к моменту этого тика
+                                    this.newestId = message.uuid;
+                                    // своё отправленное/пересланное сообщение уже есть в ленте
                                     if(window.messages().some(m => m.uuid === message.uuid)) return;
                                     this.addMessage(message);
-                                    this.newestId = message.uuid;
                                 });
 
                                 (data.edited || []).forEach(message => {
@@ -417,6 +421,17 @@
                 poll();
             }
             
+            // догружаем историю, пока лента не начнёт скроллиться, иначе onMessagesScroll не сработает
+            fillHistory() {
+                let loaded = false;
+                while(!this.historyEnd && this.appEl.scrollHeight <= this.appEl.clientHeight) {
+                    this._loadHistory();
+                    loaded = true;
+                }
+
+                if(loaded) this.appEl.scrollTop = this.appEl.scrollHeight;
+            }
+
             appendMessages(messages) {
                 messages.forEach(m => window.messages.push(m));
             }
@@ -460,16 +475,12 @@
             }
             
             _patchMessage(tempId, message) {
-                for(let i = window.messages().length - 1; i > -1; i--) {
-                    let msg = window.messages()[i];
-                    if(typeof msg._tuid === "undefined")
-                        return;
-                    else if(msg._tuid !== tempId)
-                        return;
-                    
-                    window.messages.valueWillMutate();
-                    window.messages()[i] = message;
-                    window.messages.valueHasMutated();
+                let msgs = window.messages();
+                for(let i = msgs.length - 1; i > -1; i--) {
+                    if(msgs[i]._tuid !== tempId) continue;
+
+                    window.messages.splice(i, 1, message);
+                    return;
                 }
             }
             
@@ -605,7 +616,6 @@
                                 const msg = await this._post("/im/api/messages" + userId + "/" + msgId + "/forward.json");
                                 if(userId === {$correspondent->getId()}) {
                                     this.addMessage(msg);
-                                    if(msg.uuid > this.newestId) this.newestId = msg.uuid;
                                 }
                             } catch(e) {
                                 console.error("Forward failed", e);
@@ -753,8 +763,10 @@
                             text: tr("messages_error_1_description"),
                             timing: {
                                 edited: null,
-                                sent: "???"
+                                sent: "???",
+                                ts: null
                             },
+                            read: true,
                             attachments: [],
                             forwarded: null,
                             uuid: -4096
@@ -765,10 +777,11 @@
                     
                     console.debug("Message sent, updating view.");
                     let sentMessage = JSON.parse(xhr.responseText);
-                    that._patchMessage(tempId, sentMessage);
-                    // без этого следующий тик поллинга видит только что отправленное сообщение
-                    // как "новое" (id > newestId) и добавляет его повторно
-                    if(sentMessage.uuid > that.newestId) that.newestId = sentMessage.uuid;
+                    // поллинг мог успеть добавить это сообщение раньше ответа — тогда убираем превью
+                    if(window.messages().some(m => m.uuid === sentMessage.uuid))
+                        window.messages.remove(m => m._tuid === tempId);
+                    else
+                        that._patchMessage(tempId, sentMessage);
                     
                     document.body.querySelectorAll(".bsdn").forEach(el => {
                         if(!el.querySelector(".bdsn-hydrated")) {
@@ -807,6 +820,7 @@
             list.style.height = Math.max(300, height) + "px";
 
             if(atBottom) list.scrollTop = list.scrollHeight;
+            window.Msg.fillHistory();
         };
 
         fitMessenger();

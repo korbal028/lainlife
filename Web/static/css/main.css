@@ -1447,6 +1447,13 @@ table.User {
     height: 570px;
     overflow-y: auto;
     padding: 10px 60px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* короткая переписка прижимается к полю ввода */
+.messenger-app--messages>div {
+    margin-top: auto;
 }
 
 .messenger-app--messages---message,
