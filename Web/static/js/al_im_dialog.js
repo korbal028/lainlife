@@ -16,7 +16,7 @@ u(document).on("click", ".js-send-message", (e) => {
                 <form class="udlg-right" onsubmit="return false;">
                     <a class="udlg-name" href="${data.url}">${name}</a>
                     <div class="udlg-online">${escapeHtml(data.online ?? "")}</div>
-                    <textarea class="udlg-textarea" placeholder="${tr("enter_message")}"></textarea>
+                    <textarea class="udlg-textarea" name="message" placeholder="${tr("enter_message")}"></textarea>
                     <div class="post-horizontal"></div>
                     <div class="post-vertical"></div>
                     <div class="udlg-attachments">
@@ -24,6 +24,7 @@ u(document).on("click", ".js-send-message", (e) => {
                         <a id="__videoAttachment" title="${tr("video")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" /></a>
                         <a id="__audioAttachment" title="${tr("audio")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" /></a>
                         <a id="__documentAttachment" title="${tr("document")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" /></a>
+                        <a id="iSmiles" title="${tr("smiles")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" /></a>
                     </div>
                 </form>
             </div>

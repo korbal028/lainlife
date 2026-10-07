@@ -3235,9 +3235,9 @@ $(document).on("click", "#iSmiles", async (e) => {
 
     let form = e.currentTarget.closest("form");
 
-    MessageBox(tr("selecting_smile"), body, [tr("close")], [Function.noop]);
+    const smilesBox = MessageBox(tr("selecting_smile"), body, [tr("close")], [Function.noop], true);
 
-    $(".smile").on("click", function() {
+    $(smilesBox.getNode().nodes).find(".smile").on("click", function() {
         let smileCode = $(this).data("smile");
         // В мессенджере/беседах текстовое поле называется "message" (не "text") и
         // привязано через knockout - обычный .val() не обновит observable, поэтому
@@ -3250,11 +3250,6 @@ $(document).on("click", "#iSmiles", async (e) => {
             el.dispatchEvent(new Event("input", { bubbles: true }));
             el.dispatchEvent(new Event("change", { bubbles: true }));
         }
-        closeMessageBox();
+        smilesBox.close();
     });
-
-    function closeMessageBox() {
-        u("body").removeClass("dimmed");
-        u(".ovk-diag-cont").remove();
-    }
 });
