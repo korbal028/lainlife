@@ -57,7 +57,7 @@ u(document).on("click", ".js-send-message", (e) => {
         }],
     });
 
-    msg.getNode().find(".ovk-diag").addClass("udlg-diag");
+    msg.getNode().addClass("udlg-cont");
     msg.getNode().find(".udlg-close").on("click", () => msg.close());
     msg.getNode().find(".udlg-textarea").first().focus();
 });

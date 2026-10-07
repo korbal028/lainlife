@@ -4956,8 +4956,8 @@ hr {
 }
 
 /* окно "Отправить сообщение" */
-.ovk-diag.udlg-diag {
-    width: 500px;
+.ovk-diag-cont.udlg-cont {
+    width: 520px;
 }
 
 .ovk-diag-head .udlg-close {
