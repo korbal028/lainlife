@@ -41,7 +41,11 @@
         </div>
         <!-- /ko -->
         <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
-            <div data-bind="foreach: messages">
+            <div class="im_floating_date_wrap"><b></b></div>
+            <div class="messenger-app--messages-array" data-bind="foreach: messages">
+                <!-- ko if: window.isMsgNewDay($index()) -->
+                <div class="messenger-app--messages-day-time"><b data-bind="text: window.msgDay(timing.ts)"></b></div>
+                <!-- /ko -->
                 <div class="messenger-app--messages---message" data-bind="attr: { 'data-uuid': $data.uuid }, css: { unread: !read, grouped: window.isMsgGrouped($index()), selected: $root.selectedMsgs.indexOf($data.uuid) !== -1 }">
                     <div class="msg-check" data-bind="visible: $data.uuid > 0"></div>
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
@@ -159,7 +163,7 @@
                         <!-- /ko -->
                     </div>
                     <div class="time" align="right">
-                        <span data-bind="html: timing.sent"></span>
+                        <span data-bind="html: window.msgTime($data)"></span>
                     </div>
                 </div>
             </div>
@@ -263,8 +267,42 @@
             let prev = msgs[index - 1], cur = msgs[index];
             if(prev.sender.id !== cur.sender.id) return false;
             if(typeof prev.timing.ts !== "number" || typeof cur.timing.ts !== "number") return false;
+            if(window.isMsgNewDay(index)) return false;
 
             return (cur.timing.ts - prev.timing.ts) < MSG_GROUP_INTERVAL;
+        };
+
+        // как в openvk: у сообщения всегда время, а дата — в разделителе дней и плашке сверху
+        const MSG_LOCALE = {getLanguage()}.split(/[_-]/)[0];
+        window.msgDay = ts => {
+            const d    = new Date(ts * 1000);
+            const opts = { day: "numeric", month: "long" };
+            if(d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+
+            try {
+                return d.toLocaleDateString(MSG_LOCALE, opts);
+            } catch(e) {
+                return d.toLocaleDateString(undefined, opts);
+            }
+        };
+
+        // у неотправленного превью в sent лежит крутилка, её и показываем
+        window.msgTime = msg => (typeof msg.timing.ts === "number" && msg._tuid === undefined)
+            ? new Date(msg.timing.ts * 1000).toTimeString().slice(0, 8)
+            : msg.timing.sent;
+
+        window.isMsgNewDay = index => {
+            const msgs = window.messages();
+            const cur  = msgs[index];
+            if(!cur || typeof cur.timing.ts !== "number") return false;
+
+            for(let i = index - 1; i > -1; i--) {
+                if(typeof msgs[i].timing.ts !== "number") continue;
+
+                return new Date(msgs[i].timing.ts * 1000).toDateString() !== new Date(cur.timing.ts * 1000).toDateString();
+            }
+
+            return true;
         };
 
         function MessengerViewModel(initialMessages = []) {
@@ -295,6 +333,8 @@
             this.onMessagesScroll   = (model, e) => {
                 if(e.target.scrollTop < 21)
                     model.loadHistory();
+
+                window.Msg.scheduleFloatingDate();
             };
             this.onTextareaKeyPress = (model, e) => {
                 if(e.which === 13) {
@@ -433,6 +473,36 @@
                 }
 
                 if(loaded) this.appEl.scrollTop = this.appEl.scrollHeight;
+            }
+
+            scheduleFloatingDate() {
+                if(this._floatingDateFrame) return;
+
+                this._floatingDateFrame = requestAnimationFrame(() => {
+                    this._floatingDateFrame = null;
+                    this.updateFloatingDate();
+                });
+            }
+
+            // плашка с датой первого видимого сообщения; прячется, когда сверху и так виден разделитель дня
+            updateFloatingDate() {
+                const wrap = this.appEl.querySelector(".im_floating_date_wrap");
+                const top  = this.appEl.getBoundingClientRect().top;
+
+                const first = [...this.appEl.querySelectorAll(".messenger-app--messages---message")].find(el => el.getBoundingClientRect().bottom > top);
+                const msg   = first ? ko.dataFor(first) : null;
+                const dividerAtTop = [...this.appEl.querySelectorAll(".messenger-app--messages-day-time")].some(el => {
+                    const rect = el.getBoundingClientRect();
+                    return rect.top >= top - 12 && rect.bottom <= top + 50;
+                });
+
+                if(!msg || typeof msg.timing.ts !== "number" || dividerAtTop || this.appEl.scrollHeight <= this.appEl.clientHeight) {
+                    wrap.style.opacity = 0;
+                    return;
+                }
+
+                wrap.firstElementChild.textContent = window.msgDay(msg.timing.ts);
+                wrap.style.opacity = 1;
             }
 
             appendMessages(messages) {
@@ -830,6 +900,7 @@
         window.addEventListener("resize", fitMessenger);
         window.selectedMsgs.subscribe(() => setTimeout(fitMessenger));
         window.pinnedMsg.subscribe(() => setTimeout(fitMessenger));
+        window.messages.subscribe(() => window.Msg.scheduleFloatingDate());
         new ResizeObserver(fitMessenger).observe(document.querySelector(".messenger-app--input"));
 
         const msgAction = (act, msg) => {
