@@ -29,7 +29,7 @@
                  data-sel="{$coresp->getID()}"
                  data-name="{$isSaved ? tr('saved_messages') : $recipient->getCanonicalName()}"
                  data-self="{(int) $isSaved}"
-                 onmousedown="if(!this.classList.contains('pinned')) window.location.assign({$coresp->getURL()});" >
+                 onmousedown="if(event.button === 0 && !this.classList.contains('pinned')) window.location.assign({$coresp->getURL()});" >
 
                 <div class="crp-entry--image">
                     {if $isSaved}
@@ -149,36 +149,72 @@
                     }
                 };
 
-                tippy.delegate(".crp-list", {
-                    target: ".crp-entry--menu-dots",
+                const buildMenu = (entry, tip, extraClass = "") => {
+                    const menu = u(`
+                        <div style="margin: -6px -10px;">
+                            <div class="like_tooltip_wrapper crp-menu-tooltip ${ extraClass }">
+                                <div class="like_tooltip_body"></div>
+                            </div>
+                        </div>
+                    `);
+
+                    menuItems(entry).forEach(([act, text]) => {
+                        const link = u(`<a></a>`).text(text);
+                        if(act === "delete") link.addClass("crp-menu-danger");
+                        link.on("click", e => {
+                            e.preventDefault();
+                            onAction(entry, act, tip);
+                        });
+                        menu.find(".like_tooltip_body").append(link);
+                    });
+
+                    return menu.first();
+                };
+
+                const menuOptions = {
                     animation: "up_down",
                     theme: "special vk",
-                    placement: "bottom-end",
                     content: "",
                     allowHTML: true,
                     interactive: true,
-                    trigger: "click",
                     arrow: false,
-                    offset: [0, 8],
                     appendTo: () => document.body,
+                };
+
+                tippy.delegate(".crp-list", {
+                    ...menuOptions,
+                    target: ".crp-entry--menu-dots",
+                    placement: "bottom-end",
+                    trigger: "click",
+                    offset: [0, 8],
 
                     onShow(tip) {
-                        const entry = tip.reference.closest(".crp-entry");
-                        const menu  = u(`
-                            <div style="margin: -6px -10px;">
-                                <div class="like_tooltip_wrapper crp-menu-tooltip">
-                                    <div class="like_tooltip_body"></div>
-                                </div>
-                            </div>
-                        `);
+                        tip.setContent(buildMenu(tip.reference.closest(".crp-entry"), tip));
+                    },
+                });
 
-                        menuItems(entry).forEach(([act, text]) => {
-                            const link = u(`<a></a>`).text(text);
-                            if(act === "delete") link.addClass("crp-menu-danger");
-                            link.on("click", e => {
-                                e.preventDefault();
-                                onAction(entry, act, tip);
-                            });
+                // то же меню по правому клику, под курсором
+                const contextAnchor = document.body.appendChild(document.createElement("div"));
+                const contextMenu = tippy(contextAnchor, {
+                    ...menuOptions,
+                    placement: "bottom-start",
+                    trigger: "manual",
+                    offset: [0, 0],
+                });
+
+                document.querySelector(".crp-list").addEventListener("contextmenu", e => {
+                    const entry = e.target.closest(".crp-entry");
+                    if(!entry) return;
+
+                    e.preventDefault();
+                    const x = e.clientX, y = e.clientY;
+                    contextMenu.hide();
+                    contextMenu.setProps({
+                        getReferenceClientRect: () => ({ width: 0, height: 0, top: y, bottom: y, left: x, right: x }),
+                    });
+                    contextMenu.setContent(buildMenu(entry, contextMenu, "crp-menu-context"));
+                    contextMenu.show();
+                });
                             menu.find(".like_tooltip_body").append(link);
                         });
 
