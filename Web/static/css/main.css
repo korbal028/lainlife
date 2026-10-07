@@ -1512,8 +1512,6 @@ table.User {
 
 .messenger-app--messages---message.selected .msg-check {
     opacity: 1;
-    background-color: #5181b8;
-    background-position: -183px -48px;
 }
 
 .messenger-app--messages---message.grouped .msg-check {
