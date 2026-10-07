@@ -1522,9 +1522,10 @@ table.User {
 .msg-tools {
     display: flex;
     align-items: center;
+    justify-content: flex-end;
     gap: 6px;
     min-width: 58px;
-    margin-right: 10px;
+    margin-right: 6px;
     visibility: hidden;
 }
 
