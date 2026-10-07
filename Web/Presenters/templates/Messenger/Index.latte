@@ -209,8 +209,13 @@
                     dy = Math.max(rects[0].top - own.top, Math.min(rects[rects.length - 1].bottom - own.bottom, dy));
                     drag.entry.style.transform = `translateY(${ dy }px)`;
 
-                    const center = own.top + own.height / 2 + dy;
-                    drag.target = rects.filter((r, i) => i !== start && r.top + r.height / 2 < center).length;
+                    // чаты разной высоты: сосед пропускается, когда край перетаскиваемого заходит за его середину
+                    drag.target = rects.filter((r, i) => {
+                        const middle = r.top + r.height / 2;
+                        if(i < start) return own.top + dy >= middle;
+                        if(i > start) return own.bottom + dy > middle;
+                        return false;
+                    }).length;
 
                     drag.entries.forEach((el, i) => {
                         if(i === start) return;
