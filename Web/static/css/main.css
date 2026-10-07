@@ -1245,8 +1245,8 @@ table.User {
 
 .crp-entry--status {
     position: absolute;
-    top: 8px;
-    right: 30px;
+    top: 28px;
+    right: 10px;
     display: flex;
     gap: 4px;
     align-items: center;
@@ -1256,6 +1256,7 @@ table.User {
     width: 12px;
     height: 12px;
     opacity: .6;
+    filter: grayscale(1);
 }
 
 .crp-entry--muted-icon {
@@ -1617,6 +1618,7 @@ table.User {
     width: 11px;
     height: 11px;
     background: url('/assets/packages/static/openvk/img/pin.png') no-repeat;
+    filter: grayscale(1);
 }
 
 .messenger-app--pinned---body {
