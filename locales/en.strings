@@ -1443,6 +1443,8 @@
 "messenger_delete_messages_title" = "Delete messages";
 "messenger_delete_messages_confirm" = "Delete the selected messages ($1)? This action cannot be undone.";
 "messenger_delete_for_all" = "Delete for everyone";
+"go_to_dialog" = "Go to dialog";
+"message_sent" = "Message sent";
 "messages_blocked" = "Unfortunately, your message cannot be sent due to this user's privacy settings.";
 "enter_message" = "Enter message";
 "message_user_typing" = "$1 is typing a message...";

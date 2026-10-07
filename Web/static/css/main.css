@@ -4954,3 +4954,73 @@ hr {
 .post-spoiler.revealed .post-spoiler-content {
     display: inline;
 }
+
+/* окно "Отправить сообщение" */
+.ovk-diag.udlg-diag {
+    width: 500px;
+}
+
+.ovk-diag-head .udlg-close {
+    float: right;
+    font-weight: normal;
+    color: inherit;
+    cursor: pointer;
+}
+
+.udlg {
+    display: flex;
+    gap: 20px;
+    padding: 10px;
+}
+
+.udlg-left {
+    flex: none;
+    width: 100px;
+    text-align: center;
+}
+
+.udlg-avatar {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.udlg-right {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.udlg-name {
+    font-weight: bold;
+}
+
+.udlg-online {
+    color: #777;
+    margin-bottom: 10px;
+}
+
+.udlg-textarea {
+    width: 100%;
+    height: 50px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.udlg-attachments {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.udlg-attachments a {
+    cursor: pointer;
+    opacity: .8;
+}
+
+.udlg-attachments a:hover {
+    opacity: 1;
+}
