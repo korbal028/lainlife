@@ -2366,6 +2366,15 @@ h4.gift_cat_header {
     text-align: center;
 }
 
+.wallAttachmentMenu.reversed:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+}
+
+.wallAttachmentMenu.reversed>.header {
+    order: 1;
+}
+
 #ovkDraw {
     border: 1px solid #757575;
     min-height: 510px;

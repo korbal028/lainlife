@@ -56,13 +56,21 @@ u(document).on('click', '.menu_toggler', (e) => {
     const wall_attachment_menu = post_buttons.find('.wallAttachmentMenu')
     if(wall_attachment_menu.is('.hidden')) {
         _stopTrackingAttachMenuScroll();
+        wall_attachment_menu.css({ opacity: 0 });
+        wall_attachment_menu.removeClass('hidden');
         if(trigger && !window.matchMedia('(max-width: 770px)').matches) {
             const reposition = () => {
                 const rect = trigger.getBoundingClientRect();
+                const menuHeight = wall_attachment_menu.outerHeight();
+                const menuWidth = wall_attachment_menu.outerWidth();
+                // если снизу не хватает места — раскрываем меню вверх, заголовок уходит вниз
+                const reversed = rect.bottom + 2 + menuHeight > window.innerHeight
+                    && rect.top - 2 - menuHeight >= 0;
+                wall_attachment_menu.toggleClass('reversed', reversed);
                 wall_attachment_menu.css({
                     position: 'fixed',
-                    top: (rect.bottom + 2) + 'px',
-                    left: rect.left + 'px',
+                    top: (reversed ? rect.top - 2 - menuHeight : rect.bottom + 2) + 'px',
+                    left: Math.max(0, Math.min(rect.left, window.innerWidth - menuWidth - 2)) + 'px',
                     margin: 0
                 });
             };
@@ -71,8 +79,7 @@ u(document).on('click', '.menu_toggler', (e) => {
             window.addEventListener('scroll', _attachMenuReposition, true);
             window.addEventListener('resize', _attachMenuReposition);
         }
-        wall_attachment_menu.css({ opacity: 0 });
-        wall_attachment_menu.toggleClass('hidden').fadeTo(250, 1);
+        wall_attachment_menu.fadeTo(250, 1);
     } else {
         _stopTrackingAttachMenuScroll();
         wall_attachment_menu.fadeTo(250, 0, function () {
