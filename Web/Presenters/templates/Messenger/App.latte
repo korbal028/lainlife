@@ -803,7 +803,7 @@
             const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 20;
 
             const below  = app.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom;
-            const height = window.innerHeight - (list.getBoundingClientRect().top + window.scrollY) - below - 5;
+            const height = window.innerHeight - (list.getBoundingClientRect().top + window.scrollY) - below - 25;
             list.style.height = Math.max(300, height) + "px";
 
             if(atBottom) list.scrollTop = list.scrollHeight;
