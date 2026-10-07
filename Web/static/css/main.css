@@ -1552,6 +1552,7 @@ table.User {
 
 .msg-tool-pin {
     background-image: url('/assets/packages/static/openvk/img/pin.png');
+    filter: grayscale(1);
 }
 
 .msg-tool-edit {
