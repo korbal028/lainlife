@@ -1524,7 +1524,7 @@ table.User {
     align-items: center;
     gap: 6px;
     min-width: 58px;
-    margin-left: 8px;
+    margin-right: 10px;
     visibility: hidden;
 }
 

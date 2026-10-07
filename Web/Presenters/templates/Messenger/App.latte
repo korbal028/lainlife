@@ -145,9 +145,6 @@
                             </div>
                         </div>
                     </div>
-                    <div class="time" align="right">
-                        <span data-bind="html: timing.sent"></span>
-                    </div>
                     <div class="msg-tools">
                         <!-- ko if: $data.uuid > 0 -->
                         <a class="msg-tool msg-tool-pin" data-act="pin" data-bind="attr: { title: $root.pinnedMsg()?.uuid === $data.uuid ? window.MSG_STR.unpin : window.MSG_STR.pin }, css: { active: $root.pinnedMsg()?.uuid === $data.uuid }"></a>
@@ -160,6 +157,9 @@
                         <a class="msg-tool msg-tool-forward" data-act="forward" title="{_messenger_forward}"></a>
                         <!-- /ko -->
                         <!-- /ko -->
+                    </div>
+                    <div class="time" align="right">
+                        <span data-bind="html: timing.sent"></span>
                     </div>
                 </div>
             </div>
