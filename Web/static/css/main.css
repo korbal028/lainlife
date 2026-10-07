@@ -1684,7 +1684,7 @@ table.User {
 }
 
 .messenger-app--messages---message .time {
-    width: 100px;
+    white-space: nowrap;
 }
 
 .messenger-app--typing-status {
