@@ -1472,6 +1472,20 @@ table.User {
     cursor: pointer;
 }
 
+.messenger-app--messages---message > .ava {
+    flex: none;
+}
+
+.messenger-app--messages---message ._content {
+    flex: 1;
+    min-width: 0;
+    margin: 0 15px 0 20px;
+}
+
+.messenger-app--messages---message > .time {
+    flex: none;
+}
+
 .messenger-app--messages---message.selected {
     background-color: rgba(81, 129, 184, .12);
 }
