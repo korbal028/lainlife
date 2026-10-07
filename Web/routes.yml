@@ -273,6 +273,8 @@ routes:
       handler: "Messenger->index"
     - url: "/im/archive"
       handler: "Messenger->archive"
+    - url: "/im/api/list"
+      handler: "Messenger->apiList"
     - url: "/im/sel{num}"
       handler: "Messenger->app"
     - url: "/nim{num}"

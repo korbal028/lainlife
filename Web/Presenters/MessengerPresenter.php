@@ -63,6 +63,13 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->renderList(true);
     }
 
+    public function renderApiList(): void
+    {
+        $this->assertUserLoggedIn();
+
+        $this->renderList(($_GET["archive"] ?? "0") === "1");
+    }
+
     private function renderList(bool $archived): void
     {
         $page = (int) ($_GET["p"] ?? 1);
