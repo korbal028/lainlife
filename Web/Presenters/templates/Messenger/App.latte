@@ -796,6 +796,25 @@
         
         window.Msg = new Messenger([]);
 
+        // лента сообщений растягивается до низа окна
+        const fitMessenger = () => {
+            const app  = document.querySelector(".messenger-app");
+            const list = window.Msg.appEl;
+            const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 20;
+
+            const below  = app.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom;
+            const height = window.innerHeight - (list.getBoundingClientRect().top + window.scrollY) - below - 10;
+            list.style.height = Math.max(300, height) + "px";
+
+            if(atBottom) list.scrollTop = list.scrollHeight;
+        };
+
+        fitMessenger();
+        window.addEventListener("resize", fitMessenger);
+        window.selectedMsgs.subscribe(() => setTimeout(fitMessenger));
+        window.pinnedMsg.subscribe(() => setTimeout(fitMessenger));
+        new ResizeObserver(fitMessenger).observe(document.querySelector(".messenger-app--input"));
+
         const msgAction = (act, msg) => {
             switch(act) {
                 case "pin":     return window.Msg.pinMessage(msg.uuid);
