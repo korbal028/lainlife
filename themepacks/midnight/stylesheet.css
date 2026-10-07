@@ -715,3 +715,16 @@ ul {
     background-color: #272138 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
 }
+
+.messenger-app--selection,
+.messenger-app--pinned {
+    border-color: #2c2640;
+}
+
+.messenger-app--pinned:hover {
+    background-color: #272138;
+}
+
+.messenger-app--messages---message.selected {
+    background-color: rgba(122, 156, 196, .15);
+}

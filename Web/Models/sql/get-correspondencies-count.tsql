@@ -38,6 +38,8 @@ SELECT COUNT(*) AS cnt FROM
   WHERE
     dt.mid > COALESCE(d.cleared_till, 0)
   AND
+    dt.mid NOT IN (SELECT message_id FROM messages_hidden WHERE owner_id = ?)
+  AND
     COALESCE(d.archived, 0) = ?
   GROUP BY
     dt.id,

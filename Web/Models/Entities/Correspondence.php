@@ -56,6 +56,75 @@ class Correspondence
         return $this->clearedTill ??= (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["cleared_till"];
     }
 
+    private function getHiddenCondition(): string
+    {
+        if (!($this->correspondents[0] instanceof User)) {
+            return "";
+        }
+
+        return "\n  AND (`id` NOT IN (SELECT `message_id` FROM `messages_hidden` WHERE `owner_id` = " . (int) $this->correspondents[0]->getId() . "))";
+    }
+
+    /**
+     * Принадлежит ли сообщение этой переписке.
+     */
+    public function hasMessage(Message $message): bool
+    {
+        $sender    = $message->getSender();
+        $recipient = $message->getRecipient();
+        if (!$sender || !$recipient) {
+            return false;
+        }
+
+        $pair  = [get_class($sender) . $sender->getId(), get_class($recipient) . $recipient->getId()];
+        $own   = [get_class($this->correspondents[0]) . $this->correspondents[0]->getId(), get_class($this->correspondents[1]) . $this->correspondents[1]->getId()];
+        sort($pair);
+        sort($own);
+
+        return $pair === $own;
+    }
+
+    /**
+     * Скрыть сообщения только у первого корреспондента.
+     */
+    public function hideMessagesForOwner(array $messageIds): void
+    {
+        $connection = DatabaseConnection::i()->getConnection();
+        foreach ($messageIds as $id) {
+            $connection->query("INSERT IGNORE INTO `messages_hidden` ?", [
+                "owner_id"   => $this->correspondents[0]->getId(),
+                "message_id" => (int) $id,
+            ]);
+        }
+    }
+
+    public function getPinnedMessage(): ?Message
+    {
+        $id = (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["pinned_message"];
+        if ($id === 0) {
+            return null;
+        }
+
+        $message = (new \openvk\Web\Models\Repositories\Messages())->get($id);
+        if (!$message || $message->isDeleted() || $id <= $this->getClearedTill()) {
+            return null;
+        }
+
+        return $message;
+    }
+
+    /**
+     * Закреп общий для обоих собеседников. 0 — открепить.
+     */
+    public function setPinnedMessage(int $messageId): void
+    {
+        $dialogs = new MessengerDialogs();
+        $dialogs->set($this->correspondents[0], $this->correspondents[1], ["pinned_message" => $messageId]);
+        if ($this->correspondents[0]->getId() !== $this->correspondents[1]->getId() || get_class($this->correspondents[0]) !== get_class($this->correspondents[1])) {
+            $dialogs->set($this->correspondents[1], $this->correspondents[0], ["pinned_message" => $messageId]);
+        }
+    }
+
     private function getPairCondition(): array
     {
         return [
@@ -142,9 +211,7 @@ class Correspondence
     public function getMessages(int $capBehavior = 1, ?int $cap = null, ?int $limit = null, ?int $padding = null, bool $reverse = false): array
     {
         $query  = file_get_contents(__DIR__ . "/../sql/get-messages.tsql");
-        if ($this->getClearedTill() > 0) {
-            $query = str_replace("(`deleted` = 0)", "(`deleted` = 0)\n  AND (`id` > " . $this->getClearedTill() . ")", $query);
-        }
+        $query = str_replace("(`deleted` = 0)", "(`deleted` = 0)\n  AND (`id` > " . $this->getClearedTill() . ")" . $this->getHiddenCondition(), $query);
 
         $params = [
             [get_class($this->correspondents[0]), get_class($this->correspondents[1])],
@@ -199,7 +266,7 @@ class Correspondence
         $msgs = $connection->query(
             "SELECT * FROM `messages`
              WHERE (`edited` > ?)
-               AND (`id` > ?)
+               AND (`id` > ?)" . $this->getHiddenCondition() . "
                AND (
                  (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
                  OR

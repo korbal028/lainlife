@@ -10,7 +10,7 @@ use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Events\ForwardMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs};
-use openvk\Web\Models\Entities\{Message, Correspondence};
+use openvk\Web\Models\Entities\{Message, Correspondence, User};
 
 final class MessengerPresenter extends OpenVKPresenter
 {
@@ -206,6 +206,11 @@ final class MessengerPresenter extends OpenVKPresenter
             $typing = (bool) apcu_fetch("typing:{$correspondent->getId()}:{$this->user->id}");
         }
 
+        $pinned = $correspondence->getPinnedMessage();
+        if ($pinned) {
+            $pinned = $pinned->simplify();
+        }
+
         header("Content-Type: application/json");
         exit(json_encode([
             "ts"       => $now,
@@ -213,6 +218,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "edited"   => $edited,
             "deleted"  => $deleted,
             "typing"   => $typing,
+            "pinned"   => $pinned,
         ]));
     }
 
@@ -357,6 +363,14 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
+        $origSender    = $origMsg->getSender();
+        $origRecipient = $origMsg->getRecipient();
+        $isParticipant = fn($e) => $e instanceof User && $e->getId() === $this->user->id;
+        if (!$isParticipant($origSender) && !$isParticipant($origRecipient)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
         $recipient = $this->getCorrespondent($sel);
         if (!$recipient) {
             header("HTTP/1.1 404 Not Found");
@@ -480,6 +494,76 @@ final class MessengerPresenter extends OpenVKPresenter
 
         header("Content-Type: application/json");
         exit(json_encode(["success" => true]));
+    }
+
+    public function renderApiDeleteMessages(int $sel): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $correspondent = $this->getCorrespondent($sel);
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $cor    = new Correspondence($this->user->identity, $correspondent);
+        $forAll = $this->postParam("for_all") === "1";
+        $repo   = new Messages();
+
+        $deleted = [];
+        $hidden  = [];
+        foreach (array_unique(array_map("intval", explode(",", (string) $this->postParam("ids")))) as $id) {
+            $msg = $repo->get($id);
+            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
+                continue;
+            }
+
+            $sender = $msg->getSender();
+            if ($forAll && $sender instanceof User && $sender->getId() === $this->user->id) {
+                $msg->setDeleted(1);
+                $msg->setEdited(time()); // метка для поллинга (apiSync)
+                $msg->save();
+
+                $this->signaler->triggerEvent(new DeleteMessageEvent($id), $msg->getRecipient()->getId());
+                $deleted[] = $id;
+            } else {
+                $hidden[] = $id;
+            }
+        }
+
+        $cor->hideMessagesForOwner($hidden);
+
+        header("Content-Type: application/json");
+        exit(json_encode(["deleted" => $deleted, "hidden" => $hidden]));
+    }
+
+    public function renderApiPinMessage(int $sel): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $correspondent = $this->getCorrespondent($sel);
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $cor   = new Correspondence($this->user->identity, $correspondent);
+        $msgId = (int) $this->postParam("msg_id");
+        $msg   = null;
+        if ($msgId !== 0) {
+            $msg = (new Messages())->get($msgId);
+            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
+                header("HTTP/1.1 404 Not Found");
+                exit();
+            }
+        }
+
+        $cor->setPinnedMessage($msgId);
+
+        header("Content-Type: application/json");
+        exit(json_encode(["pinned" => $msg ? $msg->simplify() : null]));
     }
 
     public function renderApiGetDialogs(): void

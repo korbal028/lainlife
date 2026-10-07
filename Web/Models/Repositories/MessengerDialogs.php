@@ -14,7 +14,8 @@ class MessengerDialogs
         "pinned"       => 0,
         "archived"     => 0,
         "muted"        => 0,
-        "cleared_till" => 0,
+        "cleared_till"   => 0,
+        "pinned_message" => 0,
     ];
 
     private $connection;

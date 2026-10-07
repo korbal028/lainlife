@@ -1466,6 +1466,166 @@ table.User {
     height: 0;
 }
 
+/* выделение сообщений */
+.messenger-app--messages---message {
+    position: relative;
+    cursor: pointer;
+}
+
+.messenger-app--messages---message.selected {
+    background-color: rgba(81, 129, 184, .12);
+}
+
+.messenger-app--messages---message.highlighted {
+    background-color: rgba(81, 129, 184, .25);
+    transition: background-color .3s;
+}
+
+.msg-check {
+    position: absolute;
+    left: -26px;
+    top: 19px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: url('/assets/packages/static/openvk/img/audios_controls.png') no-repeat -165px -48px;
+    opacity: 0;
+}
+
+.messenger-app--messages---message:hover .msg-check {
+    opacity: .5;
+}
+
+.messenger-app--messages---message.selected .msg-check {
+    opacity: 1;
+    background-color: #5181b8;
+    background-position: -183px -48px;
+}
+
+.messenger-app--messages---message.grouped .msg-check {
+    top: 4px;
+}
+
+/* мини-меню сообщения */
+.msg-tools {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    min-width: 58px;
+    margin-left: 8px;
+    visibility: hidden;
+}
+
+.messenger-app--messages---message:hover .msg-tools,
+.msg-tools:has([aria-expanded="true"]) {
+    visibility: visible;
+}
+
+.msg-tool {
+    display: block;
+    width: 14px;
+    height: 14px;
+    opacity: .5;
+    cursor: pointer;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.msg-tool:hover,
+.msg-tool.active {
+    opacity: 1;
+    text-decoration: none;
+}
+
+.msg-tool-pin {
+    background-image: url('/assets/packages/static/openvk/img/pin.png');
+}
+
+.msg-tool-edit {
+    width: 11px;
+    height: 11px;
+    background: url('/assets/packages/static/openvk/img/audios_controls.png') no-repeat -137px -51px;
+}
+
+.msg-tool-reply,
+.msg-tool-forward {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23828a99' d='M7 3 2 7.5 7 12V9.3c3.2 0 5.3.9 7 3.7-.6-3.9-2.9-6.5-7-7z'/%3E%3C/svg%3E");
+}
+
+.msg-tool-forward {
+    transform: scaleX(-1);
+}
+
+.msg-tool-more {
+    width: auto;
+    height: auto;
+    font-size: 16px;
+    line-height: 14px;
+    color: #828a99;
+}
+
+/* панель выделения */
+.messenger-app--selection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 60px;
+    border-bottom: 1px solid #d6d6d6;
+}
+
+.messenger-app--selection---actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.messenger-app--selection---cancel {
+    margin-left: 6px;
+    cursor: pointer;
+}
+
+/* закреплённое сообщение */
+.messenger-app--pinned {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 60px;
+    border-bottom: 1px solid #d6d6d6;
+    cursor: pointer;
+}
+
+.messenger-app--pinned:hover {
+    background-color: #f9f9f9;
+}
+
+.messenger-app--pinned---icon {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    background: url('/assets/packages/static/openvk/img/pin.png') no-repeat;
+}
+
+.messenger-app--pinned---body {
+    flex: 1;
+    min-width: 0;
+}
+
+.messenger-app--pinned---sender {
+    margin-left: 4px;
+    color: #828a99;
+}
+
+.messenger-app--pinned---text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.messenger-app--pinned---close {
+    color: #999;
+    cursor: pointer;
+}
+
 .messenger-app--input>.ava {
     width: 52px;
     height: 52px;

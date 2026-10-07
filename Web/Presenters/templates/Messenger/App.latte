@@ -21,9 +21,29 @@
 
 {block wrap}
     <div class="messenger-app">
+        <div class="messenger-app--selection" style="display: none;" data-bind="visible: selectedMsgs().length > 0">
+            <span data-bind="text: selectionLabel()"></span>
+            <div class="messenger-app--selection---actions">
+                <a class="button" data-bind="click: () => window.Msg.forwardMessages(selectedMsgs())">{_messenger_forward}</a>
+                <a class="button" data-bind="click: () => window.Msg.deleteMessages(selectedMsgs())">{_messenger_delete}</a>
+                <a class="messenger-app--selection---cancel" data-bind="click: () => selectedMsgs.removeAll()">{_messenger_cancel_selection}</a>
+            </div>
+        </div>
+        <!-- ko with: pinnedMsg -->
+        <div class="messenger-app--pinned" data-bind="visible: $root.selectedMsgs().length === 0, click: () => window.Msg.scrollToMessage(uuid)">
+            <div class="messenger-app--pinned---icon"></div>
+            <div class="messenger-app--pinned---body">
+                <b>{_messenger_pinned_message}</b>
+                <span class="messenger-app--pinned---sender" data-bind="text: sender.name"></span>
+                <div class="messenger-app--pinned---text" data-bind="html: text || '…'"></div>
+            </div>
+            <a class="messenger-app--pinned---close" title="{_messenger_unpin_message}" data-bind="click: () => window.Msg.pinMessage(0), clickBubble: false">✕</a>
+        </div>
+        <!-- /ko -->
         <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
             <div data-bind="foreach: messages">
-                <div class="messenger-app--messages---message" data-bind="css: { unread: !read, grouped: window.isMsgGrouped($index()) }">
+                <div class="messenger-app--messages---message" data-bind="attr: { 'data-uuid': $data.uuid }, css: { unread: !read, grouped: window.isMsgGrouped($index()), selected: $root.selectedMsgs.indexOf($data.uuid) !== -1 }">
+                    <div class="msg-check" data-bind="visible: $data.uuid > 0"></div>
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
                     <div class="_content">
                         <!-- ko ifnot: window.isMsgGrouped($index()) -->
@@ -40,12 +60,6 @@
                             <div data-bind="html: forwarded.text" style="font-size:11px; margin-top:3px;"></div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: sender.id === {$thisUser->getId()}" class="msg-actions">
-                            <a href="#" data-bind="click: function() { window.Msg.deleteMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Удалить</a>
-                            <a href="#" data-bind="click: function() { window.Msg.editMessage(uuid, text); }" style="font-size:11px; color:#999; margin-left:5px;">Редактировать</a>
-                        </div>
-			<a href="#" data-bind="click: function() { window.Msg.replyMessage(uuid, text, sender.name); }" style="font-size:11px; color:#999; margin-left:5px;">Ответить</a>
-                        <a href="#" data-bind="click: function() { window.Msg.forwardMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Переслать</a>
                         <div data-bind="foreach: attachments" class="attachments">
                             <div class="msg-attach-j">
                                 <div data-bind="if: type === 'photo'" class="msg-attach-j-photo">
@@ -134,6 +148,19 @@
                     <div class="time" align="right">
                         <span data-bind="html: timing.sent"></span>
                     </div>
+                    <div class="msg-tools">
+                        <!-- ko if: $data.uuid > 0 -->
+                        <a class="msg-tool msg-tool-pin" data-act="pin" data-bind="attr: { title: $root.pinnedMsg()?.uuid === $data.uuid ? window.MSG_STR.unpin : window.MSG_STR.pin }, css: { active: $root.pinnedMsg()?.uuid === $data.uuid }"></a>
+                        <!-- ko if: sender.id === {$thisUser->getId()} -->
+                        <a class="msg-tool msg-tool-edit" data-act="edit" title="{_messenger_edit_message}"></a>
+                        <a class="msg-tool msg-tool-more" data-act="more" title="{_messenger_more}">&#8943;</a>
+                        <!-- /ko -->
+                        <!-- ko ifnot: sender.id === {$thisUser->getId()} -->
+                        <a class="msg-tool msg-tool-reply" data-act="reply" title="{_messenger_reply}"></a>
+                        <a class="msg-tool msg-tool-forward" data-act="forward" title="{_messenger_forward}"></a>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </div>
                 </div>
             </div>
             <div class="messenger-app--typing-status" style="display:none;opacity:0;">
@@ -219,6 +246,14 @@
     
     {script "js/node_modules/knockout/build/output/knockout-latest.js"}
     <script>
+        window.MSG_STR = {
+            pin:     {tr("messenger_pin_message")},
+            unpin:   {tr("messenger_unpin_message")},
+            reply:   {tr("messenger_reply")},
+            forward: {tr("messenger_forward")},
+            delete:  {tr("messenger_delete")},
+        };
+
         // группировка сообщений подряд от одного отправителя
         const MSG_GROUP_INTERVAL = 10 * 60;
         window.isMsgGrouped = index => {
@@ -234,7 +269,12 @@
 
         function MessengerViewModel(initialMessages = []) {
             window.messages     = ko.observableArray(initialMessages);
+            window.selectedMsgs = ko.observableArray([]);
+            window.pinnedMsg    = ko.observable(null);
             this.messages       = window.messages;
+            this.selectedMsgs   = window.selectedMsgs;
+            this.pinnedMsg      = window.pinnedMsg;
+            this.selectionLabel = ko.pureComputed(() => {tr("messenger_selected_count", "%COUNT%")}.replace("%COUNT%", this.selectedMsgs().length));
             this.messageContent = ko.observable("");
             
             this.sendMessage = model => {
@@ -350,9 +390,11 @@
                                     }
                                 });
 
-                                (data.deleted || []).forEach(msgId => {
-                                    window.messages.remove(m => m.uuid === msgId);
-                                });
+                                this.removeMessages(data.deleted || []);
+
+                                if(typeof data.pinned !== "undefined") {
+                                    this.setPinned(data.pinned);
+                                }
 
                                 if(data.typing) {
                                     this.setTypingStatus();
@@ -492,37 +534,83 @@
                 replies.forEach(this.newReply);
             }
 
+            removeMessages(ids) {
+                if(ids.length === 0) return;
+
+                window.messages.remove(m => ids.includes(m.uuid));
+                window.selectedMsgs.remove(id => ids.includes(id));
+            }
+
+            setPinned(msg) {
+                const cur = window.pinnedMsg();
+                if(JSON.stringify(cur) !== JSON.stringify(msg)) window.pinnedMsg(msg);
+            }
+
+            scrollToMessage(uuid) {
+                const el = this.appEl.querySelector(`[data-uuid="${ uuid }"]`);
+                if(!el) return;
+
+                el.scrollIntoView({ block: "center", behavior: "smooth" });
+                el.classList.add("highlighted");
+                setTimeout(() => el.classList.remove("highlighted"), 1500);
+            }
+
+            async _post(url, data = {}) {
+                const fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                Object.entries(data).forEach(([k, v]) => fd.set(k, v));
+
+                const res = await fetch(url, { method: "POST", body: fd });
+                if(!res.ok) throw new Error(res.status);
+
+                return res.json();
+            }
+
+            async pinMessage(msgId) {
+                if(msgId !== 0 && window.pinnedMsg()?.uuid === msgId) msgId = 0;
+
+                try {
+                    const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/pin.json", { msg_id: msgId });
+                    this.setPinned(res.pinned);
+                } catch(e) {
+                    console.error("Pin failed", e);
+                }
+            }
+
             forwardMessage(msgId) {
+                this.forwardMessages([msgId]);
+            }
+
+            forwardMessages(msgIds) {
+                msgIds = [...msgIds].sort((a, b) => a - b);
+
                 let showForwardDialog = (dialogs) => {
                     let options = dialogs.map(d =>
                         '<div class="forward-dialog-item" data-id="' + d.id + '" style="display:flex; align-items:center; gap:8px; padding:6px; cursor:pointer; border-radius:6px;" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\'\'">' +
                             '<img src="' + d.avatar + '" style="width:32px; height:32px; border-radius:50%;" />' +
-                            '<span>' + d.name + '</span>' +
+                            '<span>' + escapeHtml(d.name) + '</span>' +
                         '</div>'
                     ).join("");
 
                     let body = '<div style="max-height:300px; overflow-y:auto;">' + options + '</div>';
-                    let box = MessageBox("Переслать сообщение", body, ["Отмена"], [Function.noop], true);
+                    let box = MessageBox({tr("messenger_forward")}, body, [{tr("cancel")}], [Function.noop], true);
 
-                    u(box.getNode()).find(".forward-dialog-item").on("click", (e) => {
+                    u(box.getNode()).find(".forward-dialog-item").on("click", async (e) => {
                         let userId = parseInt(u(e.currentTarget).attr("data-id"));
-                        u("body").removeClass("dimmed");
-                        u(".ovk-diag-cont").remove();
+                        box.close();
+                        window.selectedMsgs.removeAll();
 
-                        let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/api/messages" + userId + "/" + msgId + "/forward.json", true);
-                        xhr.onreadystatechange = function() {
-                            if(this.readyState !== 4) return;
-                            if(this.status === 202) {
+                        for(const msgId of msgIds) {
+                            try {
+                                const msg = await this._post("/im/api/messages" + userId + "/" + msgId + "/forward.json");
                                 if(userId === {$correspondent->getId()}) {
-                                    let msg = JSON.parse(xhr.responseText);
-                                    window.Msg.addMessage(msg);
+                                    this.addMessage(msg);
+                                    if(msg.uuid > this.newestId) this.newestId = msg.uuid;
                                 }
+                            } catch(e) {
+                                console.error("Forward failed", e);
                             }
-                        };
-                        let fd = new FormData();
-                        fd.set("hash", {$csrfToken});
-                        xhr.send(fd);
+                        }
                     });
                 };
 
@@ -591,20 +679,28 @@
 		if(input) input.style.minHeight = "";
             }
 
-            deleteMessage(msgId) {
-                MessageBox("Удалить сообщение?", "Это действие нельзя отменить.", ["Удалить", "Отмена"], [
-                    () => {
-                        let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/" + msgId + "/delete.json", true);
-                        xhr.onreadystatechange = function() {
-                            if(this.readyState !== 4) return;
-                            if(this.status === 200) {
-                                window.messages.remove(m => m.uuid === msgId);
-                            }
-                        };
-                        let fd = new FormData();
-                        fd.set("hash", {$csrfToken});
-                        xhr.send(fd);
+            deleteMessages(msgIds) {
+                msgIds = [...msgIds];
+                const isSelfChat = {$correspondent->getId() === $thisUser->getId()};
+                const hasOwn = window.messages().some(m => msgIds.includes(m.uuid) && m.sender.id === {$thisUser->getId()});
+
+                let body = {tr("messenger_delete_messages_confirm", "%COUNT%")}.replace("%COUNT%", msgIds.length);
+                if(hasOwn && !isSelfChat) {
+                    body += `<br><br><label><input type="checkbox" id="msg_delete_for_all" checked> ${ {tr("messenger_delete_for_all")} }</label>`;
+                }
+
+                MessageBox({tr("messenger_delete_messages_title")}, body, [{tr("messenger_delete")}, {tr("cancel")}], [
+                    async () => {
+                        const forAll = isSelfChat || (document.getElementById("msg_delete_for_all")?.checked ?? false);
+                        try {
+                            const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/delete-many.json", {
+                                ids: msgIds.join(","),
+                                for_all: forAll ? "1" : "0",
+                            });
+                            this.removeMessages([...res.deleted, ...res.hidden]);
+                        } catch(e) {
+                            console.error("Delete failed", e);
+                        }
                     },
                     Function.noop
                 ]);
@@ -699,6 +795,73 @@
         }
         
         window.Msg = new Messenger([]);
+
+        const msgAction = (act, msg) => {
+            switch(act) {
+                case "pin":     return window.Msg.pinMessage(msg.uuid);
+                case "edit":    return window.Msg.editMessage(msg.uuid, msg.text);
+                case "reply":   return window.Msg.replyMessage(msg.uuid, msg.text, msg.sender.name);
+                case "forward": return window.Msg.forwardMessages([msg.uuid]);
+                case "delete":  return window.Msg.deleteMessages([msg.uuid]);
+            }
+        };
+
+        // выделение сообщений и мини-меню
+        document.querySelector(".messenger-app--messages").addEventListener("click", e => {
+            const tool = e.target.closest(".msg-tool[data-act]");
+            if(tool) {
+                e.preventDefault();
+                if(tool.dataset.act !== "more") msgAction(tool.dataset.act, ko.dataFor(tool));
+                return;
+            }
+
+            const el = e.target.closest(".messenger-app--messages---message");
+            if(!el || e.target.closest("a, button, video, audio, input, textarea, .bsdn, .attachments, .msg-tools")) return;
+            if(window.getSelection().toString() !== "") return;
+
+            const uuid = ko.dataFor(el).uuid;
+            if(!(uuid > 0)) return;
+
+            window.selectedMsgs.indexOf(uuid) === -1 ? window.selectedMsgs.push(uuid) : window.selectedMsgs.remove(uuid);
+        });
+
+        tippy.delegate(".messenger-app--messages", {
+            target: ".msg-tool-more",
+            animation: "up_down",
+            theme: "special vk",
+            placement: "bottom-end",
+            content: "",
+            allowHTML: true,
+            interactive: true,
+            trigger: "click",
+            arrow: false,
+            offset: [0, 8],
+            appendTo: () => document.body,
+
+            onShow(tip) {
+                const msg  = ko.dataFor(tip.reference);
+                const menu = u(`
+                    <div style="margin: -6px -10px;">
+                        <div class="like_tooltip_wrapper crp-menu-tooltip">
+                            <div class="like_tooltip_body"></div>
+                        </div>
+                    </div>
+                `);
+
+                [["reply", window.MSG_STR.reply], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
+                    const link = u(`<a></a>`).text(text);
+                    if(act === "delete") link.addClass("crp-menu-danger");
+                    link.on("click", e => {
+                        e.preventDefault();
+                        tip.hide();
+                        msgAction(act, msg);
+                    });
+                    menu.find(".like_tooltip_body").append(link);
+                });
+
+                tip.setContent(menu.first());
+            },
+        });
 
         window._dialogs = null;
         fetch("/im/api/dialogs.json")

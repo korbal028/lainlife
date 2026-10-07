@@ -43,7 +43,8 @@ class Messages
         $offset ??= ($page - 1) * $limit;
         $query   = file_get_contents(__DIR__ . "/../sql/get-correspondencies.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
-        $coresps = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, (int) $archived, $limit, $offset);
+        $hiddenOwner = $correspondent instanceof User ? $id : 0;
+        $coresps = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived, $limit, $offset);
         foreach ($coresps as $c) {
             if ($c->class === 'openvk\Web\Models\Entities\User') {
                 $anotherCorrespondent = (new Users())->get($c->id);
@@ -61,7 +62,8 @@ class Messages
         $class = get_class($correspondent);
         $query = file_get_contents(__DIR__ . "/../sql/get-correspondencies-count.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
-        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, (int) $archived)->fetch()->cnt;
+        $hiddenOwner = $correspondent instanceof User ? $id : 0;
+        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetch()->cnt;
         return $count;
     }
 }
