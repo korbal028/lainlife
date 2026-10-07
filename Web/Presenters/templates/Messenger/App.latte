@@ -352,7 +352,10 @@
                 // и не должны сдвигать курсор поллинга назад
                 if(this.newestId === 0 && messages.length > 0) this.newestId = messages[0].uuid;
 
+                // сохраняем позицию, иначе после вставки скролл остаётся на 0 и история грузится цепочкой до самого верха
+                const oldTop = this.appEl.scrollTop, oldHeight = this.appEl.scrollHeight;
                 this.prependMessages(messages);
+                this.appEl.scrollTop = oldTop + (this.appEl.scrollHeight - oldHeight);
             }
             
             // Короткий поллинг вместо long-poll: раз в несколько секунд опрашиваем /im/api/sync
