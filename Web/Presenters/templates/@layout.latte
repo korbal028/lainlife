@@ -461,6 +461,7 @@
         </div>
 
         <div class="page_footer">
+            {if !($hideFooter ?? false)}
             {var $dbVersion = \Chandler\Database\DatabaseConnection::i()->getConnection()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION)}
 
             <div class="navigation_footer">
@@ -484,6 +485,7 @@
             <p n:ifcontent>
                 {php echo OPENVK_ROOT_CONF["openvk"]["appearance"]["motd"]}
             </p>
+            {/if}
         </div>
 
         <div id="ajloader" class="loader">

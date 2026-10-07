@@ -26,6 +26,13 @@ final class MessengerPresenter extends OpenVKPresenter
         parent::__construct();
     }
 
+    public function onStartup(): void
+    {
+        parent::onStartup();
+
+        $this->template->hideFooter = true;
+    }
+
     private function getCorrespondent(int $id): object
     {
         if ($id > 0) {
