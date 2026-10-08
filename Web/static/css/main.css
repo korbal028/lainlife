@@ -5023,6 +5023,9 @@ hr {
 .tippy-box[data-theme~="emoji"] {
     border-color: #c3cad2;
     border-radius: 0;
+    /* tippy.css ставит всем подсказкам 14px - возвращаем шрифт движка */
+    font-size: inherit;
+    line-height: inherit;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
@@ -5093,7 +5096,6 @@ hr {
     align-items: center;
     justify-content: center;
     color: #8a96a3;
-    font-size: 13px;
 }
 
 .emoji-picker--gif-search {
