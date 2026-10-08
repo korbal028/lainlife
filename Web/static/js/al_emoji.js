@@ -438,7 +438,7 @@
                 this.body.innerHTML = (recent.length > 0 ? this.section("recent", tr("stickers_frequent"), recent) : "")
                     + this.packs.map(p => this.section(`pack${p.id}`, p.name, p.stickers)).join("");
 
-                this.sets.innerHTML = (recent.length > 0 ? `<a data-section="recent" title="${escapeHtml(tr("stickers_frequent"))}"><img src="${twemojiUrl("🕓")}" alt="" /></a>` : "")
+                this.sets.innerHTML = (recent.length > 0 ? `<a data-section="recent" title="${escapeHtml(tr("stickers_frequent"))}"><span class="emoji-picker--icon-recent"></span></a>` : "")
                     + this.packs.map(p => `<a data-section="pack${p.id}" title="${escapeHtml(p.name)}"><img src="${escapeHtml(p.cover)}" alt="" loading="lazy" /></a>`).join("");
             }
 
@@ -532,7 +532,7 @@
                     ${sectionHTML("kolobki", tr("emoji_picker_kolobki"), KOLOBKI.map(k => `:${k}:`))}
                 </div>
                 <div class="emoji-picker--sets">
-                    <a data-section="recent" title="${escapeHtml(tr("emoji_picker_recent"))}"><img src="${twemojiUrl("🕓")}" alt="" /></a>
+                    <a data-section="recent" title="${escapeHtml(tr("emoji_picker_recent"))}"><span class="emoji-picker--icon-recent"></span></a>
                     <div class="emoji-picker--set">
                         ${sets.map(s => `<a data-section="${s.id}" title="${escapeHtml(tr(`emoji_category_${s.id}`))}"><img src="${twemojiUrl(CATEGORY_ICONS[s.id])}" alt="" /></a>`).join("")}
                     </div>
@@ -546,9 +546,7 @@
                 <div class="emoji-picker--body"></div>
                 <div class="emoji-picker--sticker-bar">
                     <div class="emoji-picker--sets"></div>
-                    <a class="emoji-picker--store" href="/stickers" title="${escapeHtml(tr("stickers_store_open"))}">
-                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>
-                    </a>
+                    <a class="emoji-picker--store" href="/stickers" title="${escapeHtml(tr("stickers_store_open"))}"><span class="emoji-picker--icon-store"></span></a>
                 </div>
             </div>
             <div class="emoji-picker--pane" data-pane="gifs">

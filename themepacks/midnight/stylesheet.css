@@ -814,14 +814,6 @@ ul {
     border-color: #2c2640;
 }
 
-.emoji-picker--store {
-    color: #6f82a8;
-}
-
-.emoji-picker--store:hover {
-    color: #c6d2e8;
-}
-
 .stickers-shop--empty,
 .stickers-pack-row--meta,
 .stickers-pack-row--added,

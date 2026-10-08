@@ -5317,11 +5317,30 @@ hr {
     justify-content: center;
     flex-shrink: 0;
     width: 38px;
-    color: #8a96a3;
 }
 
-.emoji-picker--store:hover {
-    color: #2b587a;
+/* пиктограммы из спрайта панели опенвк */
+.emoji-picker--icon-recent,
+.emoji-picker--icon-store {
+    display: block;
+    width: 18px;
+    height: 18px;
+    background: url("/assets/packages/static/openvk/img/im/emoji_sprite.png") no-repeat;
+    opacity: 0.7;
+}
+
+.emoji-picker--icon-recent {
+    background-position: -131px 0;
+}
+
+.emoji-picker--icon-store {
+    background-position: -18px 0;
+}
+
+.emoji-picker--sets a:hover .emoji-picker--icon-recent,
+.emoji-picker--sets a.active .emoji-picker--icon-recent,
+.emoji-picker--store:hover .emoji-picker--icon-store {
+    opacity: 1;
 }
 
 /* стикер в сообщении - без фона, как в телеграме */
