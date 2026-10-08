@@ -738,3 +738,37 @@ ul {
 .messenger-app--messages-day-time b {
     color: #8b9ab5;
 }
+
+.emoji-btn {
+    background-color: #6f82a8;
+}
+
+.emoji-btn:hover,
+.emoji-btn[aria-expanded="true"] {
+    background-color: #8fb9d8;
+}
+
+.tippy-box[data-theme~="emoji"] {
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .5);
+}
+
+.emoji-picker--title {
+    color: #6f82a8;
+}
+
+.emoji-picker--item:hover,
+.emoji-picker--sets a:hover {
+    background-color: #272138;
+}
+
+.emoji-picker--sets {
+    border-color: #2c2640;
+}
+
+.emoji-picker--set.active {
+    background-color: #231e33;
+}
+
+.emoji-picker--sets a.active {
+    background-color: #383052;
+}

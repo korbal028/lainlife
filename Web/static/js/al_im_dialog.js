@@ -24,7 +24,7 @@ u(document).on("click", ".js-send-message", (e) => {
                         <a id="__videoAttachment" title="${tr("video")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" /></a>
                         <a id="__audioAttachment" title="${tr("audio")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" /></a>
                         <a id="__documentAttachment" title="${tr("document")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" /></a>
-                        <a id="iSmiles" title="${tr("smiles")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" /></a>
+                        <a class="js-emoji-picker" title="${tr("smiles")}"><img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" /></a>
                     </div>
                 </form>
             </div>

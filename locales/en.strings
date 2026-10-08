@@ -1455,7 +1455,16 @@
 /* Rich text */
 "spoiler" = "Spoiler";
 "smiles" = "Smiles";
-"selecting_smile" = "Selecting Smiles";
+"emoji_picker_recent" = "Recently used";
+"emoji_picker_kolobki" = "Kolobki";
+"emoji_category_smileys" = "Smileys & People";
+"emoji_category_animals" = "Animals & Nature";
+"emoji_category_food" = "Food & Drink";
+"emoji_category_activity" = "Activity";
+"emoji_category_travel" = "Travel & Places";
+"emoji_category_objects" = "Objects";
+"emoji_category_symbols" = "Symbols";
+"emoji_category_flags" = "Flags";
 
 /* Polls */
 "poll" = "Poll";

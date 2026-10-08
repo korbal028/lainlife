@@ -7,6 +7,7 @@
 
 <div id="write" class='model_content_textarea' style="padding: 5px 0;" data-id="{isset($owner) ? (gettype($owner) == 'integer' ? $owner : $owner->getId())}">
     <form action="{$route}" method="post" enctype="multipart/form-data" style="margin:0;">
+        <a class="js-emoji-picker emoji-btn" title="{_smiles}"></a>
         <textarea id="wall-post-input{$textAreaId}" placeholder="{_write}" name="text" style="width: 100%;resize: none;" class="small-textarea" autocomplete="off"></textarea>
         <span class="rich-text-hint" title="{_rich_text_hint}">?</span>
         <div>
@@ -135,10 +136,6 @@
                     <a n:if="$polls ?? false" onclick="initPoll(event);">
                         <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/actions/office-chart-bar-stacked.png" />
                         {_poll}
-                    </a>
-                    <a id="iSmiles">
-                        <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" />
-                        {_smiles}
                     </a>
                     <a n:if="$geo ?? false" id="__geoAttacher">
                         <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/apps/amarok.png" />

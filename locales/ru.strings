@@ -1385,7 +1385,16 @@
 /* Rich text */
 "spoiler" = "Спойлер";
 "smiles" = "Смайлики";
-"selecting_smile" = "Выбор смайлика";
+"emoji_picker_recent" = "Недавние";
+"emoji_picker_kolobki" = "Колобки";
+"emoji_category_smileys" = "Смайлы и люди";
+"emoji_category_animals" = "Животные и природа";
+"emoji_category_food" = "Еда и напитки";
+"emoji_category_activity" = "Активность";
+"emoji_category_travel" = "Путешествия и места";
+"emoji_category_objects" = "Предметы";
+"emoji_category_symbols" = "Символы";
+"emoji_category_flags" = "Флаги";
 
 /* Polls */
 "poll" = "Опрос";
