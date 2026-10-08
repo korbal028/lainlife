@@ -5059,6 +5059,11 @@ hr {
     cursor: pointer;
 }
 
+.emoji-picker--tabs[hidden],
+.emoji-picker--tabs a[hidden] {
+    display: none;
+}
+
 .emoji-picker--tabs a:hover {
     color: #5b7a9a;
     text-decoration: none;

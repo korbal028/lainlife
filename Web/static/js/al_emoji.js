@@ -2,6 +2,8 @@
 // с вкладками. В "Эмодзи" одной лентой идут наборы - недавние, обычные эмодзи
 // (по категориям) и колобки, а снизу полоска наборов для быстрого перехода.
 // В "GIF" - гифки из документов пользователя и поиск по GIF-сервису.
+// Какие вкладки показать, задаёт data-tabs у кнопки (в чатах - все три),
+// без него открываются только эмодзи - так в формах постов и комментариев.
 (() => {
     // Список соответствует реальным файлам в Web/static/img/kolobki - сервер
     // (TRichText::formatKolobki) превращает в картинку только :код: с существующим файлом.
@@ -349,9 +351,6 @@
 
         panel.querySelectorAll(".emoji-picker--tabs a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
         panel.querySelectorAll(".emoji-picker--pane").forEach(pane => pane.hidden = pane.dataset.pane !== tab);
-        try {
-            localStorage.setItem(TAB_KEY, tab);
-        } catch(e) {}
 
         if(tab === "emoji") updateActiveSet();
         if(tab === "gifs" && panel.isConnected) gifs.open();
@@ -400,12 +399,6 @@
         observeImages(body);
         gifs.init(panel.querySelector('.emoji-picker--pane[data-pane="gifs"]'));
 
-        let tab = "emoji";
-        try {
-            tab = localStorage.getItem(TAB_KEY) ?? tab;
-        } catch(e) {}
-        setTab(tab);
-
         body.addEventListener("scroll", () => requestAnimationFrame(updateActiveSet), { passive: true });
 
         // не отбираем фокус у поля ввода, чтобы курсор оставался на месте
@@ -417,6 +410,10 @@
             const tabLink = e.target.closest(".emoji-picker--tabs a");
             if(tabLink) {
                 setTab(tabLink.dataset.tab);
+                try {
+                    localStorage.setItem(TAB_KEY, tabLink.dataset.tab);
+                } catch(e) {}
+
                 return;
             }
 
@@ -489,6 +486,19 @@
             current = tip;
             if(!panel) buildPanel();
             renderRecent();
+
+            const tabs = (tip.reference.dataset.tabs ?? "").split(" ").filter(tab => TABS.includes(tab));
+            if(!tabs.includes("emoji")) tabs.unshift("emoji");
+
+            panel.querySelectorAll(".emoji-picker--tabs a").forEach(a => a.hidden = !tabs.includes(a.dataset.tab));
+            panel.querySelector(".emoji-picker--tabs").hidden = tabs.length < 2;
+
+            // открываем вкладку, выбранную в прошлый раз, если она есть у этой кнопки
+            let tab = null;
+            try {
+                tab = localStorage.getItem(TAB_KEY);
+            } catch(e) {}
+            setTab(tabs.includes(tab) ? tab : "emoji");
 
             // панель одна на все кнопки: перекладываем её в окошко нажатой. Сам узел
             // в setContent не отдаём - повторный тот же узел tippy считает "без изменений"

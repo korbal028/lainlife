@@ -115,7 +115,7 @@
             <div class="messenger-app--input---messagebox">
                 <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
                     <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
-                        <a class="js-emoji-picker emoji-btn" title="{_smiles}"></a>
+                        <a class="js-emoji-picker emoji-btn" data-tabs="emoji stickers gifs" title="{_smiles}"></a>
                         <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea expanded-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress }"></textarea>
 
                         <div id="reply-preview" style="display:none; padding:5px 8px; margin-bottom:5px; border-left:3px solid #7a9cc4; background:rgba(122,156,196,0.1); border-radius:3px; position:relative;">
