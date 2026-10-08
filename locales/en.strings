@@ -1465,6 +1465,18 @@
 "emoji_category_objects" = "Objects";
 "emoji_category_symbols" = "Symbols";
 "emoji_category_flags" = "Flags";
+"emoji_picker_tab_emoji" = "Emoji";
+"emoji_picker_tab_stickers" = "Stickers";
+"emoji_picker_tab_gifs" = "GIFs";
+"emoji_picker_stickers_soon" = "Stickers are coming soon";
+"gifs_search_placeholder" = "Search $1";
+"gifs_mine" = "My GIFs";
+"gifs_trending" = "Trending";
+"gifs_mine_empty" = "Upload GIFs to your documents and they will show up here.";
+"gifs_upload" = "Upload GIF";
+"gifs_not_found" = "Nothing found";
+"gif_search_error" = "Could not load GIFs";
+"gif_import_error" = "Could not attach the GIF";
 
 /* Polls */
 "poll" = "Poll";

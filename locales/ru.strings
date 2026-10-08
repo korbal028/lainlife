@@ -1395,6 +1395,18 @@
 "emoji_category_objects" = "Предметы";
 "emoji_category_symbols" = "Символы";
 "emoji_category_flags" = "Флаги";
+"emoji_picker_tab_emoji" = "Эмодзи";
+"emoji_picker_tab_stickers" = "Стикеры";
+"emoji_picker_tab_gifs" = "GIF";
+"emoji_picker_stickers_soon" = "Стикеры скоро появятся";
+"gifs_search_placeholder" = "Поиск в $1";
+"gifs_mine" = "Мои GIF";
+"gifs_trending" = "Популярные";
+"gifs_mine_empty" = "Загрузите GIF в документы, и они появятся здесь.";
+"gifs_upload" = "Загрузить GIF";
+"gifs_not_found" = "Ничего не найдено";
+"gif_search_error" = "Не удалось загрузить GIF";
+"gif_import_error" = "Не удалось прикрепить GIF";
 
 /* Polls */
 "poll" = "Опрос";

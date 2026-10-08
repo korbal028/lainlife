@@ -322,6 +322,28 @@ u(document).on("click", ".docListViewItem a.viewerOpener, a.docGalleryItem", asy
 
 // ctx > "wall" and maybe "messages" in future
 // source > "user" || "club" > source_arg
+// attachmentdata - "virtualid_id_accesskey", как в data-attachmentdata у документа
+function appendDocAttachment(form, attachmentdata, name) {
+    const _url = attachmentdata.split("_")
+    form.find('.post-vertical').append(`
+        <div class="vertical-attachment upload-item" draggable="true" data-type='doc' data-id="${attachmentdata}">
+            <div class='vertical-attachment-content' draggable="false">
+                <div class="docMainItem attachment_doc attachment_note">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 10"><polygon points="0 0 0 10 8 10 8 4 4 4 4 0 0 0"/><polygon points="5 0 5 3 8 3 5 0"/></svg>
+                    
+                    <div class='attachment_note_content'>
+                        <span class="attachment_note_text">${tr("document")}</span>
+                        <span class="attachment_note_name"><a href="/doc${_url[0]}_${_url[1]}?key=${_url[2]}">${ovk_proc_strtr(escapeHtml(name), 50)}</a></span>
+                    </div>
+                </div>
+            </div>
+            <div class='vertical-attachment-remove'>
+                <div id='small_remove_button'></div>
+            </div>
+        </div>
+    `)
+}
+
 async function __docAttachment(form, ctx = "wall", source = "user", source_arg = 0) {
     const per_page = 10
     const msg = new CMessageBox({
@@ -458,25 +480,8 @@ async function __docAttachment(form, ctx = "wall", source = "user", source_arg =
                 (form.find(`.upload-item[data-type='doc'][data-id='${dataset.attachmentdata}']`)).remove()
                 button.html(tr('attach'))
             } else {
-                const _url = dataset.attachmentdata.split("_")
                 button.html(tr('detach'))
-                form.find('.post-vertical').append(`
-                    <div class="vertical-attachment upload-item" draggable="true" data-type='doc' data-id="${dataset.attachmentdata}">
-                        <div class='vertical-attachment-content' draggable="false">
-                            <div class="docMainItem attachment_doc attachment_note">
-                                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 10"><polygon points="0 0 0 10 8 10 8 4 4 4 4 0 0 0"/><polygon points="5 0 5 3 8 3 5 0"/></svg>
-                                
-                                <div class='attachment_note_content'>
-                                    <span class="attachment_note_text">${tr("document")}</span>
-                                    <span class="attachment_note_name"><a href="/doc${_url[0]}_${_url[1]}?key=${_url[2]}">${ovk_proc_strtr(escapeHtml(dataset.name), 50)}</a></span>
-                                </div>
-                            </div>
-                        </div>
-                        <div class='vertical-attachment-remove'>
-                            <div id='small_remove_button'></div>
-                        </div>
-                    </div>
-                `)
+                appendDocAttachment(form, dataset.attachmentdata, dataset.name)
             }
         }
 

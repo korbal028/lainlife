@@ -15,6 +15,7 @@ class Document extends Media
     protected $tableName     = "documents";
     protected $fileExtension = "gif";
     private $tmp_format = null;
+    private $imported_file = false;
 
     public const VKAPI_TYPE_TEXT  = 1;
     public const VKAPI_TYPE_ARCHIVE = 2;
@@ -68,7 +69,13 @@ class Document extends Media
 
     protected function saveFile(string $filename, string $hash): bool
     {
-        move_uploaded_file($filename, $this->pathFromHash($hash));
+        // скачанная с GIF-сервиса гифка лежит не в $_FILES, move_uploaded_file её не переместит
+        if ($this->imported_file) {
+            rename($filename, $this->pathFromHash($hash));
+        } else {
+            move_uploaded_file($filename, $this->pathFromHash($hash));
+        }
+
         return true;
     }
 
@@ -132,6 +139,7 @@ class Document extends Media
             $this->makePreview($file["tmp_name"], $original_name, $file["preview_owner"]);
         }
 
+        $this->imported_file = (bool) ($file["imported"] ?? false);
         $this->saveFile($file["tmp_name"], $hash);
     }
 

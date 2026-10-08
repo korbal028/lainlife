@@ -763,8 +763,36 @@ ul {
     background-color: #272138;
 }
 
-.emoji-picker--sets {
+.emoji-picker--sets,
+.emoji-picker--tabs {
     border-color: #2c2640;
+}
+
+.emoji-picker--tabs a,
+.emoji-picker--soon,
+.emoji-picker--empty {
+    color: #6f82a8;
+}
+
+.emoji-picker--tabs a:hover {
+    color: #8fb9d8;
+}
+
+.emoji-picker--tabs a.active {
+    color: #c6d2e8;
+    border-bottom-color: #8fb9d8;
+}
+
+.emoji-picker--gif {
+    background-color: #231e33;
+}
+
+.emoji-picker--gif:hover::after {
+    box-shadow: inset 0 0 0 2px #8fb9d8;
+}
+
+.emoji-picker--gif.loading::after {
+    background-color: rgba(14, 11, 26, 0.6);
 }
 
 .emoji-picker--set.active {

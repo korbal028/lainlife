@@ -5040,12 +5040,127 @@ hr {
     max-width: calc(100vw - 16px);
 }
 
-.emoji-picker--body {
+.emoji-picker--tabs {
+    display: flex;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.emoji-picker--tabs a {
+    flex: 1;
+    padding: 9px 0 7px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    text-align: center;
+    font-weight: bold;
+    color: #8a96a3;
+    cursor: pointer;
+}
+
+.emoji-picker--tabs a:hover {
+    color: #5b7a9a;
+    text-decoration: none;
+}
+
+.emoji-picker--tabs a.active {
+    color: #2b587a;
+    border-bottom-color: #5b88b6;
+}
+
+/* у всех вкладок одна высота, чтобы окошко не прыгало при переключении */
+.emoji-picker--pane {
+    display: flex;
+    flex-direction: column;
+    height: 340px;
+}
+
+.emoji-picker--pane[hidden] {
+    display: none;
+}
+
+.emoji-picker--body,
+.emoji-picker--gif-body {
     position: relative;
-    height: 300px;
+    flex: 1;
+    min-height: 0;
     overflow-y: auto;
     overscroll-behavior: contain;
     padding: 0 6px 6px;
+}
+
+.emoji-picker--soon {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #8a96a3;
+    font-size: 13px;
+}
+
+.emoji-picker--gif-search {
+    padding: 8px 8px 2px;
+}
+
+.emoji-picker--gif-search input {
+    width: 100%;
+    box-sizing: border-box;
+    user-select: text;
+}
+
+.emoji-picker--gifs {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.emoji-picker--gifs > div {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.emoji-picker--gif {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background-color: #edf1f5;
+    cursor: pointer;
+}
+
+.emoji-picker--gif img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emoji-picker--gif:hover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 2px #5b88b6;
+}
+
+.emoji-picker--gif.loading {
+    pointer-events: none;
+}
+
+.emoji-picker--gif.loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.6) url("/assets/packages/static/openvk/img/loading_mini.gif") center no-repeat;
+}
+
+.emoji-picker--empty {
+    padding: 14px 8px;
+    text-align: center;
+    color: #8a96a3;
+}
+
+.emoji-picker--empty a {
+    cursor: pointer;
 }
 
 .emoji-picker--title {

@@ -95,6 +95,17 @@ class Documents
         return new EntityStream("Document", $search);
     }
 
+    # Гифка, которую пользователь уже отправлял из поиска GIF (см. DocumentsPresenter::renderGifImport)
+    public function getImportedGif(int $owner, string $original_name): ?Document
+    {
+        return $this->toDocument($this->documents->where([
+            "owner"         => $owner,
+            "original_name" => $original_name,
+            "unlisted"      => 1,
+            "deleted"       => 0,
+        ])->fetch());
+    }
+
     public function getTypes(int $owner_id): array
     {
         $result = DatabaseConnection::i()->getConnection()->query("SELECT `type`, COUNT(*) AS `count` FROM `documents` WHERE `owner` = ? AND `deleted` = 0 AND `unlisted` = 0 GROUP BY `type` ORDER BY `type`", $owner_id);

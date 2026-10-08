@@ -184,6 +184,15 @@ openvk:
             enable: false
             token: "TOKEN_HERE"
             helpdeskChat: ""
+        gifs: # поиск во вкладке GIF панели смайликов
+            enable: false
+            # API в формате Tenor v2 (сам Tenor отключён 30.06.2026):
+            # "https://api.giphy.com" (ключ на developers.giphy.com) или "https://api.klipy.com" (partner.klipy.com)
+            api: "https://api.giphy.com"
+            key: "API_KEY_HERE"
+            contentFilter: "medium" # off, low, medium, high
+            mediaHosts: ["giphy.com", "klipy.com"] # откуда серверу разрешено скачивать выбранные гифки
+            cacheTime: 3600 # сколько секунд кешировать ответы (у тестовых ключей ~100 запросов в час)
         eventDB:
             enable: true
             database:

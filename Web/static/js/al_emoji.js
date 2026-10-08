@@ -1,6 +1,7 @@
-// Панель смайликов как в телеграме: по кнопке .js-emoji-picker открывается окошко,
-// где одной лентой идут наборы - недавние, обычные эмодзи (по категориям) и колобки,
-// а снизу полоска наборов для быстрого перехода.
+// Панель смайликов как в телеграме: по кнопке .js-emoji-picker открывается окошко
+// с вкладками. В "Эмодзи" одной лентой идут наборы - недавние, обычные эмодзи
+// (по категориям) и колобки, а снизу полоска наборов для быстрого перехода.
+// В "GIF" - гифки из документов пользователя и поиск по GIF-сервису.
 (() => {
     // Список соответствует реальным файлам в Web/static/img/kolobki - сервер
     // (TRichText::formatKolobki) превращает в картинку только :код: с существующим файлом.
@@ -39,6 +40,8 @@
 
     const RECENT_KEY = "ux.emoji_recent";
     const RECENT_MAX = 24;
+    const TAB_KEY    = "ux.emoji_tab";
+    const TABS       = ["emoji", "stickers", "gifs"];
 
     const KOLOBOK_RE = /^:([A-Za-z0-9_-]+):$/;
 
@@ -97,14 +100,29 @@
     `;
 
     let panel = null, body = null, observer = null;
-    let target = null;
+    let target = null, current = null;
+
+    const lazyObserver = root => {
+        const io = new IntersectionObserver(entries => entries.forEach(entry => {
+            if(!entry.isIntersecting) return;
+
+            const img = entry.target;
+            img.src = img.dataset.src;
+            img.removeAttribute("data-src");
+            io.unobserve(img);
+        }), { root, rootMargin: "150px 0px" });
+
+        return io;
+    };
 
     const observeImages = root => root.querySelectorAll("img[data-src]").forEach(img => observer.observe(img));
 
     const updateActiveSet = () => {
+        if(body.closest(".emoji-picker--pane").hidden) return;
+
         const top = body.scrollTop + 10;
         let current = null;
-        panel.querySelectorAll(".emoji-picker--section").forEach(section => {
+        body.querySelectorAll(".emoji-picker--section").forEach(section => {
             if(section.hidden) return;
             if(!current || section.offsetTop <= top) current = section;
         });
@@ -126,45 +144,282 @@
         observeImages(grid);
     };
 
+    // Лента GIF: без запроса - свои гифки из документов, за ними популярные с сервиса;
+    // с запросом - результаты поиска. Страницы догружаются при прокрутке.
+    const gifs = {
+        pane: null, body: null, observer: null,
+        feed: [], query: null, token: 0, loading: false,
+        data: new WeakMap(),
+
+        fetchPage: async url => {
+            const res = await fetch(url);
+            if(!res.ok) throw new Error(res.status);
+
+            return res.json();
+        },
+
+        source(id, title, url) {
+            const section = document.createElement("div");
+            section.className = "emoji-picker--section";
+            section.innerHTML = `
+                ${title ? `<div class="emoji-picker--title">${escapeHtml(title)}</div>` : ""}
+                <div class="emoji-picker--gifs"><div></div><div></div></div>
+            `;
+            this.body.append(section);
+
+            return { id, section, url, cols: [...section.querySelectorAll(".emoji-picker--gifs > div")], heights: [0, 0], next: null, done: false, count: 0 };
+        },
+
+        reset(query) {
+            this.token++;
+            this.query   = query;
+            this.loading = false;
+            this.body.innerHTML = "";
+            this.body.scrollTop = 0;
+
+            const search = next => `/docs/gifs/search.json?q=${encodeURIComponent(query)}&pos=${encodeURIComponent(next ?? "")}`;
+            this.feed = query !== "" ? [this.source("search", "", search)] : [
+                this.source("mine", tr("gifs_mine"), next => `/docs/gifs.json?offset=${next ?? 0}`),
+                ...(window.openvk.gif_search ? [this.source("trending", tr("gifs_trending"), search)] : []),
+            ];
+
+            this.fill();
+        },
+
+        search(query) {
+            query = query.trim();
+            if(query !== this.query) this.reset(query);
+        },
+
+        // догружаем, пока лента не дотянулась до низа окошка - иначе прокрутки не будет
+        fill() {
+            if(this.pane.hidden || !this.pane.isConnected || this.loading) return;
+            if(this.body.scrollHeight - this.body.scrollTop - this.body.clientHeight > 300) return;
+
+            this.loadMore();
+        },
+
+        async loadMore() {
+            const src = this.feed.find(s => !s.done);
+            if(!src) return;
+
+            this.loading = true;
+            const token = this.token;
+            let page = null;
+            try {
+                page = await this.fetchPage(src.url(src.next));
+            } catch(e) {}
+
+            // пока ждали ответ, запрос поменяли
+            if(token !== this.token) return;
+            this.loading = false;
+
+            if(!page) {
+                src.done = true;
+                this.message(src, escapeHtml(tr("gif_search_error")));
+            } else {
+                page.items.forEach(item => this.add(src, item));
+                src.count += page.items.length;
+                src.next   = page.next ?? null;
+                src.done   = src.next === null;
+
+                if(src.done && src.count === 0) {
+                    this.message(src, src.id === "mine"
+                        ? `${escapeHtml(tr("gifs_mine_empty"))} <a class="emoji-picker--upload">${escapeHtml(tr("gifs_upload"))}</a>`
+                        : escapeHtml(tr("gifs_not_found")));
+                }
+            }
+
+            this.fill();
+        },
+
+        add(src, item) {
+            const w = item.width || 1, h = item.height || 1;
+            const col = src.heights[0] <= src.heights[1] ? 0 : 1;
+            src.heights[col] += h / w;
+
+            const el = document.createElement("a");
+            el.className = "emoji-picker--gif";
+            el.style.aspectRatio = `${w} / ${h}`;
+            el.title = item.title ?? item.name ?? "";
+
+            const img = document.createElement("img");
+            img.dataset.src = item.preview ?? item.url;
+            img.alt = "";
+
+            el.append(img);
+            src.cols[col].append(el);
+            this.data.set(el, item);
+            this.observer.observe(img);
+        },
+
+        message(src, html) {
+            const msg = document.createElement("div");
+            msg.className = "emoji-picker--empty";
+            msg.innerHTML = html;
+            src.section.append(msg);
+        },
+
+        // своя гифка уже документ, гифку из поиска сервер сначала сохранит себе
+        async pick(el) {
+            const item = this.data.get(el);
+            const form = target?.closest("form");
+            if(!item || !form || el.classList.contains("loading")) return;
+
+            const formU = u(form);
+            if(formU.find(".upload-item").length >= window.openvk.max_attachments) {
+                fastError(tr("too_many_attachments"));
+                return;
+            }
+
+            let { attachment, name } = item;
+            if(!attachment) {
+                el.classList.add("loading");
+                try {
+                    const fd = new FormData();
+                    fd.append("hash", window.router.csrf);
+                    fd.append("id", item.id);
+                    fd.append("url", item.url);
+                    fd.append("title", item.title);
+
+                    const res  = await fetch("/docs/gifs/import.json", { method: "POST", body: fd });
+                    const json = await res.json().catch(() => ({}));
+                    if(!res.ok || !json.attachment) throw new Error(json.error ?? json.flash?.message ?? tr("gif_import_error"));
+
+                    ({ attachment, name } = json);
+                } catch(err) {
+                    fastError(escapeHtml(err.message));
+                    return;
+                } finally {
+                    el.classList.remove("loading");
+                }
+            }
+
+            if(formU.find(`.upload-item[data-type='doc'][data-id='${attachment}']`).length === 0)
+                appendDocAttachment(formU, attachment, name);
+
+            current?.hide();
+            // на стене форма с вложениями раскрывается только по фокусу
+            target.focus({ preventScroll: true });
+        },
+
+        init(pane) {
+            this.pane = pane;
+            this.body = pane.querySelector(".emoji-picker--gif-body");
+            this.observer = lazyObserver(this.body);
+            this.body.addEventListener("scroll", () => requestAnimationFrame(() => this.fill()), { passive: true });
+
+            const input = pane.querySelector(".emoji-picker--gif-search input");
+            if(input) {
+                let timer = null;
+                // с паузой, чтобы не тратить лимит запросов к сервису на каждую букву
+                input.addEventListener("input", () => {
+                    clearTimeout(timer);
+                    timer = setTimeout(() => this.search(input.value), 600);
+                });
+                input.addEventListener("keydown", e => {
+                    if(e.key !== "Enter") return;
+
+                    e.preventDefault();
+                    clearTimeout(timer);
+                    this.search(input.value);
+                });
+            }
+
+            pane.addEventListener("click", e => {
+                const gif = e.target.closest(".emoji-picker--gif");
+                if(gif) return this.pick(gif);
+
+                if(e.target.closest(".emoji-picker--upload")) {
+                    current?.hide();
+                    showDocumentUploadDialog("search", NaN, () => this.query = null);
+                }
+            });
+        },
+
+        // ленту строим при первом открытии вкладки, после загрузки GIF в документы - заново
+        open() {
+            if(this.query === null) this.reset("");
+            else this.fill();
+        },
+    };
+
+    const setTab = tab => {
+        if(!TABS.includes(tab)) tab = "emoji";
+
+        panel.querySelectorAll(".emoji-picker--tabs a").forEach(a => a.classList.toggle("active", a.dataset.tab === tab));
+        panel.querySelectorAll(".emoji-picker--pane").forEach(pane => pane.hidden = pane.dataset.pane !== tab);
+        try {
+            localStorage.setItem(TAB_KEY, tab);
+        } catch(e) {}
+
+        if(tab === "emoji") updateActiveSet();
+        if(tab === "gifs" && panel.isConnected) gifs.open();
+    };
+
+    const activeTab = () => panel.querySelector(".emoji-picker--tabs a.active")?.dataset.tab;
+
     const buildPanel = () => {
         const sets = emojiSets();
 
         panel = document.createElement("div");
         panel.className = "emoji-picker";
         panel.innerHTML = `
-            <div class="emoji-picker--body">
-                ${sectionHTML("recent", tr("emoji_picker_recent"), [])}
-                ${sets.map(s => sectionHTML(s.id, tr(`emoji_category_${s.id}`), s.items)).join("")}
-                ${sectionHTML("kolobki", tr("emoji_picker_kolobki"), KOLOBKI.map(k => `:${k}:`))}
+            <div class="emoji-picker--tabs">
+                ${TABS.map(tab => `<a data-tab="${tab}">${escapeHtml(tr(`emoji_picker_tab_${tab}`))}</a>`).join("")}
             </div>
-            <div class="emoji-picker--sets">
-                <a data-section="recent" title="${escapeHtml(tr("emoji_picker_recent"))}"><img src="${twemojiUrl("🕓")}" alt="" /></a>
-                <div class="emoji-picker--set">
-                    ${sets.map(s => `<a data-section="${s.id}" title="${escapeHtml(tr(`emoji_category_${s.id}`))}"><img src="${twemojiUrl(CATEGORY_ICONS[s.id])}" alt="" /></a>`).join("")}
+            <div class="emoji-picker--pane" data-pane="emoji">
+                <div class="emoji-picker--body">
+                    ${sectionHTML("recent", tr("emoji_picker_recent"), [])}
+                    ${sets.map(s => sectionHTML(s.id, tr(`emoji_category_${s.id}`), s.items)).join("")}
+                    ${sectionHTML("kolobki", tr("emoji_picker_kolobki"), KOLOBKI.map(k => `:${k}:`))}
                 </div>
-                <a data-section="kolobki" title="${escapeHtml(tr("emoji_picker_kolobki"))}"><img src="${kolobokUrl("smile")}" alt="" /></a>
+                <div class="emoji-picker--sets">
+                    <a data-section="recent" title="${escapeHtml(tr("emoji_picker_recent"))}"><img src="${twemojiUrl("🕓")}" alt="" /></a>
+                    <div class="emoji-picker--set">
+                        ${sets.map(s => `<a data-section="${s.id}" title="${escapeHtml(tr(`emoji_category_${s.id}`))}"><img src="${twemojiUrl(CATEGORY_ICONS[s.id])}" alt="" /></a>`).join("")}
+                    </div>
+                    <a data-section="kolobki" title="${escapeHtml(tr("emoji_picker_kolobki"))}"><img src="${kolobokUrl("smile")}" alt="" /></a>
+                </div>
+            </div>
+            <div class="emoji-picker--pane" data-pane="stickers">
+                <div class="emoji-picker--soon">${escapeHtml(tr("emoji_picker_stickers_soon"))}</div>
+            </div>
+            <div class="emoji-picker--pane" data-pane="gifs">
+                ${window.openvk.gif_search ? `
+                    <div class="emoji-picker--gif-search">
+                        <input type="search" maxlength="100" placeholder="${escapeHtml(tr("gifs_search_placeholder", window.openvk.gif_search))}" />
+                    </div>
+                ` : ""}
+                <div class="emoji-picker--gif-body"></div>
             </div>
         `;
 
         body = panel.querySelector(".emoji-picker--body");
-        observer = new IntersectionObserver(entries => entries.forEach(entry => {
-            if(!entry.isIntersecting) return;
-
-            const img = entry.target;
-            img.src = img.dataset.src;
-            img.removeAttribute("data-src");
-            observer.unobserve(img);
-        }), { root: body, rootMargin: "150px 0px" });
+        observer = lazyObserver(body);
         observeImages(body);
+        gifs.init(panel.querySelector('.emoji-picker--pane[data-pane="gifs"]'));
+
+        let tab = "emoji";
+        try {
+            tab = localStorage.getItem(TAB_KEY) ?? tab;
+        } catch(e) {}
+        setTab(tab);
 
         body.addEventListener("scroll", () => requestAnimationFrame(updateActiveSet), { passive: true });
 
         // не отбираем фокус у поля ввода, чтобы курсор оставался на месте
         panel.addEventListener("mousedown", e => {
-            if(e.target.closest(".emoji-picker--item, .emoji-picker--sets a")) e.preventDefault();
+            if(e.target.closest(".emoji-picker--item, .emoji-picker--sets a, .emoji-picker--tabs a, .emoji-picker--gif")) e.preventDefault();
         });
 
         panel.addEventListener("click", e => {
+            const tabLink = e.target.closest(".emoji-picker--tabs a");
+            if(tabLink) {
+                setTab(tabLink.dataset.tab);
+                return;
+            }
+
             const tab = e.target.closest(".emoji-picker--sets a");
             if(tab) {
                 const section = panel.querySelector(`.emoji-picker--section[data-section="${tab.dataset.section}"]`);
@@ -231,6 +486,7 @@
             target = findTextArea(tip.reference);
             if(!target) return false;
 
+            current = tip;
             if(!panel) buildPanel();
             renderRecent();
 
@@ -245,6 +501,7 @@
 
         onMount() {
             updateActiveSet();
+            if(activeTab() === "gifs") gifs.open();
         },
 
         onHide() {
