@@ -13,17 +13,21 @@
 
     <div class="stickers-shop" data-act="{$act}">
         {if $act === 'shop'}
-            <div class="stickers-shop--bar">
-                <div class="stickers-shop--sections">
-                    <a href="/stickers?section=popular" n:class="$section === 'popular' ? 'active'">{_stickers_tab_popular}</a>
-                    <a href="/stickers?section=free" n:class="$section === 'free' ? 'active'">{_stickers_tab_free}</a>
-                    <a href="/stickers?section=all" n:class="$section === 'all' ? 'active'">{_stickers_tab_all}</a>
+            <div class="mb_tabs stickers-shop--tabs">
+                <div class="mb_tab" n:attr="id => $section === 'popular' ? 'active'">
+                    <a href="/stickers?section=popular">{_stickers_tab_popular}</a>
                 </div>
-                <form action="/stickers" method="GET" class="stickers-shop--search">
-                    <input type="hidden" name="section" value="{$section}" />
-                    <input type="search" name="q" placeholder="{_stickers_search_placeholder}" value="{$q}" />
-                </form>
+                <div class="mb_tab" n:attr="id => $section === 'free' ? 'active'">
+                    <a href="/stickers?section=free">{_stickers_tab_free}</a>
+                </div>
+                <div class="mb_tab" n:attr="id => $section === 'all' ? 'active'">
+                    <a href="/stickers?section=all">{_stickers_tab_all}</a>
+                </div>
             </div>
+            <form action="/stickers" method="GET" class="stickers-shop--search">
+                <input type="hidden" name="section" value="{$section}" />
+                <input name="q" class="header_search_input" placeholder="{_stickers_search_placeholder}" value="{$q}" />
+            </form>
         {elseif $act === 'author'}
             <div class="stickers-shop--bar">
                 <span class="stickers-shop--bar-title">{_stickers_tab_author}</span>

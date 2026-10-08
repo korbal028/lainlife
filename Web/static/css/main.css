@@ -5102,9 +5102,6 @@ hr {
 .emoji-picker--search input {
     width: 100%;
     box-sizing: border-box;
-    padding: 6px 10px 6px 28px;
-    border-radius: 14px;
-    background: #f0f2f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") 9px center / 13px no-repeat;
     user-select: text;
 }
 
@@ -5276,7 +5273,6 @@ hr {
     display: block;
     aspect-ratio: 1;
     padding: 3px;
-    border-radius: 6px;
     cursor: pointer;
 }
 
@@ -5305,10 +5301,6 @@ hr {
 }
 
 /* обложки наборов цветные, серыми только иконки эмодзи */
-.emoji-picker--sticker-bar .emoji-picker--sets a {
-    border-radius: 6px;
-}
-
 .emoji-picker--sticker-bar .emoji-picker--sets img {
     width: 24px;
     height: 24px;
@@ -5326,8 +5318,6 @@ hr {
     flex-shrink: 0;
     width: 38px;
     color: #8a96a3;
-    background-color: #f3f5f7;
-    box-shadow: -6px 0 8px -4px rgba(0, 0, 0, 0.12);
 }
 
 .emoji-picker--store:hover {
@@ -5361,24 +5351,17 @@ hr {
     font-weight: bold;
 }
 
-.stickers-shop--sections {
-    display: flex;
-    gap: 4px;
+.stickers-shop--tabs {
+    margin-top: 8px;
 }
 
-.stickers-shop--sections a {
-    padding: 4px 10px;
-    border-radius: 12px;
-}
-
-.stickers-shop--sections a.active {
-    background-color: #e1e7ed;
-    color: #2b587a;
-    font-weight: bold;
+.stickers-shop--search {
+    padding: 8px 0;
+    border-bottom: 1px solid #e7e8ec;
 }
 
 .stickers-shop--search input {
-    width: 220px;
+    width: 100%;
     box-sizing: border-box;
 }
 
