@@ -698,3 +698,128 @@ ul {
 .header_navigation #search_box #searchBoxFastTips a:hover, .header_navigation #search_box #searchBoxFastTips a:focus {
     background: #111322;
 }
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a:hover {
+    background: #272138;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::before {
+    border-bottom-color: #2c2640;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    border-bottom-color: #1e1a2b;
+}
+
+.crp-list.crp-dragging .crp-entry.dragging {
+    background-color: #272138 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}
+
+.messenger-app--selection,
+.messenger-app--pinned {
+    border-color: #2c2640;
+}
+
+.messenger-app--pinned:hover {
+    background-color: #272138;
+}
+
+.messenger-app--messages---message.selected {
+    background-color: rgba(122, 156, 196, .15);
+}
+
+.im_floating_date_wrap b {
+    color: #8b9ab5;
+    background-color: #1e1a2b;
+    border-color: #2c2640;
+}
+
+.messenger-app--messages-day-time b {
+    color: #8b9ab5;
+}
+
+.emoji-btn {
+    background-color: #6f82a8;
+}
+
+.emoji-btn:hover,
+.emoji-btn[aria-expanded="true"] {
+    background-color: #8fb9d8;
+}
+
+.tippy-box[data-theme~="emoji"] {
+    /* рамка посветлее общей #2c2640, иначе стрелка сливается с фоном поля ввода */
+    border-color: #3f365b !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, .5);
+}
+
+.emoji-picker--title {
+    color: #6f82a8;
+}
+
+.emoji-picker--item:hover,
+.emoji-picker--sets a:hover {
+    background-color: #272138;
+}
+
+.emoji-picker--sets,
+.emoji-picker--tabs {
+    border-color: #2c2640;
+}
+
+.emoji-picker--tabs a,
+.emoji-picker--empty {
+    color: #6f82a8;
+}
+
+.emoji-picker--tabs a:hover {
+    color: #8fb9d8;
+}
+
+.emoji-picker--tabs a.active {
+    color: #c6d2e8;
+    border-bottom-color: #8fb9d8;
+}
+
+.emoji-picker--gif {
+    background-color: #231e33;
+}
+
+.emoji-picker--gif:hover::after {
+    box-shadow: inset 0 0 0 2px #8fb9d8;
+}
+
+.emoji-picker--gif.loading::after {
+    background-color: rgba(14, 11, 26, 0.6);
+}
+
+.emoji-picker--set.active {
+    background-color: #231e33;
+}
+
+.emoji-picker--sets a.active {
+    background-color: #383052;
+}
+
+.emoji-picker--sticker:hover {
+    background-color: #272138;
+}
+
+.emoji-picker--sticker-bar,
+.stickers-shop--bar,
+.stickers-shop--search,
+.stickers-pack-row,
+.stickers-edit--item {
+    border-color: #2c2640;
+}
+
+.stickers-shop--empty,
+.stickers-pack-row--meta,
+.stickers-pack-row--added,
+.stickers-pack-row--balance,
+.stickers-modal--meta,
+.stickers-edit--hint,
+.stickers-edit--file {
+    color: #6f82a8;
+}

@@ -20,6 +20,7 @@ services:
     - openvk\Web\Presenters\ReportPresenter
     - openvk\Web\Presenters\AdminPresenter
     - openvk\Web\Presenters\GiftsPresenter
+    - openvk\Web\Presenters\StickersPresenter
     - openvk\Web\Presenters\MessengerPresenter
     - openvk\Web\Presenters\TopicsPresenter
     - openvk\Web\Presenters\AppsPresenter
@@ -29,6 +30,7 @@ services:
     - openvk\Web\Presenters\BannedLinkPresenter
     - openvk\Web\Presenters\DocumentsPresenter
     - openvk\Web\Models\Repositories\Users
+    - openvk\Web\Models\Repositories\Stickers
     - openvk\Web\Models\Repositories\Posts
     - openvk\Web\Models\Repositories\Polls
     - openvk\Web\Models\Repositories\Photos

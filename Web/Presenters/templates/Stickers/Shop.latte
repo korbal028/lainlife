@@ -1,0 +1,104 @@
+{extends "../@layout.latte"}
+
+{block title}
+    {_stickers_store}
+{/block}
+
+{block header}
+    {_stickers_store}
+{/block}
+
+{block content}
+    {include "Tabs.latte", act => $act, canCreate => $canCreate}
+
+    <div class="stickers-shop" data-act="{$act}">
+        {if $act === 'shop'}
+            <div class="mb_tabs stickers-shop--tabs">
+                <div class="mb_tab" n:attr="id => $section === 'popular' ? 'active'">
+                    <a href="/stickers?section=popular">{_stickers_tab_popular}</a>
+                </div>
+                <div class="mb_tab" n:attr="id => $section === 'free' ? 'active'">
+                    <a href="/stickers?section=free">{_stickers_tab_free}</a>
+                </div>
+                <div class="mb_tab" n:attr="id => $section === 'all' ? 'active'">
+                    <a href="/stickers?section=all">{_stickers_tab_all}</a>
+                </div>
+            </div>
+            <form action="/stickers" method="GET" class="stickers-shop--search">
+                <input type="hidden" name="section" value="{$section}" />
+                <input name="q" class="header_search_input" placeholder="{_stickers_search_placeholder}" value="{$q}" />
+            </form>
+        {elseif $act === 'author'}
+            <div class="stickers-shop--bar">
+                <span class="stickers-shop--bar-title">{_stickers_tab_author}</span>
+                <a class="button" href="/stickers/new">{_stickers_create_pack_btn}</a>
+            </div>
+        {/if}
+
+        {if sizeof($packs) > 0}
+            <div class="stickers-shop--list">
+                {foreach $packs as $pack}
+                    {var $installed = in_array($pack->getId(), $installedPackIds, true)}
+                    {var $bought    = in_array($pack->getId(), $boughtPackIds, true)}
+                    {var $cover     = $pack->getMainSticker()}
+                    <div class="stickers-pack-row" data-slug="{$pack->getSlug()}" data-id="{$pack->getId()}">
+                        <a class="stickers-pack-row--cover js-sticker-pack" href="/stickers?pack={$pack->getSlug()}">
+                            <img n:if="$cover" src="{$cover->getImageUrl(256, $pack->getId())}" alt="" loading="lazy" />
+                        </a>
+                        <div class="stickers-pack-row--info">
+                            <a class="stickers-pack-row--name js-sticker-pack" href="/stickers?pack={$pack->getSlug()}">{$pack->getName()}</a>
+                            <div class="stickers-pack-row--meta">
+                                {tr("stickers_count", $pack->getStickersCount())}
+                                {if $pack->getAuthor()}
+                                    ·
+                                    {if $pack->getAuthorUrl()}
+                                        <a href="{$pack->getAuthorUrl()}" target="_blank" rel="noopener noreferrer">{$pack->getAuthor()}</a>
+                                    {else}
+                                        {$pack->getAuthor()}
+                                    {/if}
+                                {/if}
+                            </div>
+                            <div class="stickers-pack-row--preview js-sticker-pack">
+                                <img n:foreach="$pack->getStickers(1, 5) as $sticker" src="{$sticker->getImageUrl(128, $pack->getId())}" alt="" loading="lazy" />
+                            </div>
+                        </div>
+                        <div class="stickers-pack-row--action">
+                            {if $act === 'author'}
+                                <a class="button" href="/stickers/edit/{$pack->getId()}">{_edit}</a>
+                                <div class="stickers-pack-row--balance">
+                                    {_stickers_pack_balance}: <b>{tr("coins", (int) round($pack->getBalance()))}</b>
+                                </div>
+                            {elseif $act === 'settings'}
+                                <a class="button button_gray js-sticker-uninstall">{_stickers_uninstall_pack}</a>
+                            {elseif $installed}
+                                <span class="stickers-pack-row--added">{_stickers_added}</span>
+                            {elseif $bought || $pack->getPrice() <= 0}
+                                <a class="button js-sticker-install">{_add}</a>
+                            {else}
+                                <a class="button js-sticker-install">{tr("stickers_buy_pack", tr("coins", $pack->getPrice()))}</a>
+                            {/if}
+                        </div>
+                    </div>
+                {/foreach}
+            </div>
+
+            {include "../components/paginator.latte", conf => (object) [
+                "page"     => $page,
+                "count"    => $packsCount,
+                "amount"   => sizeof($packs),
+                "perPage"  => $perPage,
+                "atBottom" => true,
+                "tidy"     => false,
+            ]}
+        {else}
+            <div class="stickers-shop--empty">
+                {if $act === 'settings'}{_stickers_no_installed}{else}{_stickers_no_packs}{/if}
+            </div>
+        {/if}
+    </div>
+
+    <script n:if="$autoOpenPack">
+        // при обычной загрузке страницы al_stickers.js подключается ниже контента
+        (window.openStickerPack ? f => f() : f => addEventListener("DOMContentLoaded", f))(() => openStickerPack({$autoOpenPack}));
+    </script>
+{/block}

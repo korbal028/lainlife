@@ -1,7 +1,14 @@
-SELECT DISTINCT id, class FROM
+SELECT
+  dt.id,
+  dt.class,
+  MAX(dt.time) AS time,
+  COALESCE(MAX(d.pinned), 0) AS pinned,
+  COALESCE(MAX(d.pinned), 0) = 0 AS unpinned
+FROM
 (
   (
     SELECT
+      id AS mid,
       recipient_id AS id,
       recipient_type AS class,
       created AS time
@@ -12,8 +19,9 @@ SELECT DISTINCT id, class FROM
       sender_type = ?
     AND
       deleted = 0
-  ) UNION (
+  ) UNION ALL (
     SELECT
+      id AS mid,
       sender_id AS id,
       sender_type AS class,
       created AS time
@@ -25,10 +33,25 @@ SELECT DISTINCT id, class FROM
     AND
       deleted = 0
   )
-  ORDER BY
-    time
-  DESC
 ) dt
+LEFT JOIN messenger_dialogs d
+  ON d.owner_id = ?
+  AND d.owner_type = ?
+  AND d.peer_id = dt.id
+  AND d.peer_type = dt.class
+WHERE
+  dt.mid > COALESCE(d.cleared_till, 0)
+AND
+  dt.mid NOT IN (SELECT message_id FROM messages_hidden WHERE owner_id = ?)
+AND
+  COALESCE(d.archived, 0) = ?
+GROUP BY
+  dt.id,
+  dt.class
+ORDER BY
+  unpinned ASC,
+  pinned ASC,
+  time DESC
 LIMIT
   ?
 OFFSET

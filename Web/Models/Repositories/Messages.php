@@ -35,7 +35,7 @@ class Messages
         return self::$cache[$id] ??= $this->toMessage($this->messages->get($id));
     }
 
-    public function getCorrespondencies(RowModel $correspondent, int $page = 1, ?int $perPage = null, ?int $offset = null): \Traversable
+    public function getCorrespondencies(RowModel $correspondent, int $page = 1, ?int $perPage = null, ?int $offset = null, bool $archived = false): \Traversable
     {
         $id      = $correspondent->getId();
         $class   = get_class($correspondent);
@@ -43,7 +43,8 @@ class Messages
         $offset ??= ($page - 1) * $limit;
         $query   = file_get_contents(__DIR__ . "/../sql/get-correspondencies.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
-        $coresps = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $limit, $offset);
+        $hiddenOwner = $correspondent instanceof User ? $id : 0;
+        $coresps = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived, $limit, $offset);
         foreach ($coresps as $c) {
             if ($c->class === 'openvk\Web\Models\Entities\User') {
                 $anotherCorrespondent = (new Users())->get($c->id);
@@ -55,13 +56,14 @@ class Messages
         }
     }
 
-    public function getCorrespondenciesCount(RowModel $correspondent): ?int
+    public function getCorrespondenciesCount(RowModel $correspondent, bool $archived = false): ?int
     {
         $id    = $correspondent->getId();
         $class = get_class($correspondent);
         $query = file_get_contents(__DIR__ . "/../sql/get-correspondencies-count.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
-        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class)->fetch()->cnt;
+        $hiddenOwner = $correspondent instanceof User ? $id : 0;
+        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetch()->cnt;
         return $count;
     }
 }

@@ -1,0 +1,122 @@
+{extends "../@layout.latte"}
+
+{block title}
+    {if $isNew}{_stickers_new_pack}{else}{_stickers_edit_pack}{/if}
+{/block}
+
+{block header}
+    <a href="/stickers?act=author">{_stickers_tab_author}</a> »
+    {if $isNew}{_stickers_new_pack}{else}{$pack->getName()}{/if}
+{/block}
+
+{block content}
+    {include "Tabs.latte", act => "author", canCreate => true}
+
+    {* multiple-файлы ajax-роутер не отправляет - форма уходит обычным сабмитом *}
+    <form class="stickers-edit" method="POST" enctype="multipart/form-data" onsubmit="return true" action="{$isNew ? '/stickers/new' : '/stickers/edit/' . $pack->getId()}">
+        <table cellspacing="7" cellpadding="0" border="0" align="center" width="100%">
+            <tr>
+                <td width="150"><span class="nobold">{_stickers_pack_name}:</span></td>
+                <td><input type="text" name="name" maxlength="256" required value="{$pack ? $pack->getName() : ''}" /></td>
+            </tr>
+            <tr>
+                <td><span class="nobold">{_stickers_pack_slug}:</span></td>
+                <td><input type="text" name="slug" maxlength="128" pattern="[A-Za-z0-9_\-]*" value="{$pack ? $pack->getSlug() : ''}" /></td>
+            </tr>
+            <tr>
+                <td><span class="nobold">{_stickers_pack_desc}:</span></td>
+                <td><textarea name="description">{$pack ? $pack->getDescription() : ''}</textarea></td>
+            </tr>
+            <tr>
+                <td><span class="nobold">{_stickers_pack_author}:</span></td>
+                <td><input type="text" name="author" maxlength="256" placeholder="{_stickers_pack_author_placeholder}" value="{$pack ? $pack->getAuthor() : ''}" /></td>
+            </tr>
+            <tr>
+                <td><span class="nobold">{_stickers_pack_author_url}:</span></td>
+                <td><input type="text" name="author_url" maxlength="512" value="{$pack ? $pack->getAuthorUrl() : ''}" /></td>
+            </tr>
+            <tr>
+                <td><span class="nobold">{_stickers_pack_price}:</span></td>
+                <td><input type="number" name="price" min="0" max="65535" value="{$pack ? $pack->getPrice() : 0}" /></td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><label><input type="checkbox" name="unlisted" value="1" n:attr="checked => $pack && $pack->isUnlisted()" /> {_stickers_pack_unlisted}</label></td>
+            </tr>
+        </table>
+
+        {var $cover = $pack ? $pack->getMainSticker() : null}
+        <div n:if="sizeof($existingStickers) > 0" class="stickers-edit--section">
+            <h4>{_stickers_upload_title}</h4>
+            <div class="stickers-edit--grid">
+                <div n:foreach="$existingStickers as $sticker" class="stickers-edit--item">
+                    <img src="{$sticker->getImageUrl(128, $pack->getId())}" alt="" loading="lazy" />
+                    <input type="text" name="existing_emojis[{$sticker->getId()}]" maxlength="64" placeholder="{_stickers_emoji_placeholder}" value="{$sticker->getEmoji()}" />
+                    <label title="{_stickers_set_cover}">
+                        <input type="radio" name="main_sticker_id" value="{$sticker->getId()}" n:attr="checked => $cover && $cover->getId() === $sticker->getId()" />
+                        {_stickers_cover}
+                    </label>
+                    <label>
+                        <input type="checkbox" name="delete_stickers[]" value="{$sticker->getId()}" />
+                        {_stickers_delete_sticker}
+                    </label>
+                </div>
+            </div>
+        </div>
+
+        <div class="stickers-edit--section">
+            <h4>{_stickers_new_files}</h4>
+            <p class="stickers-edit--hint">{_stickers_upload_hint}</p>
+            <input type="file" name="stickers[]" multiple accept="image/png,image/jpeg,image/webp,image/gif,.json,.tgs" class="js-stickers-files" />
+            <div class="stickers-edit--grid js-stickers-new" data-cover-name="{$isNew ? 'main_sticker_index' : 'new_main_sticker_index'}"></div>
+        </div>
+
+        <input type="hidden" name="hash" value="{$csrfToken}" />
+        <button class="button">{_stickers_save_pack}</button>
+    </form>
+
+    {if !$isNew}
+        <div class="stickers-edit--section">
+            <h4>{_stickers_pack_balance}</h4>
+            <p>{tr("stickers_balance", (int) round($pack->getBalance()))|noescape}</p>
+            <form n:if="$pack->getBalance() > 0" method="POST" action="/stickers/edit/{$pack->getId()}" onsubmit="return true">
+                <input type="hidden" name="action" value="withdraw" />
+                <input type="hidden" name="hash" value="{$csrfToken}" />
+                <input type="number" name="withdraw_amount" min="1" max="{$pack->getBalance()}" step="any" placeholder="{$pack->getBalance()}" />
+                <button class="button">{_stickers_withdraw_btn}</button>
+                <span n:if="$withdrawTax > 0" class="nobold">{_stickers_withdraw_tax}: {$withdrawTax}%</span>
+            </form>
+        </div>
+
+        <form class="stickers-edit--section" method="POST" action="/stickers/edit/{$pack->getId()}" onsubmit="return confirm({tr('stickers_delete_pack_confirm')})">
+            <input type="hidden" name="action" value="delete" />
+            <input type="hidden" name="hash" value="{$csrfToken}" />
+            <button class="button button_gray">{_stickers_delete_pack}</button>
+        </form>
+    {/if}
+
+    <script>
+        // превью выбранных файлов с полем эмодзи и выбором обложки
+        u(".js-stickers-files").on("change", e => {
+            const grid  = document.querySelector(".js-stickers-new");
+            const cover = grid.dataset.coverName;
+            grid.innerHTML = "";
+
+            [...e.target.files].forEach((file, i) => {
+                const item = document.createElement("div");
+                item.className = "stickers-edit--item";
+                item.innerHTML = `
+                    <img alt="" />
+                    <input type="text" name="emojis[]" maxlength="64" placeholder="${ escapeHtml(tr("stickers_emoji_placeholder")) }" />
+                    <label><input type="radio" name="${ cover }" value="${ i }" /> ${ escapeHtml(tr("stickers_cover")) }</label>
+                `;
+                if(file.type.startsWith("image/"))
+                    item.querySelector("img").src = URL.createObjectURL(file);
+                else
+                    item.querySelector("img").replaceWith(Object.assign(document.createElement("span"), { className: "stickers-edit--file", textContent: file.name }));
+
+                grid.append(item);
+            });
+        });
+    </script>
+{/block}

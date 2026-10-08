@@ -461,6 +461,7 @@
         </div>
 
         <div class="page_footer">
+            {if !($hideFooter ?? false)}
             {var $dbVersion = \Chandler\Database\DatabaseConnection::i()->getConnection()->getPdo()->getAttribute(\PDO::ATTR_SERVER_VERSION)}
 
             <div class="navigation_footer">
@@ -484,6 +485,7 @@
             <p n:ifcontent>
                 {php echo OPENVK_ROOT_CONF["openvk"]["appearance"]["motd"]}
             </p>
+            {/if}
         </div>
 
         <div id="ajloader" class="loader">
@@ -500,8 +502,11 @@
         {script "js/scroll.js"}
         {script "js/player.js"}
         {script "js/al_wall.js"}
+        {script "js/emoji_data.js"}
+        {script "js/al_emoji.js"}
         {script "js/al_docs.js"}
         {script "js/al_api.js"}
+        {script "js/al_stickers.js"}
         {script "js/al_mentions.js"}
         {script "js/al_polls.js"}
         {script "js/al_suggestions.js"}
@@ -514,6 +519,7 @@
 
         {ifset $thisUser}
             {script "js/al_notifs.js"}
+            {script "js/al_im_dialog.js"}
             {script "js/al_feed.js"}
         {/ifset}
 
@@ -568,6 +574,7 @@
                 "max_add_fields": {ovkGetQuirk("users.max-fields")},
                 "docs_max": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["maxSize"]},
                 "docs_allowed": {\OPENVK_ROOT_CONF["openvk"]["preferences"]["docs"]["allowedFormats"]},
+                "gif_search": {\openvk\Web\Util\GifSearch::getProviderName()},
                 "notification_sound": {ifset $thisUser}{$thisUser->getNotificationSound()}{else}"bell"{/ifset},
                 "avatar_style": {ifset $thisUser}{$thisUser->getStyleAvatar()}{else}0{/ifset},
             }

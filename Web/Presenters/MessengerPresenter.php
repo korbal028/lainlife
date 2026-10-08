@@ -9,8 +9,9 @@ use openvk\Web\Events\NewMessageEvent;
 use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Events\ForwardMessageEvent;
-use openvk\Web\Models\Repositories\{Users, Clubs, Messages};
-use openvk\Web\Models\Entities\{Message, Correspondence};
+use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs};
+use openvk\Web\Models\Entities\Messages\Sticker;
+use openvk\Web\Models\Entities\{Message, Correspondence, User};
 
 final class MessengerPresenter extends OpenVKPresenter
 {
@@ -24,6 +25,13 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->signaler = SignalManager::i();
 
         parent::__construct();
+    }
+
+    public function onStartup(): void
+    {
+        parent::onStartup();
+
+        $this->template->hideFooter = true;
     }
 
     private function getCorrespondent(int $id): object
@@ -45,14 +53,34 @@ final class MessengerPresenter extends OpenVKPresenter
             $this->pass("openvk!Messenger->app", $_GET["sel"]);
         }
 
+        $this->renderList(false);
+    }
+
+    public function renderArchive(): void
+    {
+        $this->assertUserLoggedIn();
+
+        $this->template->_template = "Messenger/Index.latte";
+        $this->renderList(true);
+    }
+
+    public function renderApiList(): void
+    {
+        $this->assertUserLoggedIn();
+
+        $this->renderList(($_GET["archive"] ?? "0") === "1");
+    }
+
+    private function renderList(bool $archived): void
+    {
         $page = (int) ($_GET["p"] ?? 1);
-        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page));
+        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page, null, null, $archived));
 
-        // бля
-
+        $this->template->isArchive = $archived;
         $this->template->corresps = $correspondences;
+        $this->template->dialogSettings = (new MessengerDialogs())->getAllFor($this->user->identity);
         $this->template->paginatorConf = (object) [
-            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity),
+            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
             "page"    => (int) ($_GET["p"] ?? 1),
             "amount"  => sizeof($this->template->corresps),
             "perPage" => OPENVK_DEFAULT_PER_PAGE,
@@ -193,6 +221,11 @@ final class MessengerPresenter extends OpenVKPresenter
             $typing = (bool) apcu_fetch("typing:{$correspondent->getId()}:{$this->user->id}");
         }
 
+        $pinned = $correspondence->getPinnedMessage();
+        if ($pinned) {
+            $pinned = $pinned->simplify();
+        }
+
         header("Content-Type: application/json");
         exit(json_encode([
             "ts"       => $now,
@@ -200,6 +233,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "edited"   => $edited,
             "deleted"  => $deleted,
             "typing"   => $typing,
+            "pinned"   => $pinned,
         ]));
     }
 
@@ -223,8 +257,13 @@ final class MessengerPresenter extends OpenVKPresenter
         if (!empty($this->postParam("attachments"))) {
             $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
             if (sizeof($attachments_array) > 0) {
-                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc']);
+                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker']);
             }
+        }
+
+        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
         }
 
         $cor = new Correspondence($this->user->identity, $sel);
@@ -310,6 +349,12 @@ final class MessengerPresenter extends OpenVKPresenter
             header("HTTP/1.1 404 Not Found");
             exit();
         }
+
+        // текст к стикеру не добавить
+        if (Sticker::isIn($msg->getChildren())) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
         if ($msg->getSender()->getId() !== $this->user->id) {
             header("HTTP/1.1 403 Forbidden");
             exit();
@@ -341,6 +386,14 @@ final class MessengerPresenter extends OpenVKPresenter
         $origMsg = (new Messages())->get($msgId);
         if (!$origMsg) {
             header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $origSender    = $origMsg->getSender();
+        $origRecipient = $origMsg->getRecipient();
+        $isParticipant = fn($e) => $e instanceof User && $e->getId() === $this->user->id;
+        if (!$isParticipant($origSender) && !$isParticipant($origRecipient)) {
+            header("HTTP/1.1 403 Forbidden");
             exit();
         }
 
@@ -399,6 +452,144 @@ final class MessengerPresenter extends OpenVKPresenter
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
         exit(json_encode(["success" => true]));
+    }
+
+    public function renderApiDialogAction(): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction(true);
+
+        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            exit();
+        }
+
+        $dialogs = new MessengerDialogs();
+        $me      = $this->user->identity;
+
+        if ($this->postParam("act") === "reorder") {
+            $position = 1;
+            foreach (explode(",", (string) $this->postParam("order")) as $sel) {
+                $peer = $this->getCorrespondent((int) $sel);
+                if ($peer && $dialogs->get($me, $peer)["pinned"] > 0) {
+                    $dialogs->set($me, $peer, ["pinned" => $position++]);
+                }
+            }
+
+            header("Content-Type: application/json");
+            exit(json_encode(["success" => true]));
+        }
+
+        $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        switch ($this->postParam("act")) {
+            case "pin":
+                $dialogs->pinToTop($me, $correspondent);
+                break;
+            case "unpin":
+                $dialogs->set($me, $correspondent, ["pinned" => 0]);
+                break;
+            case "archive":
+                $dialogs->set($me, $correspondent, ["archived" => 1, "pinned" => 0]);
+                break;
+            case "unarchive":
+                $dialogs->set($me, $correspondent, ["archived" => 0]);
+                break;
+            case "mute":
+                $dialogs->set($me, $correspondent, ["muted" => 1]);
+                break;
+            case "unmute":
+                $dialogs->set($me, $correspondent, ["muted" => 0]);
+                break;
+            case "delete":
+                $cor = new Correspondence($me, $correspondent);
+                if ($this->postParam("for_all") === "1" && $correspondent->getId() !== $me->getId()) {
+                    $cor->deleteForAll();
+                } else {
+                    $cor->clearForOwner();
+                }
+                break;
+            default:
+                header("HTTP/1.1 400 Bad Request");
+                exit();
+        }
+
+        header("Content-Type: application/json");
+        exit(json_encode(["success" => true]));
+    }
+
+    public function renderApiDeleteMessages(int $sel): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $correspondent = $this->getCorrespondent($sel);
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $cor    = new Correspondence($this->user->identity, $correspondent);
+        $forAll = $this->postParam("for_all") === "1";
+        $repo   = new Messages();
+
+        $deleted = [];
+        $hidden  = [];
+        foreach (array_unique(array_map("intval", explode(",", (string) $this->postParam("ids")))) as $id) {
+            $msg = $repo->get($id);
+            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
+                continue;
+            }
+
+            $sender = $msg->getSender();
+            if ($forAll && $sender instanceof User && $sender->getId() === $this->user->id) {
+                $msg->setDeleted(1);
+                $msg->setEdited(time()); // метка для поллинга (apiSync)
+                $msg->save();
+
+                $this->signaler->triggerEvent(new DeleteMessageEvent($id), $msg->getRecipient()->getId());
+                $deleted[] = $id;
+            } else {
+                $hidden[] = $id;
+            }
+        }
+
+        $cor->hideMessagesForOwner($hidden);
+
+        header("Content-Type: application/json");
+        exit(json_encode(["deleted" => $deleted, "hidden" => $hidden]));
+    }
+
+    public function renderApiPinMessage(int $sel): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $correspondent = $this->getCorrespondent($sel);
+        if (!$correspondent) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $cor   = new Correspondence($this->user->identity, $correspondent);
+        $msgId = (int) $this->postParam("msg_id");
+        $msg   = null;
+        if ($msgId !== 0) {
+            $msg = (new Messages())->get($msgId);
+            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
+                header("HTTP/1.1 404 Not Found");
+                exit();
+            }
+        }
+
+        $cor->setPinnedMessage($msgId);
+
+        header("Content-Type: application/json");
+        exit(json_encode(["pinned" => $msg ? $msg->simplify() : null]));
     }
 
     public function renderApiGetDialogs(): void

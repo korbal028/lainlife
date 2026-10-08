@@ -1,0 +1,11 @@
+<div class="tabs">
+    <div n:attr="id => $act === 'shop' ? 'activetabs' : 'ki'" class="tab">
+        <a n:attr="id => $act === 'shop' ? 'act_tab_a'" href="/stickers">{_stickers_store}</a>
+    </div>
+    <div n:attr="id => $act === 'settings' ? 'activetabs' : 'ki'" class="tab">
+        <a n:attr="id => $act === 'settings' ? 'act_tab_a'" href="/stickers?act=settings">{_stickers_tab_my}</a>
+    </div>
+    <div n:if="$canCreate" n:attr="id => $act === 'author' ? 'activetabs' : 'ki'" class="tab">
+        <a n:attr="id => $act === 'author' ? 'act_tab_a'" href="/stickers?act=author">{_stickers_tab_author}</a>
+    </div>
+</div>

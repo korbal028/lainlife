@@ -1215,6 +1215,143 @@ table.User {
     background-color: #f9f9f9;
 }
 
+.crp-entry {
+    position: relative;
+}
+
+.crp-entry.pinned {
+    cursor: grab;
+}
+
+.crp-list.crp-dragging {
+    user-select: none;
+}
+
+.crp-list.crp-dragging .crp-entry.pinned {
+    transition: transform .15s ease;
+}
+
+.crp-list.crp-dragging .crp-entry.dragging {
+    cursor: grabbing;
+    z-index: 5;
+    transition: none;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+
+.crp-list.crp-dragging .crp-entry.dropping {
+    z-index: 5;
+}
+
+.crp-entry--status {
+    position: absolute;
+    top: 28px;
+    right: 10px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.crp-entry--status img {
+    width: 12px;
+    height: 12px;
+    opacity: .6;
+    filter: grayscale(1);
+}
+
+.crp-entry--muted-icon {
+    display: none;
+    width: 12px;
+    height: 12px;
+    opacity: .6;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23808080' d='M2 5.5h3L9 2v12l-4-3.5H2z'/%3E%3Cpath stroke='%23808080' stroke-width='1.5' d='M11 5.5l4 5M15 5.5l-4 5'/%3E%3C/svg%3E") no-repeat center / contain;
+}
+
+.crp-entry.muted .crp-entry--muted-icon {
+    display: block;
+}
+
+.crp-entry--menu {
+    position: absolute;
+    top: 4px;
+    right: 6px;
+    display: none;
+}
+
+.crp-entry:hover .crp-entry--menu {
+    display: block;
+}
+
+.crp-entry--menu-dots {
+    cursor: pointer;
+    padding: 0 4px;
+    font-size: 18px;
+    line-height: 18px;
+    color: #808080;
+    border-radius: 3px;
+}
+
+.crp-entry--menu:hover .crp-entry--menu-dots {
+    color: #2b587a;
+}
+
+.crp-entry--menu:has([aria-expanded="true"]) {
+    display: block;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body {
+    padding: 3px 0;
+    min-width: 150px;
+}
+
+/* стрелка к троеточию */
+.like_tooltip_wrapper.crp-menu-tooltip {
+    position: relative;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::before,
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    content: "";
+    position: absolute;
+    right: 6px;
+    border: 6px solid transparent;
+    border-top: 0;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::before {
+    top: -6px;
+    border-bottom-color: #878787;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip::after {
+    top: -5px;
+    border-bottom-color: #fff;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip.crp-menu-context::before,
+.like_tooltip_wrapper.crp-menu-tooltip.crp-menu-context::after {
+    display: none;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a {
+    display: block;
+    height: auto;
+    padding: 4px 10px;
+    font-size: 11px;
+    line-height: 14px;
+    cursor: pointer;
+    white-space: nowrap;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a:hover {
+    background: #e1e7ed;
+    text-decoration: none;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip .like_tooltip_body a.crp-menu-danger {
+    color: #c0392b;
+}
+
 .crp-entry:first-of-type {
     border-top: 1px solid #d6d6d6;
 }
@@ -1310,6 +1447,50 @@ table.User {
     height: 570px;
     overflow-y: auto;
     padding: 10px 60px;
+    display: flex;
+    flex-direction: column;
+}
+
+/* короткая переписка прижимается к полю ввода */
+.messenger-app--messages>div:not(.im_floating_date_wrap) {
+    margin-top: auto;
+}
+
+.im_floating_date_wrap {
+    position: sticky;
+    top: 0;
+    height: 0;
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.im_floating_date_wrap b {
+    padding: 2px 10px;
+    font-size: 11px;
+    color: #777;
+    background: #fff;
+    border: 1px solid #d6d6d6;
+    border-radius: 2px;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+    user-select: none;
+}
+
+.messenger-app--messages-day-time {
+    display: flex;
+    justify-content: center;
+    margin: 14px 0 10px;
+}
+
+.messenger-app--messages-day-time b {
+    padding: 3px 10px;
+    font-size: 11px;
+    color: #777;
+    user-select: none;
 }
 
 .messenger-app--messages---message,
@@ -1324,7 +1505,7 @@ table.User {
     padding: 10px;
 }
 
-/* продолжение серии сообщений от одного отправителя: без аватарки и имени */
+/* сообщение в серии */
 .messenger-app--messages---message.grouped {
     margin-top: -3px;
     padding-top: 2px;
@@ -1333,6 +1514,181 @@ table.User {
 .messenger-app--messages---message.grouped > .ava {
     visibility: hidden;
     height: 0;
+}
+
+/* выделение сообщений */
+.messenger-app--messages---message {
+    position: relative;
+    cursor: pointer;
+}
+
+.messenger-app--messages---message > .ava {
+    flex: none;
+}
+
+.messenger-app--messages---message ._content {
+    flex: 1;
+    min-width: 0;
+    margin: 0 15px 0 20px;
+}
+
+.messenger-app--messages---message > .time {
+    flex: none;
+}
+
+.messenger-app--messages---message.selected {
+    background-color: rgba(81, 129, 184, .12);
+}
+
+.messenger-app--messages---message.highlighted {
+    background-color: rgba(81, 129, 184, .25);
+    transition: background-color .3s;
+}
+
+.msg-check {
+    position: absolute;
+    left: -26px;
+    top: 19px;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background: url('/assets/packages/static/openvk/img/audios_controls.png') no-repeat -165px -48px;
+    opacity: 0;
+}
+
+.messenger-app--messages---message:hover .msg-check {
+    opacity: .5;
+}
+
+.messenger-app--messages---message.selected .msg-check {
+    opacity: 1;
+}
+
+.messenger-app--messages---message.grouped .msg-check {
+    top: 4px;
+}
+
+/* мини-меню сообщения */
+.msg-tools {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 6px;
+    min-width: 58px;
+    margin-right: 6px;
+    visibility: hidden;
+}
+
+.messenger-app--messages---message:hover .msg-tools,
+.msg-tools:has([aria-expanded="true"]) {
+    visibility: visible;
+}
+
+.msg-tool {
+    display: block;
+    width: 14px;
+    height: 14px;
+    opacity: .5;
+    cursor: pointer;
+    background-repeat: no-repeat;
+    background-position: center;
+}
+
+.msg-tool:hover,
+.msg-tool.active {
+    opacity: 1;
+    text-decoration: none;
+}
+
+.msg-tool-pin {
+    background-image: url('/assets/packages/static/openvk/img/pin.png');
+    filter: grayscale(1);
+}
+
+.msg-tool-edit {
+    width: 11px;
+    height: 11px;
+    background: url('/assets/packages/static/openvk/img/audios_controls.png') no-repeat -137px -51px;
+}
+
+.msg-tool-reply,
+.msg-tool-forward {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='%23828a99' d='M7 3 2 7.5 7 12V9.3c3.2 0 5.3.9 7 3.7-.6-3.9-2.9-6.5-7-7z'/%3E%3C/svg%3E");
+}
+
+.msg-tool-forward {
+    transform: scaleX(-1);
+}
+
+.msg-tool-more {
+    width: auto;
+    height: auto;
+    font-size: 16px;
+    line-height: 14px;
+    color: #828a99;
+}
+
+/* панель выделения */
+.messenger-app--selection {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 60px;
+    border-bottom: 1px solid #d6d6d6;
+}
+
+.messenger-app--selection---actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.messenger-app--selection---cancel {
+    margin-left: 6px;
+    cursor: pointer;
+}
+
+/* закреплённое сообщение */
+.messenger-app--pinned {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 60px;
+    border-bottom: 1px solid #d6d6d6;
+    cursor: pointer;
+}
+
+.messenger-app--pinned:hover {
+    background-color: #f9f9f9;
+}
+
+.messenger-app--pinned---icon {
+    flex: none;
+    width: 11px;
+    height: 11px;
+    background: url('/assets/packages/static/openvk/img/pin.png') no-repeat;
+    filter: grayscale(1);
+}
+
+.messenger-app--pinned---body {
+    flex: 1;
+    min-width: 0;
+}
+
+.messenger-app--pinned---sender {
+    margin-left: 4px;
+    color: #828a99;
+}
+
+.messenger-app--pinned---text {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.messenger-app--pinned---close {
+    color: #999;
+    cursor: pointer;
 }
 
 .messenger-app--input>.ava {
@@ -1380,7 +1736,7 @@ table.User {
 }
 
 .messenger-app--messages---message .time {
-    width: 100px;
+    white-space: nowrap;
 }
 
 .messenger-app--typing-status {
@@ -2052,6 +2408,15 @@ h4.gift_cat_header {
     padding: 6px 15px;
     background-color: #eee;
     text-align: center;
+}
+
+.wallAttachmentMenu.reversed:not(.hidden) {
+    display: flex;
+    flex-direction: column;
+}
+
+.wallAttachmentMenu.reversed>.header {
+    order: 1;
 }
 
 #ovkDraw {
@@ -4622,6 +4987,552 @@ hr {
     z-index: 2;
 }
 
+/* кнопка смайликов в углу поля ввода */
+.emoji-btn {
+    position: absolute;
+    top: 7px;
+    right: 30px;
+    width: 17px;
+    height: 17px;
+    cursor: pointer;
+    z-index: 2;
+    background-color: #a3adb8;
+    -webkit-mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.1'/%3E%3Cpath d='M8 14.2c.9 1.5 2.3 2.3 4 2.3s3.1-.8 4-2.3'/%3E%3Ccircle cx='9' cy='9.6' r='1.3' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='9.6' r='1.3' fill='%23000' stroke='none'/%3E%3C/svg%3E") center / contain no-repeat;
+    mask: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23000' stroke-width='1.8' stroke-linecap='round'%3E%3Ccircle cx='12' cy='12' r='9.1'/%3E%3Cpath d='M8 14.2c.9 1.5 2.3 2.3 4 2.3s3.1-.8 4-2.3'/%3E%3Ccircle cx='9' cy='9.6' r='1.3' fill='%23000' stroke='none'/%3E%3Ccircle cx='15' cy='9.6' r='1.3' fill='%23000' stroke='none'/%3E%3C/svg%3E") center / contain no-repeat;
+}
+
+.emoji-btn:hover,
+.emoji-btn[aria-expanded="true"] {
+    background-color: #5b7a9a;
+}
+
+.emoji-btn ~ textarea {
+    padding-right: 50px;
+}
+
+.messenger-app--input .emoji-btn {
+    top: 6px;
+    right: 7px;
+}
+
+.messenger-app--input .emoji-btn ~ textarea {
+    padding-right: 30px;
+}
+
+/* панель смайликов */
+.tippy-box[data-theme~="emoji"] {
+    border-color: #c3cad2;
+    border-radius: 0;
+    /* tippy.css ставит всем подсказкам 14px - возвращаем шрифт движка */
+    font-size: inherit;
+    line-height: inherit;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
+}
+
+.tippy-box[data-theme~="emoji"] > .tippy-content {
+    padding: 0;
+}
+
+/* стрелка к кнопке смайликов: заливка в ::before, обводка цветом рамки окошка в ::after (border.css) */
+.tippy-box[data-theme~="emoji"] > .tippy-arrow {
+    color: #fff;
+}
+
+.emoji-picker {
+    width: 344px;
+    max-width: calc(100vw - 16px);
+}
+
+.emoji-picker--tabs {
+    display: flex;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.emoji-picker--tabs a {
+    flex: 1;
+    padding: 9px 0 7px;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    text-align: center;
+    font-weight: bold;
+    color: #8a96a3;
+    cursor: pointer;
+}
+
+.emoji-picker--tabs[hidden],
+.emoji-picker--tabs a[hidden] {
+    display: none;
+}
+
+.emoji-picker--tabs a:hover {
+    color: #5b7a9a;
+    text-decoration: none;
+}
+
+.emoji-picker--tabs a.active {
+    color: #2b587a;
+    border-bottom-color: #5b88b6;
+}
+
+/* у всех вкладок одна высота, чтобы окошко не прыгало при переключении */
+.emoji-picker--pane {
+    display: flex;
+    flex-direction: column;
+    height: 340px;
+}
+
+.emoji-picker--pane[hidden] {
+    display: none;
+}
+
+.emoji-picker--body,
+.emoji-picker--gif-body {
+    position: relative;
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding: 0 6px 6px;
+}
+
+.emoji-picker--search {
+    padding: 8px 8px 2px;
+}
+
+.emoji-picker--search input {
+    width: 100%;
+    box-sizing: border-box;
+    user-select: text;
+}
+
+.emoji-picker--gifs {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+}
+
+.emoji-picker--gifs > div {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.emoji-picker--gif {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background-color: #edf1f5;
+    cursor: pointer;
+}
+
+.emoji-picker--gif img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.emoji-picker--gif:hover::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    box-shadow: inset 0 0 0 2px #5b88b6;
+}
+
+.emoji-picker--gif.loading {
+    pointer-events: none;
+}
+
+.emoji-picker--gif.loading::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    background: rgba(255, 255, 255, 0.6) url("/assets/packages/static/openvk/img/loading_mini.gif") center no-repeat;
+}
+
+.emoji-picker--empty {
+    padding: 14px 8px;
+    text-align: center;
+    color: #8a96a3;
+}
+
+.emoji-picker--empty a {
+    cursor: pointer;
+}
+
+.emoji-picker--title {
+    padding: 10px 4px 4px;
+    color: #8a96a3;
+    font-weight: bold;
+}
+
+.emoji-picker--grid {
+    display: flex;
+    flex-wrap: wrap;
+}
+
+.emoji-picker--item {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    cursor: pointer;
+}
+
+.emoji-picker--item img {
+    width: 26px;
+    height: 26px;
+    overflow: hidden;
+    font-size: 20px;
+    line-height: 26px;
+}
+
+.emoji-picker--item.kolobok {
+    width: auto;
+    min-width: 36px;
+    height: 40px;
+    padding: 0 3px;
+    box-sizing: border-box;
+}
+
+.emoji-picker--item.kolobok img {
+    width: auto;
+    height: auto;
+    max-height: 34px;
+    font-size: 0;
+}
+
+.emoji-picker--item:hover,
+.emoji-picker--sets a:hover {
+    background-color: #edf1f5;
+}
+
+.emoji-picker--sets {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 2px;
+    padding: 4px 6px;
+    border-top: 1px solid #e7e8ec;
+    overflow-x: auto;
+}
+
+.emoji-picker--set {
+    display: flex;
+    gap: 2px;
+}
+
+.emoji-picker--set.active {
+    background-color: #f3f5f7;
+}
+
+/* как в телеграме: категории обычных эмодзи разворачиваются, только когда листаешь их */
+.emoji-picker--set:not(.active) > a:not(:first-child),
+.emoji-picker--sets a[hidden] {
+    display: none;
+}
+
+.emoji-picker--sets a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 30px;
+    height: 30px;
+    cursor: pointer;
+}
+
+.emoji-picker--sets a.active {
+    background-color: #dfe6ee;
+}
+
+.emoji-picker--sets img {
+    max-width: 20px;
+    max-height: 24px;
+    filter: grayscale(1);
+    opacity: 0.6;
+}
+
+.emoji-picker--sets a:hover img,
+.emoji-picker--sets a.active img {
+    filter: none;
+    opacity: 1;
+}
+
+/* стикеры в панели: по пять в ряд, как в телеграме */
+.emoji-picker--stickers {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+}
+
+.emoji-picker--sticker {
+    display: block;
+    aspect-ratio: 1;
+    padding: 3px;
+    cursor: pointer;
+}
+
+.emoji-picker--sticker img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.emoji-picker--sticker:hover {
+    background-color: #edf1f5;
+}
+
+.emoji-picker--sticker-bar {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid #e7e8ec;
+}
+
+.emoji-picker--sticker-bar .emoji-picker--sets {
+    flex: 1;
+    min-width: 0;
+    border-top: 0;
+    scrollbar-width: none;
+}
+
+/* обложки наборов цветные, серыми только иконки эмодзи */
+.emoji-picker--sticker-bar .emoji-picker--sets img {
+    width: 24px;
+    height: 24px;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    filter: none;
+    opacity: 1;
+}
+
+.emoji-picker--store {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 38px;
+}
+
+/* пиктограммы из спрайта панели опенвк */
+.emoji-picker--icon-recent,
+.emoji-picker--icon-store {
+    display: block;
+    width: 18px;
+    height: 18px;
+    background: url("/assets/packages/static/openvk/img/im/emoji_sprite.png") no-repeat;
+    opacity: 0.7;
+}
+
+.emoji-picker--icon-recent {
+    background-position: -131px 0;
+}
+
+.emoji-picker--icon-store {
+    background-position: -18px 0;
+}
+
+.emoji-picker--sets a:hover .emoji-picker--icon-recent,
+.emoji-picker--sets a.active .emoji-picker--icon-recent,
+.emoji-picker--store:hover .emoji-picker--icon-store {
+    opacity: 1;
+}
+
+/* стикер в сообщении - без фона, как в телеграме */
+.msg-attach-j-sticker .msg-sticker {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.msg-attach-j-sticker img {
+    display: block;
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+}
+
+/* магазин стикеров */
+.stickers-shop--bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.stickers-shop--bar-title {
+    font-weight: bold;
+}
+
+.stickers-shop--tabs {
+    margin-top: 8px;
+}
+
+.stickers-shop--search {
+    padding: 8px 0;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.stickers-shop--search input {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.stickers-shop--empty {
+    padding: 40px 10px;
+    text-align: center;
+    color: #8a96a3;
+}
+
+.stickers-pack-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.stickers-pack-row--cover {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+}
+
+.stickers-pack-row--cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.stickers-pack-row--info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stickers-pack-row--name {
+    font-weight: bold;
+}
+
+.stickers-pack-row--meta {
+    margin: 2px 0 6px;
+    color: #8a96a3;
+}
+
+.stickers-pack-row--preview {
+    display: flex;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.stickers-pack-row--preview img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.stickers-pack-row--action {
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.stickers-pack-row--added {
+    color: #8a96a3;
+}
+
+.stickers-pack-row--balance {
+    margin-top: 6px;
+    color: #8a96a3;
+}
+
+/* окно набора */
+.stickers-modal--meta {
+    color: #8a96a3;
+}
+
+.stickers-modal--edit {
+    float: right;
+}
+
+.stickers-modal--desc {
+    margin-top: 6px;
+    white-space: pre-line;
+}
+
+.stickers-modal--grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    max-height: 340px;
+    margin-top: 10px;
+    overflow-y: auto;
+}
+
+.stickers-modal--grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+}
+
+.stickers-modal-box .ovk-diag-action {
+    display: flex;
+    gap: 6px;
+}
+
+.stickers-modal-box .ovk-diag-action .button:first-child {
+    flex: 1;
+}
+
+/* редактор набора */
+.stickers-edit input[type="text"],
+.stickers-edit input[type="number"],
+.stickers-edit textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.stickers-edit--section {
+    margin: 14px 0;
+}
+
+.stickers-edit--hint {
+    color: #8a96a3;
+}
+
+.stickers-edit--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.stickers-edit--item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid #e7e8ec;
+}
+
+.stickers-edit--item img {
+    width: 96px;
+    height: 96px;
+    align-self: center;
+    object-fit: contain;
+}
+
+.stickers-edit--file {
+    height: 96px;
+    overflow: hidden;
+    word-break: break-all;
+    color: #8a96a3;
+}
+
 .post-spoiler {
     cursor: pointer;
 }
@@ -4641,4 +5552,74 @@ hr {
 }
 .post-spoiler.revealed .post-spoiler-content {
     display: inline;
+}
+
+/* окно "Отправить сообщение" */
+.ovk-diag-cont.udlg-cont {
+    width: 520px;
+}
+
+.ovk-diag-head .udlg-close {
+    float: right;
+    font-weight: normal;
+    color: inherit;
+    cursor: pointer;
+}
+
+.udlg {
+    display: flex;
+    gap: 20px;
+    padding: 10px;
+}
+
+.udlg-left {
+    flex: none;
+    width: 100px;
+    text-align: center;
+}
+
+.udlg-avatar {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+    margin-bottom: 8px;
+}
+
+.udlg-right {
+    flex: 1;
+    min-width: 0;
+    margin: 0;
+}
+
+.udlg-name {
+    font-weight: bold;
+}
+
+.udlg-online {
+    color: #777;
+    margin-bottom: 10px;
+}
+
+.udlg-textarea {
+    width: 100%;
+    height: 50px;
+    resize: vertical;
+    box-sizing: border-box;
+}
+
+.udlg-attachments {
+    display: flex;
+    justify-content: flex-end;
+    gap: 4px;
+    margin-top: 6px;
+}
+
+.udlg-attachments a {
+    cursor: pointer;
+    opacity: .8;
+}
+
+.udlg-attachments a:hover {
+    opacity: 1;
 }

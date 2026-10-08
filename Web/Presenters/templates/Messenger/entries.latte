@@ -1,0 +1,49 @@
+{foreach $corresps as $coresp}
+{var $recipient = $coresp->getCorrespondents()[1]}
+{var $lastMsg   = $coresp->getPreviewMessage()}
+{var $isSaved   = $recipient->getId() === $thisUser->getId()}
+{var $settings  = $dialogSettings[$coresp->getID()] ?? ["pinned" => 0, "muted" => 0]}
+<div n:class="scroll_node, crp-entry, $settings['pinned'] ? pinned, $settings['muted'] ? muted"
+     data-im-url="{$coresp->getURL()}"
+     data-sel="{$coresp->getID()}"
+     data-name="{$isSaved ? tr('saved_messages') : $recipient->getCanonicalName()}"
+     data-self="{(int) $isSaved}"
+     onmousedown="if(event.button === 0 && !this.classList.contains('pinned')) window.location.assign({$coresp->getURL()});" >
+
+    <div class="crp-entry--image">
+        {if $isSaved}
+            <img src="/assets/packages/static/openvk/img/im/saved_messages.png"
+            alt="{_saved_messages}" loading=lazy />
+        {else}
+            <img src="{$recipient->getAvatarURL('miniscule')}"
+            alt="Фотография пользователя" loading=lazy />
+        {/if}
+    </div>
+    <div class="crp-entry--info">
+        {if $isSaved}
+            <a href="{$coresp->getURL()}">{_saved_messages}</a><br/>
+        {else}
+            <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
+        {/if}
+        <span>{$lastMsg->getSendTimeHumanized()}</span>
+    </div>
+    <div n:class="crp-entry--message, !$isSaved && $lastMsg->getUnreadState() ? unread">
+        {var $_author = $lastMsg->getSender()}
+
+        <div class="crp-entry--message---av" n:if="!$isSaved && $_author->getId() === $thisUser->getId()">
+            <img src="{$_author->getAvatarURL('miniscule')}"
+            alt="Фотография пользователя" />
+        </div>
+        <div class="crp-entry--message---text">
+            {$lastMsg->getPreviewText()|noescape}
+        </div>
+    </div>
+    <div class="crp-entry--status">
+        <img n:if="$settings['pinned']" src="/assets/packages/static/openvk/img/pin.png" title="{_messenger_chat_pinned}" />
+        <span class="crp-entry--muted-icon" title="{_messenger_chat_muted}"></span>
+    </div>
+    <div class="crp-entry--menu" onmousedown="event.stopPropagation();">
+        <div class="crp-entry--menu-dots">&#8943;</div>
+    </div>
+</div>
+{/foreach}

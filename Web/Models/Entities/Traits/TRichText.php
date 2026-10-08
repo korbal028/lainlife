@@ -16,24 +16,25 @@ trait TRichText
             return $text;
         }
 
-        $emojis   = \Emoji\detect_emoji($text);
-        $replaced = []; # OVK-113
-        foreach ($emojis as $emoji) {
-            $point = explode("-", strtolower($emoji["hex_str"]))[0];
-            if (in_array($point, $replaced)) {
-                continue;
-            } else {
-                $replaced[] = $point;
+        $replacements = [];
+        foreach (\Emoji\detect_emoji($text) as $emoji) {
+            // twemoji называет файл по всей последовательности (флаги, склейки вроде 👨‍💻),
+            // а FE0F выкидывает, если в ней нет ZWJ - раньше брался только первый код
+            $points = strtolower($emoji["hex_str"]);
+            if (!str_contains($points, "200d")) {
+                $points = str_replace("-fe0f", "", $points);
             }
 
-            $image  = "https://abs.twimg.com/emoji/v2/72x72/$point.png";
+            $image  = "https://abs.twimg.com/emoji/v2/72x72/$points.png";
             $image  = "<img src='$image' alt='$emoji[emoji]' ";
             $image .= "style='max-height:20px; padding-left: 2pt; padding-right: 2pt; vertical-align: middle;' />";
 
-            $text = str_replace($emoji["emoji"], $image, $text);
+            $replacements[$emoji["emoji"]] = $image;
         }
 
-        return $text;
+        # OVK-113: strtr заменяет за один проход и сначала длинные совпадения,
+        # так что 👍 не разламывает 👍🏽 и не попадает в alt уже вставленной картинки
+        return strtr($text, $replacements);
     }
 
     /**

@@ -1,64 +1,310 @@
 {extends "../@layout.latte"}
 {block title}{_my_messages}{/block}
 
-{block header}{_my_messages}{/block}
+{block header}{_my_messages}
+    <div style="float: right;">
+        <a href="/im?sel=0" style="font-size: 11px; color: #999;">{_saved_messages}</a>
+    </div>
+{/block}
 
 {block content}
     <div class="tabs">
-        <div id="activetabs" class="tab">
-            <a id="act_tab_a" href="javascript:false">{_all_messages}</a>
+        <div n:attr="id => !$isArchive ? 'activetabs'" class="tab">
+            <a n:attr="id => !$isArchive ? 'act_tab_a'" href="/im">{_all_messages}</a>
         </div>
-    <div class="tab">
-        <a href="/im/convs">Мои беседы</a>
-    </div>
+        <div n:attr="id => $isArchive ? 'activetabs'" class="tab">
+            <a n:attr="id => $isArchive ? 'act_tab_a'" href="/im/archive">{_messenger_archive}</a>
+        </div>
     </div>
 
     {if sizeof($corresps) > 0}
         <div class="crp-list scroll_container">
-            <div n:foreach="$corresps as $coresp"
-                 class="scroll_node crp-entry"
-                 data-im-url="{$coresp->getURL()}"
-                 onmousedown="window.location.assign({$coresp->getURL()});" >
-                {var $recipient = $coresp->getCorrespondents()[1]}
-                {var $lastMsg   = $coresp->getPreviewMessage()}
-                {var $isSaved   = $recipient->getId() === $thisUser->getId()}
-
-                <div class="crp-entry--image">
-                    {if $isSaved}
-                        <img src="/assets/packages/static/openvk/img/im/saved_messages.png"
-                        alt="{_saved_messages}" loading=lazy />
-                    {else}
-                        <img src="{$recipient->getAvatarURL('miniscule')}"
-                        alt="Фотография пользователя" loading=lazy />
-                    {/if}
-                </div>
-                <div class="crp-entry--info">
-                    {if $isSaved}
-                        <a href="{$coresp->getURL()}">{_saved_messages}</a><br/>
-                    {else}
-                        <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
-                    {/if}
-                    <span>{$lastMsg->getSendTimeHumanized()}</span>
-                </div>
-                <div n:class="crp-entry--message, !$isSaved && $lastMsg->getUnreadState() ? unread">
-                    {var $_author = $lastMsg->getSender()}
-
-                    <div class="crp-entry--message---av" n:if="!$isSaved && $_author->getId() === $thisUser->getId()">
-                        <img src="{$_author->getAvatarURL('miniscule')}"
-                        alt="Фотография пользователя" />
-                    </div>
-                    <div class="crp-entry--message---text">
-                        {$lastMsg->getPreviewText()|noescape}
-                    </div>
-                </div>
-            </div>
+            {include "entries.latte", corresps => $corresps, dialogSettings => $dialogSettings, thisUser => $thisUser}
         </div>
         <div style="margin-top: 3px;">
             {include "../components/paginator.latte", conf => $paginatorConf}
         </div>
+        <script>
+            (() => {
+                const strings = {
+                    pin:          {tr("messenger_pin_chat")},
+                    unpin:        {tr("messenger_unpin_chat")},
+                    mute:         {tr("messenger_mute_chat")},
+                    unmute:       {tr("messenger_unmute_chat")},
+                    archive:      {tr("messenger_archive_chat")},
+                    unarchive:    {tr("messenger_unarchive_chat")},
+                    deleteTitle:  {tr("messenger_delete_chat")},
+                    deleteText:   {tr("messenger_delete_chat_confirm", '%NAME%')},
+                    deleteForAll: {tr("messenger_delete_chat_for_all", '%NAME%')},
+                    deleteBtn:    {tr("delete")},
+                    cancelBtn:    {tr("cancel")},
+                };
+
+                const sendAction = async (sel, act, forAll = false, extra = {}) => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("sel", sel);
+                    fd.set("act", act);
+                    fd.set("for_all", forAll ? "1" : "0");
+                    Object.entries(extra).forEach(([k, v]) => fd.set(k, v));
+
+                    const res = await fetch("/im/api/dialogs/action.json", { method: "POST", body: fd });
+                    if(!res.ok) throw new Error(res.status);
+                };
+
+                const fail = () => NewNotification({tr("error")}, {tr("messenger_chat_action_error")}, null, Function.noop, 5000);
+
+                const askDelete = entry => {
+                    const name   = escapeHtml(entry.dataset.name);
+                    const isSelf = entry.dataset.self === "1";
+                    let body = strings.deleteText.replace("%NAME%", name);
+                    if(!isSelf) {
+                        body += `<br><br><label><input type="checkbox" id="crp_delete_for_all"> ${ strings.deleteForAll.replace("%NAME%", name) }</label>`;
+                    }
+
+                    MessageBox(strings.deleteTitle, body, [strings.deleteBtn, strings.cancelBtn], [async () => {
+                        const forAll = document.getElementById("crp_delete_for_all")?.checked ?? false;
+                        try {
+                            await sendAction(entry.dataset.sel, "delete", forAll);
+                            entry.remove();
+                        } catch(e) {
+                            fail();
+                        }
+                    }, Function.noop]);
+                };
+
+                const isArchive = {$isArchive};
+                const menuItems = entry => [
+                    ...(isArchive
+                        ? [["unarchive", strings.unarchive]]
+                        : [entry.classList.contains("pinned") ? ["unpin", strings.unpin] : ["pin", strings.pin], ["archive", strings.archive]]),
+                    entry.classList.contains("muted") ? ["unmute", strings.unmute] : ["mute", strings.mute],
+                    ["delete", strings.deleteTitle],
+                ];
+
+                const onAction = async (entry, act, tip) => {
+                    tip.hide();
+                    if(act === "delete") return askDelete(entry);
+
+                    try {
+                        await sendAction(entry.dataset.sel, act);
+                    } catch(e) {
+                        return fail();
+                    }
+
+                    if(act === "pin" || act === "unpin") {
+                        location.reload();
+                    } else if(act === "archive" || act === "unarchive") {
+                        entry.remove();
+                    } else {
+                        entry.classList.toggle("muted", act === "mute");
+                    }
+                };
+
+                const buildMenu = (entry, tip, extraClass = "") => {
+                    const menu = u(`
+                        <div style="margin: -6px -10px;">
+                            <div class="like_tooltip_wrapper crp-menu-tooltip ${ extraClass }">
+                                <div class="like_tooltip_body"></div>
+                            </div>
+                        </div>
+                    `);
+
+                    menuItems(entry).forEach(([act, text]) => {
+                        const link = u(`<a></a>`).text(text);
+                        if(act === "delete") link.addClass("crp-menu-danger");
+                        link.on("click", e => {
+                            e.preventDefault();
+                            onAction(entry, act, tip);
+                        });
+                        menu.find(".like_tooltip_body").append(link);
+                    });
+
+                    return menu.first();
+                };
+
+                const menuOptions = {
+                    animation: "up_down",
+                    theme: "special vk",
+                    content: "",
+                    allowHTML: true,
+                    interactive: true,
+                    arrow: false,
+                    appendTo: () => document.body,
+                };
+
+                tippy.delegate(".crp-list", {
+                    ...menuOptions,
+                    target: ".crp-entry--menu-dots",
+                    placement: "bottom-end",
+                    trigger: "click",
+                    offset: [0, 8],
+
+                    onShow(tip) {
+                        tip.setContent(buildMenu(tip.reference.closest(".crp-entry"), tip));
+                    },
+                });
+
+                // то же меню по правому клику, под курсором
+                const contextAnchor = document.body.appendChild(document.createElement("div"));
+                const contextMenu = tippy(contextAnchor, {
+                    ...menuOptions,
+                    placement: "bottom-start",
+                    trigger: "manual",
+                    offset: [0, 0],
+                });
+
+                document.querySelector(".crp-list").addEventListener("contextmenu", e => {
+                    const entry = e.target.closest(".crp-entry");
+                    if(!entry) return;
+
+                    e.preventDefault();
+                    const x = e.clientX, y = e.clientY;
+                    contextMenu.hide();
+                    contextMenu.setProps({
+                        getReferenceClientRect: () => ({ width: 0, height: 0, top: y, bottom: y, left: x, right: x }),
+                    });
+                    contextMenu.setContent(buildMenu(entry, contextMenu, "crp-menu-context"));
+                    contextMenu.show();
+                });
+
+                // перетаскивание закреплённых чатов
+                const list = document.querySelector(".crp-list");
+                let drag = null;
+                let justDragged = false;
+
+                const pinnedEntries = () => [...list.querySelectorAll(".crp-entry.pinned")];
+
+                list.addEventListener("pointerdown", e => {
+                    const entry = e.target.closest(".crp-entry.pinned");
+                    if(!entry || e.button !== 0 || e.pointerType === "touch" || e.target.closest(".crp-entry--menu")) return;
+
+                    e.preventDefault();
+                    const entries = pinnedEntries();
+                    drag = {
+                        entry,
+                        entries,
+                        rects:  entries.map(el => el.getBoundingClientRect()),
+                        start:  entries.indexOf(entry),
+                        target: entries.indexOf(entry),
+                        startY: e.clientY,
+                        moved:  false,
+                    };
+                    entry.setPointerCapture(e.pointerId);
+                });
+
+                list.addEventListener("pointermove", e => {
+                    if(!drag) return;
+
+                    let dy = e.clientY - drag.startY;
+                    if(!drag.moved) {
+                        if(Math.abs(dy) < 5) return;
+                        drag.moved = true;
+                        list.classList.add("crp-dragging");
+                        drag.entry.classList.add("dragging");
+                    }
+
+                    const { rects, start } = drag;
+                    const own = rects[start];
+                    dy = Math.max(rects[0].top - own.top, Math.min(rects[rects.length - 1].bottom - own.bottom, dy));
+                    drag.entry.style.transform = `translateY(${ dy }px)`;
+
+                    // чаты разной высоты: сосед пропускается, когда край перетаскиваемого заходит за его середину
+                    drag.target = rects.filter((r, i) => {
+                        const middle = r.top + r.height / 2;
+                        if(i < start) return own.top + dy >= middle;
+                        if(i > start) return own.bottom + dy > middle;
+                        return false;
+                    }).length;
+
+                    drag.entries.forEach((el, i) => {
+                        if(i === start) return;
+
+                        let shift = 0;
+                        if(i > start && i <= drag.target) shift = -own.height;
+                        if(i < start && i >= drag.target) shift = own.height;
+                        el.style.transform = shift ? `translateY(${ shift }px)` : "";
+                    });
+                });
+
+                const finishDrag = () => {
+                    if(!drag) return;
+
+                    const { entry, entries, rects, start, target, moved } = drag;
+                    drag = null;
+
+                    if(!moved) return;
+
+                    justDragged = true;
+                    setTimeout(() => justDragged = false, 300);
+
+                    const own = rects[start];
+                    const finalY = target > start
+                        ? rects[target].bottom - own.bottom
+                        : rects[target].top - own.top;
+
+                    entry.classList.remove("dragging");
+                    entry.classList.add("dropping");
+                    entry.style.transform = `translateY(${ finalY }px)`;
+
+                    setTimeout(() => {
+                        list.classList.remove("crp-dragging");
+                        entry.classList.remove("dropping");
+                        entries.forEach(el => el.style.transform = "");
+
+                        if(target === start) return;
+
+                        const anchor = entries[target];
+                        target > start ? anchor.after(entry) : anchor.before(entry);
+
+                        sendAction(0, "reorder", false, {
+                            order: pinnedEntries().map(el => el.dataset.sel).join(","),
+                        }).catch(fail);
+                    }, 150);
+                };
+
+                list.addEventListener("click", e => {
+                    const entry = e.target.closest(".crp-entry.pinned");
+                    if(!entry || e.target.closest(".crp-entry--menu")) return;
+
+                    e.preventDefault();
+                    if(justDragged) return;
+
+                    location.assign(entry.dataset.imUrl);
+                }, true);
+
+                list.addEventListener("pointerup", finishDrag);
+                list.addEventListener("pointercancel", finishDrag);
+
+                // фоновое обновление списка
+                let lastListHtml = null;
+                const refreshList = async () => {
+                    if(document.hidden || drag || document.querySelector("[data-tippy-root]")) return;
+
+                    const params = new URLSearchParams(location.search);
+                    const url = `/im/api/list?archive=${ isArchive ? 1 : 0 }&p=${ params.get("p") ?? 1 }`;
+
+                    try {
+                        const html = (await (await fetch(url)).text()).trim();
+                        if(html === "" || html === lastListHtml || html.includes("<html")) return;
+
+                        lastListHtml = html;
+                        if(drag || document.querySelector("[data-tippy-root]")) return;
+                        list.innerHTML = html;
+                    } catch(e) {
+                        console.error("Dialogs list refresh failed", e);
+                    }
+                };
+
+                const listTimer = setInterval(() => {
+                    if(!document.body.contains(list)) return clearInterval(listTimer);
+                    refreshList();
+                }, 5000);
+            })();
+        </script>
     {else}
         <br/>
         <br/>
-        <center>{_no_messages}</center>
+        <center>{$isArchive ? tr("messenger_archive_empty") : tr("no_messages")}</center>
     {/if}
 {/block}

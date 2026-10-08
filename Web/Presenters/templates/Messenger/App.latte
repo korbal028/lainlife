@@ -21,9 +21,33 @@
 
 {block wrap}
     <div class="messenger-app">
+        <div class="messenger-app--selection" style="display: none;" data-bind="visible: selectedMsgs().length > 0">
+            <span data-bind="text: selectionLabel()"></span>
+            <div class="messenger-app--selection---actions">
+                <a class="button" data-bind="click: () => window.Msg.forwardMessages(selectedMsgs())">{_messenger_forward}</a>
+                <a class="button" data-bind="click: () => window.Msg.deleteMessages(selectedMsgs())">{_messenger_delete}</a>
+                <a class="messenger-app--selection---cancel" data-bind="click: () => selectedMsgs.removeAll()">{_messenger_cancel_selection}</a>
+            </div>
+        </div>
+        <!-- ko with: pinnedMsg -->
+        <div class="messenger-app--pinned" data-bind="visible: $root.selectedMsgs().length === 0, click: () => window.Msg.scrollToMessage(uuid)">
+            <div class="messenger-app--pinned---icon"></div>
+            <div class="messenger-app--pinned---body">
+                <b>{_messenger_pinned_message}</b>
+                <span class="messenger-app--pinned---sender" data-bind="text: sender.name"></span>
+                <div class="messenger-app--pinned---text" data-bind="html: text || '…'"></div>
+            </div>
+            <a class="messenger-app--pinned---close" title="{_messenger_unpin_message}" data-bind="click: () => window.Msg.pinMessage(0), clickBubble: false">✕</a>
+        </div>
+        <!-- /ko -->
         <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
-            <div data-bind="foreach: messages">
-                <div class="messenger-app--messages---message" data-bind="css: { unread: !read, grouped: window.isMsgGrouped($index()) }">
+            <div class="im_floating_date_wrap"><b></b></div>
+            <div class="messenger-app--messages-array" data-bind="foreach: messages">
+                <!-- ko if: window.isMsgNewDay($index()) -->
+                <div class="messenger-app--messages-day-time"><b data-bind="text: window.msgDay(timing.ts)"></b></div>
+                <!-- /ko -->
+                <div class="messenger-app--messages---message" data-bind="attr: { 'data-uuid': $data.uuid }, css: { unread: !read, grouped: window.isMsgGrouped($index()), selected: $root.selectedMsgs.indexOf($data.uuid) !== -1 }">
+                    <div class="msg-check" data-bind="visible: $data.uuid > 0"></div>
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
                     <div class="_content">
                         <!-- ko ifnot: window.isMsgGrouped($index()) -->
@@ -40,14 +64,11 @@
                             <div data-bind="html: forwarded.text" style="font-size:11px; margin-top:3px;"></div>
                         </div>
                         <!-- /ko -->
-                        <div data-bind="if: sender.id === {$thisUser->getId()}" class="msg-actions">
-                            <a href="#" data-bind="click: function() { window.Msg.deleteMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Удалить</a>
-                            <a href="#" data-bind="click: function() { window.Msg.editMessage(uuid, text); }" style="font-size:11px; color:#999; margin-left:5px;">Редактировать</a>
-                        </div>
-			<a href="#" data-bind="click: function() { window.Msg.replyMessage(uuid, text, sender.name); }" style="font-size:11px; color:#999; margin-left:5px;">Ответить</a>
-                        <a href="#" data-bind="click: function() { window.Msg.forwardMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Переслать</a>
                         <div data-bind="foreach: attachments" class="attachments">
                             <div class="msg-attach-j">
+                                <div data-bind="if: type === 'sticker'" class="msg-attach-j-sticker">
+                                    <a class="msg-sticker" data-bind="attr: { 'data-pack': sticker.pack, title: sticker.emoji }"><img data-bind="attr: { src: sticker.url, alt: sticker.emoji }" /></a>
+                                </div>
                                 <div data-bind="if: type === 'photo'" class="msg-attach-j-photo">
                                     <a data-bind="attr: { href: link, 'data-photo-id': id }" class="photoMessengerOpen">
                                         <img data-bind="attr: { src: photo.url, alt: photo.caption }" />
@@ -131,8 +152,23 @@
                             </div>
                         </div>
                     </div>
+                    <div class="msg-tools">
+                        <!-- ko if: $data.uuid > 0 -->
+                        <a class="msg-tool msg-tool-pin" data-act="pin" data-bind="attr: { title: $root.pinnedMsg()?.uuid === $data.uuid ? window.MSG_STR.unpin : window.MSG_STR.pin }, css: { active: $root.pinnedMsg()?.uuid === $data.uuid }"></a>
+                        <!-- ko if: sender.id === {$thisUser->getId()} -->
+                        <!-- ko ifnot: attachments.some(a => a.type === 'sticker') -->
+                        <a class="msg-tool msg-tool-edit" data-act="edit" title="{_messenger_edit_message}"></a>
+                        <!-- /ko -->
+                        <a class="msg-tool msg-tool-more" data-act="more" title="{_messenger_more}">&#8943;</a>
+                        <!-- /ko -->
+                        <!-- ko ifnot: sender.id === {$thisUser->getId()} -->
+                        <a class="msg-tool msg-tool-reply" data-act="reply" title="{_messenger_reply}"></a>
+                        <a class="msg-tool msg-tool-forward" data-act="forward" title="{_messenger_forward}"></a>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </div>
                     <div class="time" align="right">
-                        <span data-bind="html: timing.sent"></span>
+                        <span data-bind="html: window.msgTime($data)"></span>
                     </div>
                 </div>
             </div>
@@ -150,6 +186,7 @@
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
                         <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
+                            <a class="js-emoji-picker emoji-btn" data-tabs="emoji stickers gifs" title="{_smiles}"></a>
                             <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea expanded-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress, input: onTextareaInput }"></textarea>
 
                             <div class="post-buttons" style="display: block; margin-top:-3px;">
@@ -200,10 +237,6 @@
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-srt.png" />
                                             {_note}
                                         </a>
-                                        <a id="iSmiles">
-                                            <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/smiles_icon.png" />
-                                            {_smiles}
-                                        </a>
                                     </div>
                                 </div>
                             </div>
@@ -219,9 +252,15 @@
     
     {script "js/node_modules/knockout/build/output/knockout-latest.js"}
     <script>
-        // Как в ВК: аватарка и имя показываются только у первого сообщения в серии
-        // от одного отправителя. Если между сообщениями прошло больше MSG_GROUP_INTERVAL
-        // секунд — начинается новая серия.
+        window.MSG_STR = {
+            pin:     {tr("messenger_pin_message")},
+            unpin:   {tr("messenger_unpin_message")},
+            reply:   {tr("messenger_reply")},
+            forward: {tr("messenger_forward")},
+            delete:  {tr("messenger_delete")},
+        };
+
+        // группировка сообщений подряд от одного отправителя
         const MSG_GROUP_INTERVAL = 10 * 60;
         window.isMsgGrouped = index => {
             let msgs = window.messages();
@@ -230,13 +269,52 @@
             let prev = msgs[index - 1], cur = msgs[index];
             if(prev.sender.id !== cur.sender.id) return false;
             if(typeof prev.timing.ts !== "number" || typeof cur.timing.ts !== "number") return false;
+            if(window.isMsgNewDay(index)) return false;
 
             return (cur.timing.ts - prev.timing.ts) < MSG_GROUP_INTERVAL;
         };
 
+        // как в openvk: у сообщения всегда время, а дата — в разделителе дней и плашке сверху
+        const MSG_LOCALE = {getLanguage()}.split(/[_-]/)[0];
+        window.msgDay = ts => {
+            const d    = new Date(ts * 1000);
+            const opts = { day: "numeric", month: "long" };
+            if(d.getFullYear() !== new Date().getFullYear()) opts.year = "numeric";
+
+            try {
+                return d.toLocaleDateString(MSG_LOCALE, opts);
+            } catch(e) {
+                return d.toLocaleDateString(undefined, opts);
+            }
+        };
+
+        // у неотправленного превью в sent лежит крутилка, её и показываем
+        window.msgTime = msg => (typeof msg.timing.ts === "number" && msg._tuid === undefined)
+            ? new Date(msg.timing.ts * 1000).toTimeString().slice(0, 8)
+            : msg.timing.sent;
+
+        window.isMsgNewDay = index => {
+            const msgs = window.messages();
+            const cur  = msgs[index];
+            if(!cur || typeof cur.timing.ts !== "number") return false;
+
+            for(let i = index - 1; i > -1; i--) {
+                if(typeof msgs[i].timing.ts !== "number") continue;
+
+                return new Date(msgs[i].timing.ts * 1000).toDateString() !== new Date(cur.timing.ts * 1000).toDateString();
+            }
+
+            return true;
+        };
+
         function MessengerViewModel(initialMessages = []) {
             window.messages     = ko.observableArray(initialMessages);
+            window.selectedMsgs = ko.observableArray([]);
+            window.pinnedMsg    = ko.observable(null);
             this.messages       = window.messages;
+            this.selectedMsgs   = window.selectedMsgs;
+            this.pinnedMsg      = window.pinnedMsg;
+            this.selectionLabel = ko.pureComputed(() => {tr("messenger_selected_count", "%COUNT%")}.replace("%COUNT%", this.selectedMsgs().length));
             this.messageContent = ko.observable("");
             
             this.sendMessage = model => {
@@ -257,6 +335,8 @@
             this.onMessagesScroll   = (model, e) => {
                 if(e.target.scrollTop < 21)
                     model.loadHistory();
+
+                window.Msg.scheduleFloatingDate();
             };
             this.onTextareaKeyPress = (model, e) => {
                 if(e.which === 13) {
@@ -285,6 +365,7 @@
                 this.typeEl   = document.querySelector(".messenger-app--typing-status");
                 this.offset   = 0; // курсор для обратной пагинации истории (самое старое загруженное id)
                 this.newestId = 0; // курсор для поллинга новых сообщений (самое новое известное id)
+                this.historyEnd = false;
                 this.lastSync = Math.floor(Date.now() / 1000);
 
                 this.typingTimer = null;
@@ -296,11 +377,15 @@
             }
             
             _loadHistory() {
+                if(this.historyEnd) return;
+
                 let xhr = new XMLHttpRequest();
                 xhr.open("GET", "/im/api/messages" + {$correspondent->getId()} + `/${ this.offset }.json`, false);
                 xhr.send();
                 
                 let messages    = JSON.parse(xhr.responseText);
+                if(messages.length === 0) this.historyEnd = true;
+
                 let lastMessage = messages[messages.length - 1];
                 if(typeof lastMessage !== "undefined") this.offset = lastMessage.uuid;
 
@@ -309,7 +394,10 @@
                 // и не должны сдвигать курсор поллинга назад
                 if(this.newestId === 0 && messages.length > 0) this.newestId = messages[0].uuid;
 
+                // сохраняем позицию, иначе после вставки скролл остаётся на 0 и история грузится цепочкой до самого верха
+                const oldTop = this.appEl.scrollTop, oldHeight = this.appEl.scrollHeight;
                 this.prependMessages(messages);
+                this.appEl.scrollTop = oldTop + (this.appEl.scrollHeight - oldHeight);
             }
             
             // Короткий поллинг вместо long-poll: раз в несколько секунд опрашиваем /im/api/sync
@@ -331,11 +419,10 @@
                             if(data) {
                                 (data.messages || []).forEach(message => {
                                     if(this.newestId >= message.uuid) return;
-                                    // подстраховка от гонки, если запрос на отправку своего же
-                                    // сообщения ещё не успел продвинуть newestId к моменту этого тика
+                                    this.newestId = message.uuid;
+                                    // своё отправленное/пересланное сообщение уже есть в ленте
                                     if(window.messages().some(m => m.uuid === message.uuid)) return;
                                     this.addMessage(message);
-                                    this.newestId = message.uuid;
                                 });
 
                                 (data.edited || []).forEach(message => {
@@ -352,9 +439,11 @@
                                     }
                                 });
 
-                                (data.deleted || []).forEach(msgId => {
-                                    window.messages.remove(m => m.uuid === msgId);
-                                });
+                                this.removeMessages(data.deleted || []);
+
+                                if(typeof data.pinned !== "undefined") {
+                                    this.setPinned(data.pinned);
+                                }
 
                                 if(data.typing) {
                                     this.setTypingStatus();
@@ -377,6 +466,47 @@
                 poll();
             }
             
+            // догружаем историю, пока лента не начнёт скроллиться, иначе onMessagesScroll не сработает
+            fillHistory() {
+                let loaded = false;
+                while(!this.historyEnd && this.appEl.scrollHeight <= this.appEl.clientHeight) {
+                    this._loadHistory();
+                    loaded = true;
+                }
+
+                if(loaded) this.appEl.scrollTop = this.appEl.scrollHeight;
+            }
+
+            scheduleFloatingDate() {
+                if(this._floatingDateFrame) return;
+
+                this._floatingDateFrame = requestAnimationFrame(() => {
+                    this._floatingDateFrame = null;
+                    this.updateFloatingDate();
+                });
+            }
+
+            // плашка с датой первого видимого сообщения; прячется, когда сверху и так виден разделитель дня
+            updateFloatingDate() {
+                const wrap = this.appEl.querySelector(".im_floating_date_wrap");
+                const top  = this.appEl.getBoundingClientRect().top;
+
+                const first = [...this.appEl.querySelectorAll(".messenger-app--messages---message")].find(el => el.getBoundingClientRect().bottom > top);
+                const msg   = first ? ko.dataFor(first) : null;
+                const dividerAtTop = [...this.appEl.querySelectorAll(".messenger-app--messages-day-time")].some(el => {
+                    const rect = el.getBoundingClientRect();
+                    return rect.top >= top - 12 && rect.bottom <= top + 50;
+                });
+
+                if(!msg || typeof msg.timing.ts !== "number" || dividerAtTop || this.appEl.scrollHeight <= this.appEl.clientHeight) {
+                    wrap.style.opacity = 0;
+                    return;
+                }
+
+                wrap.firstElementChild.textContent = window.msgDay(msg.timing.ts);
+                wrap.style.opacity = 1;
+            }
+
             appendMessages(messages) {
                 messages.forEach(m => window.messages.push(m));
             }
@@ -420,16 +550,12 @@
             }
             
             _patchMessage(tempId, message) {
-                for(let i = window.messages().length - 1; i > -1; i--) {
-                    let msg = window.messages()[i];
-                    if(typeof msg._tuid === "undefined")
-                        return;
-                    else if(msg._tuid !== tempId)
-                        return;
-                    
-                    window.messages.valueWillMutate();
-                    window.messages()[i] = message;
-                    window.messages.valueHasMutated();
+                let msgs = window.messages();
+                for(let i = msgs.length - 1; i > -1; i--) {
+                    if(msgs[i]._tuid !== tempId) continue;
+
+                    window.messages.splice(i, 1, message);
+                    return;
                 }
             }
             
@@ -494,37 +620,82 @@
                 replies.forEach(this.newReply);
             }
 
+            removeMessages(ids) {
+                if(ids.length === 0) return;
+
+                window.messages.remove(m => ids.includes(m.uuid));
+                window.selectedMsgs.remove(id => ids.includes(id));
+            }
+
+            setPinned(msg) {
+                const cur = window.pinnedMsg();
+                if(JSON.stringify(cur) !== JSON.stringify(msg)) window.pinnedMsg(msg);
+            }
+
+            scrollToMessage(uuid) {
+                const el = this.appEl.querySelector(`[data-uuid="${ uuid }"]`);
+                if(!el) return;
+
+                el.scrollIntoView({ block: "center", behavior: "smooth" });
+                el.classList.add("highlighted");
+                setTimeout(() => el.classList.remove("highlighted"), 1500);
+            }
+
+            async _post(url, data = {}) {
+                const fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                Object.entries(data).forEach(([k, v]) => fd.set(k, v));
+
+                const res = await fetch(url, { method: "POST", body: fd });
+                if(!res.ok) throw new Error(res.status);
+
+                return res.json();
+            }
+
+            async pinMessage(msgId) {
+                if(msgId !== 0 && window.pinnedMsg()?.uuid === msgId) msgId = 0;
+
+                try {
+                    const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/pin.json", { msg_id: msgId });
+                    this.setPinned(res.pinned);
+                } catch(e) {
+                    console.error("Pin failed", e);
+                }
+            }
+
             forwardMessage(msgId) {
+                this.forwardMessages([msgId]);
+            }
+
+            forwardMessages(msgIds) {
+                msgIds = [...msgIds].sort((a, b) => a - b);
+
                 let showForwardDialog = (dialogs) => {
                     let options = dialogs.map(d =>
                         '<div class="forward-dialog-item" data-id="' + d.id + '" style="display:flex; align-items:center; gap:8px; padding:6px; cursor:pointer; border-radius:6px;" onmouseover="this.style.background=\'rgba(255,255,255,0.05)\'" onmouseout="this.style.background=\'\'">' +
                             '<img src="' + d.avatar + '" style="width:32px; height:32px; border-radius:50%;" />' +
-                            '<span>' + d.name + '</span>' +
+                            '<span>' + escapeHtml(d.name) + '</span>' +
                         '</div>'
                     ).join("");
 
                     let body = '<div style="max-height:300px; overflow-y:auto;">' + options + '</div>';
-                    let box = MessageBox("Переслать сообщение", body, ["Отмена"], [Function.noop], true);
+                    let box = MessageBox({tr("messenger_forward")}, body, [{tr("cancel")}], [Function.noop], true);
 
-                    u(box.getNode()).find(".forward-dialog-item").on("click", (e) => {
+                    u(box.getNode()).find(".forward-dialog-item").on("click", async (e) => {
                         let userId = parseInt(u(e.currentTarget).attr("data-id"));
-                        u("body").removeClass("dimmed");
-                        u(".ovk-diag-cont").remove();
+                        box.close();
+                        window.selectedMsgs.removeAll();
 
-                        let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/api/messages" + userId + "/" + msgId + "/forward.json", true);
-                        xhr.onreadystatechange = function() {
-                            if(this.readyState !== 4) return;
-                            if(this.status === 202) {
+                        for(const msgId of msgIds) {
+                            try {
+                                const msg = await this._post("/im/api/messages" + userId + "/" + msgId + "/forward.json");
                                 if(userId === {$correspondent->getId()}) {
-                                    let msg = JSON.parse(xhr.responseText);
-                                    window.Msg.addMessage(msg);
+                                    this.addMessage(msg);
                                 }
+                            } catch(e) {
+                                console.error("Forward failed", e);
                             }
-                        };
-                        let fd = new FormData();
-                        fd.set("hash", {$csrfToken});
-                        xhr.send(fd);
+                        }
                     });
                 };
 
@@ -593,23 +764,63 @@
 		if(input) input.style.minHeight = "";
             }
 
-            deleteMessage(msgId) {
-                MessageBox("Удалить сообщение?", "Это действие нельзя отменить.", ["Удалить", "Отмена"], [
-                    () => {
-                        let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/" + msgId + "/delete.json", true);
-                        xhr.onreadystatechange = function() {
-                            if(this.readyState !== 4) return;
-                            if(this.status === 200) {
-                                window.messages.remove(m => m.uuid === msgId);
-                            }
-                        };
-                        let fd = new FormData();
-                        fd.set("hash", {$csrfToken});
-                        xhr.send(fd);
+            deleteMessages(msgIds) {
+                msgIds = [...msgIds];
+                const isSelfChat = {$correspondent->getId() === $thisUser->getId()};
+                const hasOwn = window.messages().some(m => msgIds.includes(m.uuid) && m.sender.id === {$thisUser->getId()});
+
+                let body = {tr("messenger_delete_messages_confirm", "%COUNT%")}.replace("%COUNT%", msgIds.length);
+                if(hasOwn && !isSelfChat) {
+                    body += `<br><br><label><input type="checkbox" id="msg_delete_for_all" checked> ${ {tr("messenger_delete_for_all")} }</label>`;
+                }
+
+                MessageBox({tr("messenger_delete_messages_title")}, body, [{tr("messenger_delete")}, {tr("cancel")}], [
+                    async () => {
+                        const forAll = isSelfChat || (document.getElementById("msg_delete_for_all")?.checked ?? false);
+                        try {
+                            const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/delete-many.json", {
+                                ids: msgIds.join(","),
+                                for_all: forAll ? "1" : "0",
+                            });
+                            this.removeMessages([...res.deleted, ...res.hidden]);
+                        } catch(e) {
+                            console.error("Delete failed", e);
+                        }
                     },
                     Function.noop
                 ]);
+            }
+
+            // стикер уходит сразу отдельным сообщением, без текста
+            async sendSticker(sticker) {
+                const msg = this._newSelfMessage("");
+                msg.attachments = [{ type: "sticker", id: sticker.id, sticker: { pack: sticker.pack, url: sticker.url, emoji: sticker.emoji } }];
+                msg.timing.sent = "<img src=\"/assets/packages/static/openvk/img/loading_mini.gif\">";
+                this.addMessage(msg);
+
+                const fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                fd.set("content", "");
+                fd.set("attachments", "sticker" + sticker.id);
+                if(window._replyToId) {
+                    fd.set("reply_to", window._replyToId);
+                    this.clearReply();
+                }
+
+                try {
+                    const res = await fetch("/im/api/messages" + {$correspondent->getId()} + "/create.json", { method: "POST", body: fd });
+                    if(res.status !== 202) throw new Error(res.status);
+
+                    const sent = await res.json();
+                    // поллинг мог успеть добавить это сообщение раньше ответа
+                    if(window.messages().some(m => m.uuid === sent.uuid))
+                        window.messages.remove(m => m._tuid === msg._tuid);
+                    else
+                        this._patchMessage(msg._tuid, sent);
+                } catch(e) {
+                    window.messages.remove(m => m._tuid === msg._tuid);
+                    fastError(tr("messages_error_1"));
+                }
             }
 
             sendMessage(content) {
@@ -659,8 +870,10 @@
                             text: tr("messages_error_1_description"),
                             timing: {
                                 edited: null,
-                                sent: "???"
+                                sent: "???",
+                                ts: null
                             },
+                            read: true,
                             attachments: [],
                             forwarded: null,
                             uuid: -4096
@@ -671,10 +884,11 @@
                     
                     console.debug("Message sent, updating view.");
                     let sentMessage = JSON.parse(xhr.responseText);
-                    that._patchMessage(tempId, sentMessage);
-                    // без этого следующий тик поллинга видит только что отправленное сообщение
-                    // как "новое" (id > newestId) и добавляет его повторно
-                    if(sentMessage.uuid > that.newestId) that.newestId = sentMessage.uuid;
+                    // поллинг мог успеть добавить это сообщение раньше ответа — тогда убираем превью
+                    if(window.messages().some(m => m.uuid === sentMessage.uuid))
+                        window.messages.remove(m => m._tuid === tempId);
+                    else
+                        that._patchMessage(tempId, sentMessage);
                     
                     document.body.querySelectorAll(".bsdn").forEach(el => {
                         if(!el.querySelector(".bdsn-hydrated")) {
@@ -701,6 +915,99 @@
         }
         
         window.Msg = new Messenger([]);
+
+        document.querySelector(".messenger-app--input #write form")?.addEventListener("sticker:send", e => {
+            e.preventDefault();
+            window.Msg.sendSticker(e.detail);
+        });
+
+        // лента сообщений растягивается до низа окна
+        const fitMessenger = () => {
+            const app  = document.querySelector(".messenger-app");
+            const list = window.Msg.appEl;
+            const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 20;
+
+            const below  = app.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom;
+            const height = window.innerHeight - (list.getBoundingClientRect().top + window.scrollY) - below - 25;
+            list.style.height = Math.max(300, height) + "px";
+
+            if(atBottom) list.scrollTop = list.scrollHeight;
+            window.Msg.fillHistory();
+        };
+
+        fitMessenger();
+        window.addEventListener("resize", fitMessenger);
+        window.selectedMsgs.subscribe(() => setTimeout(fitMessenger));
+        window.pinnedMsg.subscribe(() => setTimeout(fitMessenger));
+        window.messages.subscribe(() => window.Msg.scheduleFloatingDate());
+        new ResizeObserver(fitMessenger).observe(document.querySelector(".messenger-app--input"));
+
+        const msgAction = (act, msg) => {
+            switch(act) {
+                case "pin":     return window.Msg.pinMessage(msg.uuid);
+                case "edit":    return window.Msg.editMessage(msg.uuid, msg.text);
+                case "reply":   return window.Msg.replyMessage(msg.uuid, msg.text, msg.sender.name);
+                case "forward": return window.Msg.forwardMessages([msg.uuid]);
+                case "delete":  return window.Msg.deleteMessages([msg.uuid]);
+            }
+        };
+
+        // выделение сообщений и мини-меню
+        document.querySelector(".messenger-app--messages").addEventListener("click", e => {
+            const tool = e.target.closest(".msg-tool[data-act]");
+            if(tool) {
+                e.preventDefault();
+                if(tool.dataset.act !== "more") msgAction(tool.dataset.act, ko.dataFor(tool));
+                return;
+            }
+
+            const el = e.target.closest(".messenger-app--messages---message");
+            if(!el || e.target.closest("a, button, video, audio, input, textarea, .bsdn, .attachments, .msg-tools")) return;
+            if(window.getSelection().toString() !== "") return;
+
+            const uuid = ko.dataFor(el).uuid;
+            if(!(uuid > 0)) return;
+
+            window.selectedMsgs.indexOf(uuid) === -1 ? window.selectedMsgs.push(uuid) : window.selectedMsgs.remove(uuid);
+        });
+
+        tippy.delegate(".messenger-app--messages", {
+            target: ".msg-tool-more",
+            animation: "up_down",
+            theme: "special vk",
+            placement: "bottom-end",
+            content: "",
+            allowHTML: true,
+            interactive: true,
+            trigger: "click",
+            arrow: false,
+            offset: [0, 8],
+            appendTo: () => document.body,
+
+            onShow(tip) {
+                const msg  = ko.dataFor(tip.reference);
+                const menu = u(`
+                    <div style="margin: -6px -10px;">
+                        <div class="like_tooltip_wrapper crp-menu-tooltip">
+                            <div class="like_tooltip_body"></div>
+                        </div>
+                    </div>
+                `);
+
+                [["reply", window.MSG_STR.reply], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
+                    const link = u(`<a></a>`).text(text);
+                    if(act === "delete") link.addClass("crp-menu-danger");
+                    link.on("click", e => {
+                        e.preventDefault();
+                        tip.hide();
+                        msgAction(act, msg);
+                    });
+                    menu.find(".like_tooltip_body").append(link);
+                });
+
+                tip.setContent(menu.first());
+            },
+        });
 
         window._dialogs = null;
         fetch("/im/api/dialogs.json")
