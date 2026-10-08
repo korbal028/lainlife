@@ -220,8 +220,10 @@
         allowHTML: true,
         interactive: true,
         trigger: "click",
-        arrow: false,
-        offset: [0, 6],
+        arrow: true,
+        // окошко чуть заходит за кнопку справа, чтобы стрелка не упиралась в угол,
+        // и висит повыше, чтобы стрелка целиком помещалась над полем ввода
+        offset: [4, 16],
         maxWidth: "none",
         appendTo: () => document.body,
 

@@ -5021,12 +5021,18 @@ hr {
 
 /* панель смайликов */
 .tippy-box[data-theme~="emoji"] {
-    border-radius: 6px;
+    border-color: #c3cad2;
+    border-radius: 0;
     box-shadow: 0 2px 12px rgba(0, 0, 0, 0.15);
 }
 
 .tippy-box[data-theme~="emoji"] > .tippy-content {
     padding: 0;
+}
+
+/* стрелка к кнопке смайликов: заливка в ::before, обводка цветом рамки окошка в ::after (border.css) */
+.tippy-box[data-theme~="emoji"] > .tippy-arrow {
+    color: #fff;
 }
 
 .emoji-picker {
@@ -5059,7 +5065,6 @@ hr {
     justify-content: center;
     width: 36px;
     height: 36px;
-    border-radius: 4px;
     cursor: pointer;
 }
 
@@ -5103,7 +5108,6 @@ hr {
 .emoji-picker--set {
     display: flex;
     gap: 2px;
-    border-radius: 6px;
 }
 
 .emoji-picker--set.active {
@@ -5123,7 +5127,6 @@ hr {
     flex-shrink: 0;
     width: 30px;
     height: 30px;
-    border-radius: 6px;
     cursor: pointer;
 }
 

@@ -749,6 +749,8 @@ ul {
 }
 
 .tippy-box[data-theme~="emoji"] {
+    /* рамка посветлее общей #2c2640, иначе стрелка сливается с фоном поля ввода */
+    border-color: #3f365b !important;
     box-shadow: 0 2px 12px rgba(0, 0, 0, .5);
 }
 
