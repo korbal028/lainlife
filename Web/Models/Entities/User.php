@@ -1429,6 +1429,25 @@ class User extends RowModel
         return $this->getChandlerUser()->can("access")->model("admin")->whichBelongsTo(null);
     }
 
+    public function canCreateStickers(): bool
+    {
+        if ($this->isAdmin()) {
+            return true;
+        }
+
+        return (bool) ($this->getRecord()->can_create_stickers ?? false);
+    }
+
+    public function rawCanCreateStickers(): bool
+    {
+        return (bool) ($this->getRecord()->can_create_stickers ?? false);
+    }
+
+    public function setCanCreateStickers(bool|int $value): void
+    {
+        $this->stateChanges("can_create_stickers", (int) (bool) $value);
+    }
+
     public function isDead(): bool
     {
         return $this->onlineStatus() == 2;

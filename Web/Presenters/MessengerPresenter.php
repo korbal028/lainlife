@@ -10,6 +10,7 @@ use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Events\ForwardMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs};
+use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\Entities\{Message, Correspondence, User};
 
 final class MessengerPresenter extends OpenVKPresenter
@@ -256,8 +257,13 @@ final class MessengerPresenter extends OpenVKPresenter
         if (!empty($this->postParam("attachments"))) {
             $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
             if (sizeof($attachments_array) > 0) {
-                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc']);
+                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker']);
             }
+        }
+
+        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
         }
 
         $cor = new Correspondence($this->user->identity, $sel);
@@ -341,6 +347,12 @@ final class MessengerPresenter extends OpenVKPresenter
         $msg = (new Messages())->get($msgId);
         if (!$msg) {
             header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        // текст к стикеру не добавить
+        if (Sticker::isIn($msg->getChildren())) {
+            header("HTTP/1.1 400 Bad Request");
             exit();
         }
         if ($msg->getSender()->getId() !== $this->user->id) {

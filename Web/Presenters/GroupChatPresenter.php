@@ -10,6 +10,7 @@ use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Events\ForwardMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, GroupMessages, GroupChats, Albums};
+use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\Entities\{GroupMessage, GroupChat, Photo};
 
 final class GroupChatPresenter extends OpenVKPresenter
@@ -174,8 +175,13 @@ final class GroupChatPresenter extends OpenVKPresenter
         if (!empty($this->postParam("attachments"))) {
             $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
             if (sizeof($attachments_array) > 0) {
-                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc']);
+                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker']);
             }
+        }
+
+        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
         }
 
         $db = \Chandler\Database\DatabaseConnection::i()->getContext();
@@ -230,6 +236,12 @@ final class GroupChatPresenter extends OpenVKPresenter
         $msg = (new GroupMessages())->get($msgId);
         if (!$msg) {
             header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        // текст к стикеру не добавить
+        if (Sticker::isIn($msg->getChildren())) {
+            header("HTTP/1.1 400 Bad Request");
             exit();
         }
 

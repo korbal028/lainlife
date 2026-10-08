@@ -1,6 +1,7 @@
 // Панель смайликов как в телеграме: по кнопке .js-emoji-picker открывается окошко
 // с вкладками. В "Эмодзи" одной лентой идут наборы - недавние, обычные эмодзи
 // (по категориям) и колобки, а снизу полоска наборов для быстрого перехода.
+// В "Стикерах" так же: часто используемые и установленные наборы, справа внизу - магазин.
 // В "GIF" - гифки из документов пользователя и поиск по GIF-сервису.
 // Какие вкладки показать, задаёт data-tabs у кнопки (в чатах - все три),
 // без него открываются только эмодзи - так в формах постов и комментариев.
@@ -44,6 +45,9 @@
     const RECENT_MAX = 24;
     const TAB_KEY    = "ux.emoji_tab";
     const TABS       = ["emoji", "stickers", "gifs"];
+
+    const STICKER_RECENT_KEY = "ux.sticker_recent";
+    const STICKER_RECENT_MAX = 20;
 
     const KOLOBOK_RE = /^:([A-Za-z0-9_-]+):$/;
 
@@ -119,20 +123,30 @@
 
     const observeImages = root => root.querySelectorAll("img[data-src]").forEach(img => observer.observe(img));
 
-    const updateActiveSet = () => {
-        if(body.closest(".emoji-picker--pane").hidden) return;
+    // подсвечивает в нижней полоске набор, который сейчас листается
+    const updateActiveSet = (scroller = body) => {
+        const pane = scroller.closest(".emoji-picker--pane");
+        if(pane.hidden) return;
 
-        const top = body.scrollTop + 10;
+        const top = scroller.scrollTop + 10;
         let current = null;
-        body.querySelectorAll(".emoji-picker--section").forEach(section => {
+        scroller.querySelectorAll(".emoji-picker--section").forEach(section => {
             if(section.hidden) return;
             if(!current || section.offsetTop <= top) current = section;
         });
-        if(!current) return;
 
-        const id = current.dataset.section;
-        panel.querySelectorAll(".emoji-picker--sets a").forEach(a => a.classList.toggle("active", a.dataset.section === id));
-        panel.querySelector(".emoji-picker--set").classList.toggle("active", id in CATEGORY_ICONS);
+        const id = current?.dataset.section;
+        pane.querySelectorAll(".emoji-picker--sets a").forEach(a => a.classList.toggle("active", a.dataset.section === id));
+        pane.querySelector(".emoji-picker--set")?.classList.toggle("active", id in CATEGORY_ICONS);
+
+        // активная иконка не должна уезжать за край полоски
+        const active = pane.querySelector(".emoji-picker--sets a.active");
+        if(!active) return;
+
+        const bar = active.closest(".emoji-picker--sets");
+        const left = active.offsetLeft, right = left + active.offsetWidth;
+        if(left < bar.scrollLeft) bar.scrollLeft = left;
+        else if(right > bar.scrollLeft + bar.clientWidth) bar.scrollLeft = right - bar.clientWidth;
     };
 
     const renderRecent = () => {
@@ -311,7 +325,7 @@
             this.observer = lazyObserver(this.body);
             this.body.addEventListener("scroll", () => requestAnimationFrame(() => this.fill()), { passive: true });
 
-            const input = pane.querySelector(".emoji-picker--gif-search input");
+            const input = pane.querySelector(".emoji-picker--search input");
             if(input) {
                 let timer = null;
                 // с паузой, чтобы не тратить лимит запросов к сервису на каждую букву
@@ -346,6 +360,149 @@
         },
     };
 
+    // Стикеры: часто используемые, за ними установленные наборы. Наборы грузятся
+    // при первом открытии вкладки и заново после stickers:changed (al_stickers.js).
+    // Выбранный стикер уходит событием sticker:send на форму - отправляет его сам чат.
+    const stickers = {
+        pane: null, body: null, sets: null, observer: null,
+        packs: null, byId: new Map(), loading: null, failed: false,
+        stale: false, dirty: false, query: "",
+
+        getRecent() {
+            try {
+                const list = JSON.parse(localStorage.getItem(STICKER_RECENT_KEY) ?? "[]");
+                return Array.isArray(list) ? list : [];
+            } catch(e) {
+                return [];
+            }
+        },
+
+        pushRecent(id) {
+            const list = [id, ...this.getRecent().filter(v => v !== id)].slice(0, STICKER_RECENT_MAX);
+            try {
+                localStorage.setItem(STICKER_RECENT_KEY, JSON.stringify(list));
+            } catch(e) {}
+        },
+
+        load() {
+            this.loading ??= API.Stickers.getMyPacks().then(packs => {
+                this.packs  = packs;
+                this.failed = false;
+                this.byId   = new Map();
+                packs.forEach(p => p.stickers.forEach(s => this.byId.set(s.id, { ...s, pack: p.id })));
+            }).catch(() => {
+                this.packs   = [];
+                this.failed  = true;
+                this.loading = null;
+            });
+
+            return this.loading;
+        },
+
+        section(id, title, items) {
+            return `
+                <div class="emoji-picker--section" data-section="${id}">
+                    ${title ? `<div class="emoji-picker--title">${escapeHtml(title)}</div>` : ""}
+                    <div class="emoji-picker--stickers">
+                        ${items.map(s => `<a class="emoji-picker--sticker" data-id="${s.id}" title="${escapeHtml(s.emoji)}"><img data-src="${escapeHtml(s.url)}" alt="${escapeHtml(s.emoji)}" /></a>`).join("")}
+                    </div>
+                </div>
+            `;
+        },
+
+        message(html) {
+            this.body.innerHTML = `<div class="emoji-picker--empty">${html}</div>`;
+        },
+
+        render() {
+            this.body.scrollTop = 0;
+            this.sets.innerHTML = "";
+
+            if(this.failed) return this.message(escapeHtml(tr("error")));
+            if(this.packs.length === 0)
+                return this.message(`${escapeHtml(tr("stickers_no_installed"))}<br><a class="emoji-picker--store-link" href="/stickers">${escapeHtml(tr("stickers_store_open"))}</a>`);
+
+            // поиск по названию набора и по эмодзи стикера
+            const query = this.query.trim().toLowerCase();
+            if(query !== "") {
+                const found = this.packs.flatMap(p => p.name.toLowerCase().includes(query)
+                    ? p.stickers
+                    : p.stickers.filter(s => s.emoji.includes(query)));
+
+                if(found.length === 0) return this.message(escapeHtml(tr("stickers_nothing_found")));
+
+                this.body.innerHTML = this.section("search", "", found);
+            } else {
+                const recent = this.getRecent().map(id => this.byId.get(id)).filter(Boolean);
+
+                this.body.innerHTML = (recent.length > 0 ? this.section("recent", tr("stickers_frequent"), recent) : "")
+                    + this.packs.map(p => this.section(`pack${p.id}`, p.name, p.stickers)).join("");
+
+                this.sets.innerHTML = (recent.length > 0 ? `<a data-section="recent" title="${escapeHtml(tr("stickers_frequent"))}"><img src="${twemojiUrl("🕓")}" alt="" /></a>` : "")
+                    + this.packs.map(p => `<a data-section="pack${p.id}" title="${escapeHtml(p.name)}"><img src="${escapeHtml(p.cover)}" alt="" loading="lazy" /></a>`).join("");
+            }
+
+            this.body.querySelectorAll("img[data-src]").forEach(img => this.observer.observe(img));
+            updateActiveSet(this.body);
+        },
+
+        pick(sticker) {
+            const form = target?.closest("form");
+            if(!sticker || !form) return;
+
+            // чат забирает стикер через preventDefault; там, где стикеры не отправить, ничего не происходит
+            const ev = new CustomEvent("sticker:send", { detail: sticker, cancelable: true });
+            form.dispatchEvent(ev);
+            if(!ev.defaultPrevented) return;
+
+            this.pushRecent(sticker.id);
+            this.dirty = true;
+            current?.hide();
+        },
+
+        init(pane) {
+            this.pane = pane;
+            this.body = pane.querySelector(".emoji-picker--body");
+            this.sets = pane.querySelector(".emoji-picker--sets");
+            this.observer = lazyObserver(this.body);
+            this.body.addEventListener("scroll", () => requestAnimationFrame(() => updateActiveSet(this.body)), { passive: true });
+
+            const input = pane.querySelector(".emoji-picker--search input");
+            input.addEventListener("input", () => {
+                this.query = input.value;
+                if(this.packs) this.render();
+            });
+
+            pane.addEventListener("click", e => {
+                const item = e.target.closest(".emoji-picker--sticker");
+                if(item) return this.pick(this.byId.get(Number(item.dataset.id)));
+
+                if(e.target.closest(".emoji-picker--store, .emoji-picker--store-link")) current?.hide();
+            });
+
+            document.addEventListener("stickers:changed", () => {
+                this.loading = null;
+                this.stale   = true;
+                if(!pane.hidden && pane.isConnected) this.open();
+            });
+        },
+
+        async open() {
+            if(!this.packs || this.stale) {
+                this.stale = this.dirty = false;
+                if(!this.packs) this.message(`<img src="/assets/packages/static/openvk/img/loading_mini.gif" alt="" />`);
+
+                await this.load();
+                this.render();
+            } else if(this.dirty) {
+                this.dirty = false;
+                this.render();
+            } else {
+                updateActiveSet(this.body);
+            }
+        },
+    };
+
     const setTab = tab => {
         if(!TABS.includes(tab)) tab = "emoji";
 
@@ -353,6 +510,7 @@
         panel.querySelectorAll(".emoji-picker--pane").forEach(pane => pane.hidden = pane.dataset.pane !== tab);
 
         if(tab === "emoji") updateActiveSet();
+        if(tab === "stickers" && panel.isConnected) stickers.open();
         if(tab === "gifs" && panel.isConnected) gifs.open();
     };
 
@@ -382,11 +540,20 @@
                 </div>
             </div>
             <div class="emoji-picker--pane" data-pane="stickers">
-                <div class="emoji-picker--soon">${escapeHtml(tr("emoji_picker_stickers_soon"))}</div>
+                <div class="emoji-picker--search">
+                    <input type="search" maxlength="64" placeholder="${escapeHtml(tr("stickers_search_installed"))}" />
+                </div>
+                <div class="emoji-picker--body"></div>
+                <div class="emoji-picker--sticker-bar">
+                    <div class="emoji-picker--sets"></div>
+                    <a class="emoji-picker--store" href="/stickers" title="${escapeHtml(tr("stickers_store_open"))}">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9"/><path d="M10 13h4"/></svg>
+                    </a>
+                </div>
             </div>
             <div class="emoji-picker--pane" data-pane="gifs">
                 ${window.openvk.gif_search ? `
-                    <div class="emoji-picker--gif-search">
+                    <div class="emoji-picker--search">
                         <input type="search" maxlength="100" placeholder="${escapeHtml(tr("gifs_search_placeholder", window.openvk.gif_search))}" />
                     </div>
                 ` : ""}
@@ -397,13 +564,14 @@
         body = panel.querySelector(".emoji-picker--body");
         observer = lazyObserver(body);
         observeImages(body);
+        stickers.init(panel.querySelector('.emoji-picker--pane[data-pane="stickers"]'));
         gifs.init(panel.querySelector('.emoji-picker--pane[data-pane="gifs"]'));
 
-        body.addEventListener("scroll", () => requestAnimationFrame(updateActiveSet), { passive: true });
+        body.addEventListener("scroll", () => requestAnimationFrame(() => updateActiveSet()), { passive: true });
 
         // не отбираем фокус у поля ввода, чтобы курсор оставался на месте
         panel.addEventListener("mousedown", e => {
-            if(e.target.closest(".emoji-picker--item, .emoji-picker--sets a, .emoji-picker--tabs a, .emoji-picker--gif")) e.preventDefault();
+            if(e.target.closest(".emoji-picker--item, .emoji-picker--sets a, .emoji-picker--tabs a, .emoji-picker--gif, .emoji-picker--sticker")) e.preventDefault();
         });
 
         panel.addEventListener("click", e => {
@@ -417,11 +585,13 @@
                 return;
             }
 
+            // у каждой вкладки своя лента и своя полоска наборов
             const tab = e.target.closest(".emoji-picker--sets a");
             if(tab) {
-                const section = panel.querySelector(`.emoji-picker--section[data-section="${tab.dataset.section}"]`);
-                body.scrollTop = section.offsetTop;
-                updateActiveSet();
+                const scroller = tab.closest(".emoji-picker--pane").querySelector(".emoji-picker--body");
+                const section  = scroller.querySelector(`.emoji-picker--section[data-section="${tab.dataset.section}"]`);
+                if(section) scroller.scrollTop = section.offsetTop;
+                updateActiveSet(scroller);
                 return;
             }
 
@@ -511,6 +681,7 @@
 
         onMount() {
             updateActiveSet();
+            if(activeTab() === "stickers") stickers.open();
             if(activeTab() === "gifs") gifs.open();
         },
 

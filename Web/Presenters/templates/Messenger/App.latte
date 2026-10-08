@@ -66,6 +66,9 @@
                         <!-- /ko -->
                         <div data-bind="foreach: attachments" class="attachments">
                             <div class="msg-attach-j">
+                                <div data-bind="if: type === 'sticker'" class="msg-attach-j-sticker">
+                                    <a class="msg-sticker" data-bind="attr: { 'data-pack': sticker.pack, title: sticker.emoji }"><img data-bind="attr: { src: sticker.url, alt: sticker.emoji }" /></a>
+                                </div>
                                 <div data-bind="if: type === 'photo'" class="msg-attach-j-photo">
                                     <a data-bind="attr: { href: link, 'data-photo-id': id }" class="photoMessengerOpen">
                                         <img data-bind="attr: { src: photo.url, alt: photo.caption }" />
@@ -153,7 +156,9 @@
                         <!-- ko if: $data.uuid > 0 -->
                         <a class="msg-tool msg-tool-pin" data-act="pin" data-bind="attr: { title: $root.pinnedMsg()?.uuid === $data.uuid ? window.MSG_STR.unpin : window.MSG_STR.pin }, css: { active: $root.pinnedMsg()?.uuid === $data.uuid }"></a>
                         <!-- ko if: sender.id === {$thisUser->getId()} -->
+                        <!-- ko ifnot: attachments.some(a => a.type === 'sticker') -->
                         <a class="msg-tool msg-tool-edit" data-act="edit" title="{_messenger_edit_message}"></a>
+                        <!-- /ko -->
                         <a class="msg-tool msg-tool-more" data-act="more" title="{_messenger_more}">&#8943;</a>
                         <!-- /ko -->
                         <!-- ko ifnot: sender.id === {$thisUser->getId()} -->
@@ -786,6 +791,38 @@
                 ]);
             }
 
+            // стикер уходит сразу отдельным сообщением, без текста
+            async sendSticker(sticker) {
+                const msg = this._newSelfMessage("");
+                msg.attachments = [{ type: "sticker", id: sticker.id, sticker: { pack: sticker.pack, url: sticker.url, emoji: sticker.emoji } }];
+                msg.timing.sent = "<img src=\"/assets/packages/static/openvk/img/loading_mini.gif\">";
+                this.addMessage(msg);
+
+                const fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                fd.set("content", "");
+                fd.set("attachments", "sticker" + sticker.id);
+                if(window._replyToId) {
+                    fd.set("reply_to", window._replyToId);
+                    this.clearReply();
+                }
+
+                try {
+                    const res = await fetch("/im/api/messages" + {$correspondent->getId()} + "/create.json", { method: "POST", body: fd });
+                    if(res.status !== 202) throw new Error(res.status);
+
+                    const sent = await res.json();
+                    // поллинг мог успеть добавить это сообщение раньше ответа
+                    if(window.messages().some(m => m.uuid === sent.uuid))
+                        window.messages.remove(m => m._tuid === msg._tuid);
+                    else
+                        this._patchMessage(msg._tuid, sent);
+                } catch(e) {
+                    window.messages.remove(m => m._tuid === msg._tuid);
+                    fastError(tr("messages_error_1"));
+                }
+            }
+
             sendMessage(content) {
                 console.debug("New outcoming message. Pushing preview to local stack.");
                 let tempId = this.newMessage(escapeHtml(content));
@@ -878,6 +915,11 @@
         }
         
         window.Msg = new Messenger([]);
+
+        document.querySelector(".messenger-app--input #write form")?.addEventListener("sticker:send", e => {
+            e.preventDefault();
+            window.Msg.sendSticker(e.detail);
+        });
 
         // лента сообщений растягивается до низа окна
         const fitMessenger = () => {

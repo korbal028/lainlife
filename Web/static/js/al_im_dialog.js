@@ -61,4 +61,24 @@ u(document).on("click", ".js-send-message", (e) => {
     msg.getNode().addClass("udlg-cont");
     msg.getNode().find(".udlg-close").on("click", () => msg.close());
     msg.getNode().find(".udlg-textarea").first().focus();
+
+    // стикер отправляется сразу, отдельным сообщением
+    msg.getNode().find(".udlg-right").first().addEventListener("sticker:send", async ev => {
+        ev.preventDefault();
+
+        const fd = new FormData();
+        fd.set("hash", u("meta[name=csrf]").attr("value"));
+        fd.set("content", "");
+        fd.set("attachments", "sticker" + ev.detail.id);
+
+        try {
+            const res = await fetch(`/im/api/messages${data.id}/create.json`, { method: "POST", body: fd });
+            if(res.status !== 202) throw new Error(res.status);
+
+            msg.close();
+            NewNotification(tr("message_sent"), "", null, Function.noop, 3000);
+        } catch(err) {
+            fastError(tr("messages_error_1"));
+        }
+    });
 });

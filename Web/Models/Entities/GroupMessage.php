@@ -3,6 +3,7 @@ namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection;
 use openvk\Web\Models\Repositories\{Users, Clubs, GroupChats};
 use openvk\Web\Models\Entities\{Photo, Video, Audio, Note, Document};
+use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Util\DateTime;
 
@@ -175,6 +176,8 @@ class GroupMessage extends RowModel
                         "pub_time" => (string) $attachment->getPublicationTime(),
                     ],
                 ];
+            } elseif ($attachment instanceof Sticker) {
+                $attachments[] = $attachment->simplify();
             } else {
                 $attachments[] = [
                     "type"  => "unknown"

@@ -32,11 +32,14 @@
                         <!-- /ko -->
                         <div data-bind="if: sender.id === {$thisUser->getId()}" class="msg-actions">
                             <a href="#" data-bind="click: function() { window.Msg.deleteMessage(uuid); }" style="font-size:11px; color:#999; margin-left:5px;">Удалить</a>
-                            <a href="#" data-bind="click: function() { window.Msg.editMessage(uuid, text); }" style="font-size:11px; color:#999; margin-left:5px;">Редактировать</a>
+                            <a href="#" data-bind="click: function() { window.Msg.editMessage(uuid, text); }, visible: !attachments.some(a => a.type === 'sticker')" style="font-size:11px; color:#999; margin-left:5px;">Редактировать</a>
                         </div>
                         <a href="#" data-bind="click: function() { window.Msg.replyMessage(uuid, text, sender.name); }" style="font-size:11px; color:#999; margin-left:5px;">Ответить</a>
                         <div data-bind="foreach: attachments" class="attachments">
                             <div class="msg-attach-j">
+                                <div data-bind="if: type === 'sticker'" class="msg-attach-j-sticker">
+                                    <a class="msg-sticker" data-bind="attr: { 'data-pack': sticker.pack, title: sticker.emoji }"><img data-bind="attr: { src: sticker.url, alt: sticker.emoji }" /></a>
+                                </div>
                                 <div data-bind="if: type === 'photo'" class="msg-attach-j-photo">
                                     <a data-bind="attr: { href: link, 'data-photo-id': id }" class="photoMessengerOpen">
                                         <img data-bind="attr: { src: photo.url, alt: photo.caption }" />
@@ -395,6 +398,38 @@
                 ]);
             }
 
+            // стикер уходит сразу отдельным сообщением, без текста
+            async sendSticker(sticker) {
+                const msg = this._newSelfMessage("");
+                msg.attachments = [{ type: "sticker", id: sticker.id, sticker: { pack: sticker.pack, url: sticker.url, emoji: sticker.emoji } }];
+                msg.timing.sent = "<img src=\"/assets/packages/static/openvk/img/loading_mini.gif\">";
+                this.addMessage(msg);
+
+                const fd = new FormData();
+                fd.set("hash", {$csrfToken});
+                fd.set("content", "");
+                fd.set("attachments", "sticker" + sticker.id);
+                if(window._replyToId) {
+                    fd.set("reply_to", window._replyToId);
+                    this.clearReply();
+                }
+
+                try {
+                    const res = await fetch("/im/convs/api/messages" + {$chat->getId()} + "/write.json", { method: "POST", body: fd });
+                    if(res.status !== 202) throw new Error(res.status);
+
+                    const sent = await res.json();
+                    // поллинг мог успеть добавить это сообщение раньше ответа
+                    if(window.messages().some(m => m.uuid === sent.uuid))
+                        window.messages.remove(m => m._tuid === msg._tuid);
+                    else
+                        this._patchMessage(msg._tuid, sent);
+                } catch(e) {
+                    window.messages.remove(m => m._tuid === msg._tuid);
+                    fastError(tr("messages_error_1"));
+                }
+            }
+
             sendMessage(content) {
                 let tempId = this.newMessage(escapeHtml(content));
 
@@ -447,6 +482,11 @@
 
         window._replyToId = null;
         window.Msg = new Messenger([]);
+
+        document.querySelector(".messenger-app--input #write form")?.addEventListener("sticker:send", e => {
+            e.preventDefault();
+            window.Msg.sendSticker(e.detail);
+        });
 
         document.querySelector(".messenger-app--messages").addEventListener("click", (e) => {
             if(e.target.closest(".photoMessengerOpen")) {

@@ -203,6 +203,7 @@ final class AdminPresenter extends OpenVKPresenter
                 $user->setPseudo($this->postParam("nickname"));
                 $user->setStatus($this->postParam("status"));
                 $user->setHide_Global_Feed(empty($this->postParam("hide_global_feed") ? 0 : 1));
+                $user->setCanCreateStickers(!empty($this->postParam("can_create_stickers")));
                 if (!$user->setShortCode(empty($this->postParam("shortcode")) ? null : $this->postParam("shortcode"))) {
                     $this->flash("err", tr("error"), tr("error_shorturl_incorrect"));
                 }

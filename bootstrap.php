@@ -317,6 +317,11 @@ function parseAttachments($attachments, array $allow_types = ['photo', 'video', 
             'method' => 'getDocumentById',
             'withKey' => true,
         ],
+        'sticker' => [
+            'repo'   => 'openvk\Web\Models\Repositories\Stickers',
+            'method' => 'getSticker',
+            'onlyId' => true,
+        ],
     ];
 
     foreach ($exploded_attachments as $attachment_string) {
@@ -328,8 +333,9 @@ function parseAttachments($attachments, array $allow_types = ['photo', 'video', 
                 }
 
                 $attachment_ids  = str_replace($attachment_type, '', $attachment_string);
-                if ($repositories[$attachment_type]['onlyId']) {
-                    [$attachment_owner, $attachment_id] = array_map('intval', explode('_', $attachment_ids));
+                if (!empty($repositories[$attachment_type]['onlyId'])) {
+                    $parts = explode('_', $attachment_ids);
+                    $attachment_id = (int) (ltrim($parts[0], '_') ?: ($parts[1] ?? 0));
 
                     $repository_class = $repositories[$attachment_type]['repo'];
                     if (!$repository_class) {

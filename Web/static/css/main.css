@@ -5095,21 +5095,16 @@ hr {
     padding: 0 6px 6px;
 }
 
-.emoji-picker--soon {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    color: #8a96a3;
-}
-
-.emoji-picker--gif-search {
+.emoji-picker--search {
     padding: 8px 8px 2px;
 }
 
-.emoji-picker--gif-search input {
+.emoji-picker--search input {
     width: 100%;
     box-sizing: border-box;
+    padding: 6px 10px 6px 28px;
+    border-radius: 14px;
+    background: #f0f2f5 url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238a96a3' stroke-width='2.5' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E") 9px center / 13px no-repeat;
     user-select: text;
 }
 
@@ -5219,6 +5214,7 @@ hr {
 }
 
 .emoji-picker--sets {
+    position: relative;
     display: flex;
     align-items: center;
     gap: 2px;
@@ -5267,6 +5263,272 @@ hr {
 .emoji-picker--sets a.active img {
     filter: none;
     opacity: 1;
+}
+
+/* стикеры в панели: по пять в ряд, как в телеграме */
+.emoji-picker--stickers {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 2px;
+}
+
+.emoji-picker--sticker {
+    display: block;
+    aspect-ratio: 1;
+    padding: 3px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.emoji-picker--sticker img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.emoji-picker--sticker:hover {
+    background-color: #edf1f5;
+}
+
+.emoji-picker--sticker-bar {
+    display: flex;
+    align-items: stretch;
+    border-top: 1px solid #e7e8ec;
+}
+
+.emoji-picker--sticker-bar .emoji-picker--sets {
+    flex: 1;
+    min-width: 0;
+    border-top: 0;
+    scrollbar-width: none;
+}
+
+/* обложки наборов цветные, серыми только иконки эмодзи */
+.emoji-picker--sticker-bar .emoji-picker--sets a {
+    border-radius: 6px;
+}
+
+.emoji-picker--sticker-bar .emoji-picker--sets img {
+    width: 24px;
+    height: 24px;
+    max-width: none;
+    max-height: none;
+    object-fit: contain;
+    filter: none;
+    opacity: 1;
+}
+
+.emoji-picker--store {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 38px;
+    color: #8a96a3;
+    background-color: #f3f5f7;
+    box-shadow: -6px 0 8px -4px rgba(0, 0, 0, 0.12);
+}
+
+.emoji-picker--store:hover {
+    color: #2b587a;
+}
+
+/* стикер в сообщении - без фона, как в телеграме */
+.msg-attach-j-sticker .msg-sticker {
+    display: inline-block;
+    cursor: pointer;
+}
+
+.msg-attach-j-sticker img {
+    display: block;
+    width: 128px;
+    height: 128px;
+    object-fit: contain;
+}
+
+/* магазин стикеров */
+.stickers-shop--bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.stickers-shop--bar-title {
+    font-weight: bold;
+}
+
+.stickers-shop--sections {
+    display: flex;
+    gap: 4px;
+}
+
+.stickers-shop--sections a {
+    padding: 4px 10px;
+    border-radius: 12px;
+}
+
+.stickers-shop--sections a.active {
+    background-color: #e1e7ed;
+    color: #2b587a;
+    font-weight: bold;
+}
+
+.stickers-shop--search input {
+    width: 220px;
+    box-sizing: border-box;
+}
+
+.stickers-shop--empty {
+    padding: 40px 10px;
+    text-align: center;
+    color: #8a96a3;
+}
+
+.stickers-pack-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 4px;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.stickers-pack-row--cover {
+    flex-shrink: 0;
+    width: 72px;
+    height: 72px;
+}
+
+.stickers-pack-row--cover img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+.stickers-pack-row--info {
+    flex: 1;
+    min-width: 0;
+}
+
+.stickers-pack-row--name {
+    font-weight: bold;
+}
+
+.stickers-pack-row--meta {
+    margin: 2px 0 6px;
+    color: #8a96a3;
+}
+
+.stickers-pack-row--preview {
+    display: flex;
+    gap: 4px;
+    cursor: pointer;
+}
+
+.stickers-pack-row--preview img {
+    width: 44px;
+    height: 44px;
+    object-fit: contain;
+}
+
+.stickers-pack-row--action {
+    flex-shrink: 0;
+    text-align: right;
+}
+
+.stickers-pack-row--added {
+    color: #8a96a3;
+}
+
+.stickers-pack-row--balance {
+    margin-top: 6px;
+    color: #8a96a3;
+}
+
+/* окно набора */
+.stickers-modal--meta {
+    color: #8a96a3;
+}
+
+.stickers-modal--edit {
+    float: right;
+}
+
+.stickers-modal--desc {
+    margin-top: 6px;
+    white-space: pre-line;
+}
+
+.stickers-modal--grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 4px;
+    max-height: 340px;
+    margin-top: 10px;
+    overflow-y: auto;
+}
+
+.stickers-modal--grid img {
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+}
+
+.stickers-modal-box .ovk-diag-action {
+    display: flex;
+    gap: 6px;
+}
+
+.stickers-modal-box .ovk-diag-action .button:first-child {
+    flex: 1;
+}
+
+/* редактор набора */
+.stickers-edit input[type="text"],
+.stickers-edit input[type="number"],
+.stickers-edit textarea {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.stickers-edit--section {
+    margin: 14px 0;
+}
+
+.stickers-edit--hint {
+    color: #8a96a3;
+}
+
+.stickers-edit--grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.stickers-edit--item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 6px;
+    border: 1px solid #e7e8ec;
+}
+
+.stickers-edit--item img {
+    width: 96px;
+    height: 96px;
+    align-self: center;
+    object-fit: contain;
+}
+
+.stickers-edit--file {
+    height: 96px;
+    overflow: hidden;
+    word-break: break-all;
+    color: #8a96a3;
 }
 
 .post-spoiler {
