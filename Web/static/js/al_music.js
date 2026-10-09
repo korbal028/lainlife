@@ -1340,7 +1340,6 @@ document.addEventListener('pointerdown', e => {
         startY: e.clientY,
         moved:  false,
     }
-    node.setPointerCapture(e.pointerId)
 })
 
 document.addEventListener('pointermove', e => {
@@ -1350,6 +1349,8 @@ document.addEventListener('pointermove', e => {
     if(!audioDrag.moved) {
         if(Math.abs(dy) < 5) return
         audioDrag.moved = true
+        // захват только после начала перетаскивания, иначе клик уходит не в кнопку
+        audioDrag.node.setPointerCapture(e.pointerId)
         audioDrag.container.classList.add('audios-dragging')
         audioDrag.node.classList.add('dragging')
     }
