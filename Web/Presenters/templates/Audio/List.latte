@@ -109,7 +109,7 @@
     </div>
 
     <div class="audiosDiv">
-        <div class="audiosContainer audiosSideContainer audiosPaddingContainer" n:if="$mode != 'playlists'">
+        <div class="audiosContainer audiosSideContainer audiosPaddingContainer" n:if="$mode != 'playlists'" n:attr="data-reorder-owner => ($mode == 'list' && (($isMy ?? false) || ($isMyClub ?? false))) ? $ownerId : null">
             <div n:if="$audiosCount <= 0" style='height: 100%;'>
                 {include "../components/content_error.latte", description => $ownerId > 0 ? ($ownerId == $thisUser->getId() ? tr("no_audios_thisuser") : tr("no_audios_user")) : tr("no_audios_club")}
             </div>

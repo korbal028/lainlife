@@ -1216,3 +1216,29 @@
 .audiosContainer.winamp_mode .audioEntry .buttons {
     right: 19px;
 }
+
+/* Audio reordering */
+.audiosContainer[data-reorder-owner] .scroll_node {
+    position: relative;
+    cursor: grab;
+}
+
+.audiosContainer.audios-dragging {
+    user-select: none;
+}
+
+.audiosContainer.audios-dragging .scroll_node {
+    transition: transform .15s ease;
+}
+
+.audiosContainer.audios-dragging .scroll_node.dragging {
+    cursor: grabbing;
+    z-index: 5;
+    transition: none;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+
+.audiosContainer.audios-dragging .scroll_node.dropping {
+    z-index: 5;
+}

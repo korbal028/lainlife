@@ -823,3 +823,8 @@ ul {
 .stickers-edit--file {
     color: #6f82a8;
 }
+
+.audiosContainer.audios-dragging .scroll_node.dragging {
+    background-color: #272138 !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}

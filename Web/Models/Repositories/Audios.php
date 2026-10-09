@@ -98,6 +98,38 @@ class Audios
         }
     }
 
+    public function reorder(int $entity, array $audioIds): bool
+    {
+        $audioIds = array_values(array_unique(array_map("intval", $audioIds)));
+        $rels     = $this->context->table("audio_relations")->where(["entity" => $entity, "audio" => $audioIds])->fetchAll();
+        if (sizeof($audioIds) < 2 || sizeof($rels) !== sizeof($audioIds)) {
+            return false;
+        }
+
+        // треки меняются местами в пределах своих же индексов, список идёт по index DESC
+        $indexes = array_map(fn($rel) => (int) $rel->index, array_values($rels));
+        rsort($indexes);
+
+        $this->context->beginTransaction();
+        try {
+            $this->context->table("audio_relations")->where(["entity" => $entity, "audio" => $audioIds])->delete();
+            foreach ($audioIds as $i => $audioId) {
+                $this->context->table("audio_relations")->insert([
+                    "entity" => $entity,
+                    "audio"  => $audioId,
+                    "index"  => $indexes[$i],
+                ]);
+            }
+
+            $this->context->commit();
+        } catch (\Throwable $e) {
+            $this->context->rollBack();
+            throw $e;
+        }
+
+        return true;
+    }
+
     public function getPlaylistsByEntityId(int $entity, int $offset = 0, ?int $limit = null, ?int& $deleted = nullptr): \Traversable
     {
         $limit ??= OPENVK_DEFAULT_PER_PAGE;

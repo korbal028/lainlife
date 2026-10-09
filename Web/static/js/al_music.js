@@ -403,14 +403,15 @@ window.player = new class {
         return this.context.object && this.context.object.url
     }
 
-    switchTracks(id1, id2) {
-        const first_audio = this.__findTrack(id1)
-        const first_audio_index = this.__findTrack(id1, true)
-        const second_audio = this.__findTrack(id2)
-        const second_audio_index = this.__findTrack(id2, true)
+    reorderTracks(ids) {
+        // переставляет треки на занятых ими же местах в очереди
+        const slots = this.tracks.map((track, i) => ids.includes(Number(track.id)) ? i : -1).filter(i => i != -1)
+        const moved = ids.map(id => this.__findTrack(id)).filter(track => track)
+        if(slots.length != moved.length) {
+            return
+        }
 
-        this.tracks[first_audio_index] = second_audio
-        this.tracks[second_audio_index] = first_audio
+        slots.forEach((slot, i) => this.tracks[slot] = moved[i])
         this.__updateFace()
     }
 
@@ -1305,60 +1306,139 @@ u(document).on("mouseout", ".bigPlayer .volumePanelTrack .selectableTrack, .audi
     u(e.target).closest('.selectableTrack').parent().find('.tip_result').remove()
 })
 
-u(document).on('dragstart', '.audiosContainer .audioEmbed', (e) => {
-    u(e.target).closest('.audioEmbed').addClass('currently_dragging')
-    return
-})
-
-u(document).on('dragover', '.audiosContainer .audioEmbed', (e) => {
-    e.preventDefault()
-
-    const target = u(e.target).closest('.audioEmbed')
-    const current = u('.audioEmbed.currently_dragging')
-
-    if(current.length < 1) {
-        return
-    }
-
-    if(target.nodes[0].dataset.id != current.nodes[0].dataset.id) {
-        target.addClass('dragged')
-    }
-    
-    return
-})
-
-u(document).on('dragend', '.audiosContainer .audioEmbed', (e) => {
-    //console.log(e)
-    u(e.target).closest('.audioEmbed').removeClass('dragged')
-    return
-})
-
-// TODO: write changes on server side (audio.reorder)
 u(document).on("drop", '.audiosContainer', function(e) {
-    const current = u('.audioEmbed.currently_dragging')
     if(e.dataTransfer.types.includes('Files')) {
         e.preventDefault()
         e.dataTransfer.dropEffect = 'move'
-    } else if(e.dataTransfer.types.length < 1 || e.dataTransfer.types.includes('text/uri-list')) {
-        e.preventDefault()
-        if(window.player && !window.player.isAtCurrentContextPage()) {
-            return
+    }
+})
+
+// перетаскивание треков в своём списке аудио
+let audioDrag = null
+let audioJustDragged = false
+
+const reorderableAudios = (container) => [...container.querySelectorAll('.scroll_container > .scroll_node')]
+
+document.addEventListener('pointerdown', e => {
+    const container = e.target.closest('.audiosContainer[data-reorder-owner]')
+    const node = e.target.closest('.scroll_node')
+    if(!container || !node || e.button !== 0 || e.pointerType === 'touch' || e.target.closest('.subTracks, .lyrics')) return
+
+    const nodes = reorderableAudios(container)
+    if(nodes.length < 2) return
+
+    e.preventDefault()
+    const rects = nodes.map(el => el.getBoundingClientRect())
+    audioDrag = {
+        container,
+        node,
+        nodes,
+        rects,
+        gap:    Math.max(0, rects[1].top - rects[0].bottom),
+        start:  nodes.indexOf(node),
+        target: nodes.indexOf(node),
+        startY: e.clientY,
+        moved:  false,
+    }
+    node.setPointerCapture(e.pointerId)
+})
+
+document.addEventListener('pointermove', e => {
+    if(!audioDrag) return
+
+    let dy = e.clientY - audioDrag.startY
+    if(!audioDrag.moved) {
+        if(Math.abs(dy) < 5) return
+        audioDrag.moved = true
+        audioDrag.container.classList.add('audios-dragging')
+        audioDrag.node.classList.add('dragging')
+    }
+
+    const { rects, start, gap } = audioDrag
+    const own = rects[start]
+    dy = Math.max(rects[0].top - own.top, Math.min(rects[rects.length - 1].bottom - own.bottom, dy))
+    audioDrag.node.style.transform = `translateY(${ dy }px)`
+
+    // треки разной высоты: сосед пропускается, когда край перетаскиваемого заходит за его середину
+    audioDrag.target = rects.filter((r, i) => {
+        const middle = r.top + r.height / 2
+        if(i < start) return own.top + dy >= middle
+        if(i > start) return own.bottom + dy > middle
+        return false
+    }).length
+
+    const step = own.height + gap
+    audioDrag.nodes.forEach((el, i) => {
+        if(i === start) return
+
+        let shift = 0
+        if(i > start && i <= audioDrag.target) shift = -step
+        if(i < start && i >= audioDrag.target) shift = step
+        el.style.transform = shift ? `translateY(${ shift }px)` : ''
+    })
+})
+
+const finishAudioDrag = () => {
+    if(!audioDrag) return
+
+    const { container, node, nodes, rects, start, target, moved } = audioDrag
+    audioDrag = null
+
+    if(!moved) return
+
+    audioJustDragged = true
+    setTimeout(() => audioJustDragged = false, 300)
+
+    const own = rects[start]
+    const finalY = target > start
+        ? rects[target].bottom - own.bottom
+        : rects[target].top - own.top
+
+    node.classList.remove('dragging')
+    node.classList.add('dropping')
+    node.style.transform = `translateY(${ finalY }px)`
+
+    setTimeout(async () => {
+        container.classList.remove('audios-dragging')
+        node.classList.remove('dropping')
+        nodes.forEach(el => el.style.transform = '')
+
+        if(target === start) return
+
+        const anchor = nodes[target]
+        target > start ? anchor.after(node) : anchor.before(node)
+
+        const order = reorderableAudios(container).map(el => Number(el.querySelector('.audioEmbed').dataset.realid))
+        if(window.player && window.player.isAtCurrentContextPage()) {
+            window.player.reorderTracks(order)
         }
 
-        u('.audioEmbed.currently_dragging').removeClass('currently_dragging')
-        const target = u(e.target).closest('.audioEmbed')
-        const first_id  = Number(current.attr('data-realid'))
-        const second_id = Number(target.attr('data-realid'))
+        const fd = new FormData()
+        fd.set('hash', u("meta[name=csrf]").attr("value"))
+        fd.set('order', order.join(','))
 
-        const first_html = target.nodes[0].outerHTML
-        const second_html = current.nodes[0].outerHTML
+        try {
+            const res = await (await fetch(`/audios${ container.dataset.reorderOwner }/reorder`, { method: 'POST', body: fd })).json()
+            if(!res.success) {
+                fastError(res.flash?.message ?? tr('unknown_error'))
+            }
+        } catch(err) {
+            console.error('Audio reorder failed', err)
+            fastError(tr('unknown_error'))
+        }
+    }, 150)
+}
 
-        current.nodes[0].outerHTML = first_html
-        target.nodes[0].outerHTML = second_html
+document.addEventListener('pointerup', finishAudioDrag)
+document.addEventListener('pointercancel', finishAudioDrag)
 
-        window.player.switchTracks(first_id, second_id)
-    } 
-})
+// клик после перетаскивания не должен запускать трек
+document.addEventListener('click', e => {
+    if(!audioJustDragged || !e.target.closest('.audiosContainer[data-reorder-owner]')) return
+
+    e.preventDefault()
+    e.stopPropagation()
+}, true)
 
 u(document).on("click", "#summarySwitchButton", (e) => {
     window.player.bigPlayer_page_toggleCompactness()

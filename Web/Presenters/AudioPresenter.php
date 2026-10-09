@@ -770,6 +770,34 @@ final class AudioPresenter extends OpenVKPresenter
         $this->returnJson(["success" => true]);
     }
 
+    public function renderReorder(int $owner): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction(true);
+        $this->assertNoCSRF();
+
+        if ($_SERVER["REQUEST_METHOD"] !== "POST") {
+            header("HTTP/1.1 405 Method Not Allowed");
+            $this->redirect("/");
+        }
+
+        if ($owner < 0) {
+            $club = (new Clubs())->get($owner * -1);
+            if (!$club || !$club->canBeModifiedBy($this->user->identity)) {
+                $this->flashFail("err", "error", tr("access_denied"), null, true);
+            }
+        } elseif ($owner !== $this->user->id) {
+            $this->flashFail("err", "error", tr("access_denied"), null, true);
+        }
+
+        $order = array_filter(explode(",", (string) $this->postParam("order")), "is_numeric");
+        if (!$this->audios->reorder($owner, $order)) {
+            $this->flashFail("err", "error", tr("unknown_error"), null, true);
+        }
+
+        $this->returnJson(["success" => true]);
+    }
+
     public function renderPlaylists(int $owner)
     {
         $this->renderList($owner, "playlists");

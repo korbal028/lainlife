@@ -209,6 +209,8 @@ routes:
       handler: "Audio->upload"
     - url: "/audios{num}"
       handler: "Audio->list"
+    - url: "/audios{num}/reorder"
+      handler: "Audio->reorder"
     - url: "/audios/uploaded"
       handler: "Audio->uploaded"
     - url: "/audio{num}/listen"
