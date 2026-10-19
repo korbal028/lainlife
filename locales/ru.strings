@@ -441,6 +441,7 @@
 
 "postpone_post" = "Отложить";
 "postpone_submit" = "В очередь";
+"postpone_time_title" = "Время публикации";
 "postpone_choose_date" = "Дата публикации";
 "postpone_time_in_past" = "Время публикации уже прошло.";
 "postpone_time_too_far" = "Запись можно отложить не больше чем на год.";

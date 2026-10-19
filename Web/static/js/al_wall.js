@@ -3232,54 +3232,76 @@ u(document).on("click", "[data-moderation-delete]", (e) => {
 });
 
 // отложенные записи: день из календаря и время из списков складываются в postpone_at
+function postponeForm(el) {
+    return el.form ?? el.closest('form')
+}
+
 function postponeUpdate(box) {
     const at = new Date(Number(box.dataset.date))
     at.setHours(Number(box.querySelector('.postpone-hour').value), Number(box.querySelector('.postpone-minute').value), 0, 0)
 
     box.querySelector('input[name=postpone_at]').value = Math.floor(at.getTime() / 1000)
-    box.querySelector('.postpone-date').textContent = at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+    box.querySelector('.postpone-date-text').textContent = `${ at.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) } ${ at.getFullYear() }`
 }
 
-function postponeInit(box, at) {
+function postponeOpen(box, at) {
     // минуты в списке идут с шагом 5
     at.setMinutes(Math.ceil(at.getMinutes() / 5) * 5, 0, 0)
 
     box.dataset.date = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime()
     box.querySelector('.postpone-hour').value = at.getHours()
     box.querySelector('.postpone-minute').value = at.getMinutes()
-    box.querySelector('.postpone-fields').style.display = ''
+    box.style.display = ''
     postponeUpdate(box)
 }
 
-u(document).on('change', '.postpone-toggle', (e) => {
-    const box = e.target.closest('.post-postpone')
-    const submit = (e.target.form ?? e.target.closest('form')).querySelector('input[type=submit]')
-    submit.dataset.defaultValue ??= submit.value
+function postponeClose(form) {
+    const box = form.querySelector('.postpone-box')
+    box.style.display = 'none'
+    box.querySelector('input[name=postpone_at]').value = ''
 
-    if(!e.target.checked) {
-        box.querySelector('.postpone-fields').style.display = 'none'
-        box.querySelector('input[name=postpone_at]').value = ''
-        submit.value = submit.dataset.defaultValue
-        return
+    const toggle = form.querySelector('.postpone-toggle')
+    if(toggle) {
+        toggle.checked = false
+        toggle.closest('label').style.display = ''
     }
 
-    postponeInit(box, new Date(Date.now() + 60 * 60 * 1000))
+    const submit = form.querySelector('input[type=submit][data-default-value]')
+    if(submit) submit.value = submit.dataset.defaultValue
+
+    form.querySelector('.postpone-reschedule')?.style.removeProperty('display')
+    form.querySelector('.postpone-save')?.style.setProperty('display', 'none')
+}
+
+u(document).on('change', '.postpone-toggle', (e) => {
+    const form = postponeForm(e.target)
+    if(!e.target.checked) return postponeClose(form)
+
+    const submit = form.querySelector('input[type=submit]')
+    submit.dataset.defaultValue ??= submit.value
     submit.value = tr('postpone_submit')
+
+    e.target.closest('label').style.display = 'none'
+    postponeOpen(form.querySelector('.postpone-box'), new Date(Date.now() + 60 * 60 * 1000))
+})
+
+u(document).on('click', '.postpone-cancel', (e) => {
+    postponeClose(postponeForm(e.target))
 })
 
 u(document).on('click', '.postpone-reschedule', (e) => {
-    const box = e.target.closest('.post-postpone')
+    const form = postponeForm(e.target)
     e.target.style.display = 'none'
-    box.querySelector('.postpone-save').style.display = ''
-    postponeInit(box, new Date(Number(box.dataset.at) * 1000))
+    form.querySelector('.postpone-save').style.display = ''
+    postponeOpen(form.querySelector('.postpone-box'), new Date(Number(form.dataset.at) * 1000))
 })
 
 u(document).on('change', '.postpone-hour, .postpone-minute', (e) => {
-    postponeUpdate(e.target.closest('.post-postpone'))
+    postponeUpdate(e.target.closest('.postpone-box'))
 })
 
 u(document).on('click', '.postpone-date', async (e) => {
-    const box = e.target.closest('.post-postpone')
+    const box = e.target.closest('.postpone-box')
 
     // календарь подключён только в мессенджере, здесь подгружаем его по требованию
     if(!window.openCalendarModal) {

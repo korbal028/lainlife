@@ -4886,21 +4886,84 @@ body.article .floating_sidebar, body.article .page_content {
     margin: 4px 0;
 }
 
-.post-postpone label {
-    display: inline-block;
-    margin-right: 6px;
+.postpone-box {
+    margin: 8px 0 4px;
 }
 
-.postpone-fields select {
-    width: auto;
-    margin: 0 2px;
-    padding: 1px;
+.postpone-title {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+    color: #5b7ba1;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.postpone-clock circle {
+    fill: #5b7ba1;
+}
+
+.postpone-clock path {
+    stroke: #fff;
+}
+
+.postpone-cancel {
+    display: inline-flex;
+    padding: 2px;
+    opacity: .6;
+}
+
+.postpone-cancel:hover {
+    opacity: 1;
+}
+
+.postpone-cancel path {
+    stroke: #8fa1b6;
+}
+
+.postpone-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
 }
 
 .postpone-date {
-    border-bottom: 1px dashed;
-    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    min-width: 150px;
+    box-sizing: border-box;
+    height: 28px;
+    padding: 0 6px 0 8px;
+    border: 1px solid #c0cad5;
+    border-radius: 2px;
+    background: #fff;
+    color: #333;
+    text-decoration: none !important;
     cursor: pointer;
+}
+
+.postpone-date:hover {
+    border-color: #8fa1b6;
+}
+
+.postpone-date-icon rect,
+.postpone-date-icon path {
+    stroke: #8fa1b6;
+}
+
+.postpone-row select {
+    width: auto;
+    min-width: 54px;
+    height: 28px;
+    margin: 0;
+}
+
+.postpone-word {
+    color: #333;
 }
 
 .postponedControls {
@@ -4910,12 +4973,10 @@ body.article .floating_sidebar, body.article .page_content {
     gap: 6px 12px;
     margin: 0 0 12px;
     padding: 6px 9px;
-    border-top: 1px solid #e7e8ec;
-    background: #f7f7f7;
+    border-top: 1px solid #c0cad5;
 }
 
 .postponedControls .postponed-at {
-    color: #626262;
     flex-basis: 100%;
 }
 
@@ -4924,6 +4985,11 @@ body.article .floating_sidebar, body.article .page_content {
     flex-wrap: wrap;
     align-items: center;
     gap: 6px;
+    margin: 0;
+}
+
+.postponedControls .postpone-box {
+    flex-basis: 100%;
     margin: 0;
 }
 

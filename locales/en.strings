@@ -440,6 +440,7 @@
 
 "postpone_post" = "Postpone";
 "postpone_submit" = "Schedule";
+"postpone_time_title" = "Publication time";
 "postpone_choose_date" = "Publication date";
 "postpone_time_in_past" = "The publication time has already passed.";
 "postpone_time_too_far" = "A post can be postponed for at most a year.";
