@@ -4900,14 +4900,6 @@ body.article .floating_sidebar, body.article .page_content {
     font-size: 13px;
 }
 
-.postpone-clock circle {
-    fill: #5b7ba1;
-}
-
-.postpone-clock path {
-    stroke: #fff;
-}
-
 .postpone-cancel {
     display: inline-flex;
     padding: 2px;
@@ -4948,11 +4940,6 @@ body.article .floating_sidebar, body.article .page_content {
 
 .postpone-date:hover {
     border-color: #8fa1b6;
-}
-
-.postpone-date-icon rect,
-.postpone-date-icon path {
-    stroke: #8fa1b6;
 }
 
 .postpone-row select {

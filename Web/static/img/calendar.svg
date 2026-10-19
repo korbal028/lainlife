@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" viewBox="0 0 47.239 48.906">
+  <defs>
+    <style>
+      .cls-1{fill:#d3e8ff;stroke:#a2b3c6;stroke-width:3;stroke-miterlimit:10}
+      .cls-2{fill:#d5e5f8;stroke:#a2b3c6;stroke-width:3;stroke-miterlimit:10}
+      .cls-3{fill:none;stroke:#a2b3c6;stroke-width:3;stroke-miterlimit:10}
+      .cls-4{fill:#a2b3c6}
+    </style>
+  </defs>
+  <title>Untitled-1</title>
+  <g id="Selection">
+    <path d="M1.5 47.406 L1.5 17.943 L45.739 17.943 L45.739 47.406 Z" class="cls-1"/>
+    <path d="M1.5 17.719 L1.5 4.831 L45.739 4.831 L45.739 17.943 L1.5 17.943 Z" class="cls-2"/>
+    <path d="M45.739 17.943 L1.5 17.943" class="cls-3"/>
+    <path d="M11.259 0 L16.853 0 L16.853 9.26 L11.259 9.26 Z" class="cls-4"/>
+    <path d="M30.788 0 L36.382 0 L36.382 9.26 L30.788 9.26 Z" class="cls-4"/>
+  </g>
+</svg>

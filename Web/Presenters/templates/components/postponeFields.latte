@@ -1,14 +1,14 @@
 {* блок «Время публикации»: день из календаря и время из списков складываются в postpone_at в al_wall.js *}
 <div class="postpone-box" style="display: none;">
     <div class="postpone-title">
-        <svg class="postpone-clock" viewBox="0 0 16 16" width="15" height="15" aria-hidden="true"><circle cx="8" cy="8" r="8" /><path d="M8 3.5V8.5H11.5" fill="none" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <img class="postpone-clock" src="/assets/packages/static/openvk/img/clock.svg" width="15" height="15" alt="" />
         <span>{_postpone_time_title}</span>
         <a href="javascript:void(0)" class="postpone-cancel" title="{_cancel}"><svg viewBox="0 0 10 10" width="11" height="11" aria-hidden="true"><path d="M1.5 1.5L8.5 8.5M8.5 1.5L1.5 8.5" stroke-width="2.4" stroke-linecap="round" /></svg></a>
     </div>
     <div class="postpone-row">
         <a href="javascript:void(0)" class="postpone-date" title="{_postpone_choose_date}">
             <span class="postpone-date-text"></span>
-            <svg class="postpone-date-icon" viewBox="0 0 16 16" width="18" height="18" aria-hidden="true"><rect x="1.5" y="2.5" width="13" height="12" rx="1" fill="none" stroke-width="1.2" /><path d="M1.5 6H14.5M5 1V4M11 1V4" fill="none" stroke-width="1.2" /></svg>
+            <img class="postpone-date-icon" src="/assets/packages/static/openvk/img/calendar.svg" width="16" height="17" alt="" />
         </a>
         <span class="postpone-word">{trim(tr("time_at_sp"))}</span>
         <select class="postpone-hour" autocomplete="off">

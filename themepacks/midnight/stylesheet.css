@@ -968,3 +968,76 @@ ul {
     background: #383052;
     color: #fff;
 }
+
+/* отложенные записи */
+.postpone-title {
+    color: #7c94c5;
+}
+
+.postpone-date {
+    background: #181826;
+    border-color: #2c2640;
+    color: #c6d2e8;
+}
+
+.postpone-date:hover {
+    border-color: #473e66;
+}
+
+.postpone-word {
+    color: #c6d2e8;
+}
+
+.postpone-cancel path {
+    stroke: #6f82a8;
+}
+
+.postponedControls {
+    border-color: #2c2640;
+}
+
+/* календарь выбора дня */
+.ovk-cal-nav-btn {
+    background: #181826;
+    border-color: #2c2640;
+    color: #c6d2e8;
+}
+
+.ovk-cal-nav-btn:hover:not(:disabled) {
+    background: #231e33;
+    border-color: #473e66;
+    color: #fff;
+}
+
+.ovk-cal-weekday {
+    border-color: #2c2640;
+    color: #8b9ab5;
+}
+
+.ovk-cal-day {
+    color: #c6d2e8;
+}
+
+.ovk-cal-day:hover {
+    background: #231e33;
+}
+
+.ovk-cal-day-active {
+    background: #272138;
+    color: #a3b8d9;
+}
+
+.ovk-cal-day-other,
+.ovk-cal-day-empty {
+    color: #4a4560;
+}
+
+.ovk-cal-day-today {
+    border-color: #473e66;
+}
+
+.ovk-cal-day-selected,
+.ovk-cal-day-selected:hover {
+    background: #5e81a8;
+    color: #fff;
+}
