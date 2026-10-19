@@ -447,6 +447,7 @@
 "postpone_time_too_far" = "Запись можно отложить не больше чем на год.";
 "postpone_change_time" = "Изменить время";
 "postpone_publish_now" = "Опубликовать сейчас";
+"postponed_short" = "Отложенные";
 "postponed_posts" = "Отложенные записи";
 "postponed_publish_at" = "Будет опубликована $1";
 "no_postponed_posts" = "Отложенных записей нет.";

@@ -446,6 +446,7 @@
 "postpone_time_too_far" = "A post can be postponed for at most a year.";
 "postpone_change_time" = "Change time";
 "postpone_publish_now" = "Publish now";
+"postponed_short" = "Postponed";
 "postponed_posts" = "Postponed posts";
 "postponed_publish_at" = "Will be published $1";
 "no_postponed_posts" = "There are no postponed posts.";

@@ -4,6 +4,7 @@
         <nobold>
             <span class='wall_block_counter'>{tr("wall", $count)}</span>
             <a href="/wall{$owner}" class="float-right lowercase">{_all_title}</a>
+            <a n:if="$canPostpone ?? false" href="/wall{$owner}/postponed" class="float-right lowercase wall_postponed_link">{_postponed_short}{if $postponedCount > 0} ({$postponedCount}){/if}</a>
         </nobold>
     </div>
     <div>
