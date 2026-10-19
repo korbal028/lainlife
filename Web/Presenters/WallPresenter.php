@@ -118,6 +118,8 @@ final class WallPresenter extends OpenVKPresenter
 
         $this->template->owner   = $user;
         $this->template->canPost = $canPost;
+        $this->template->canPostpone    = $this->canPostponeOn($user);
+        $this->template->postponedCount = $this->template->canPostpone ? $this->posts->getPostponedPostsCount($user) : 0;
         $this->template->count   = $count;
         $this->template->type    = $type;
         $this->template->posts   = iterator_to_array($iterator);
@@ -398,11 +400,21 @@ final class WallPresenter extends OpenVKPresenter
         }
 
         $should_be_suggested = $wall < 0 && !$wallOwner->canBeModifiedBy($this->user->identity) && $wallOwner->getWallType() == 2;
+
+        $postponeAt = null;
+        if (!empty($this->postParam("postpone_at"))) {
+            if (!$this->canPostponeOn($wall)) {
+                $this->flashFail("err", tr("failed_to_publish_post"), tr("not_enough_permissions_comment"));
+            }
+
+            $postponeAt = $this->parsePostponeTime($this->postParam("postpone_at"));
+        }
+
         try {
             $post = new Post();
             $post->setOwner($this->user->id);
             $post->setWall($wall);
-            $post->setCreated(time());
+            $post->setCreated($postponeAt ?? time());
             $post->setContent($this->postParam("text"));
             $post->setAnonymous($anon);
             $post->setFlags($flags);
@@ -417,6 +429,8 @@ final class WallPresenter extends OpenVKPresenter
 
             if ($should_be_suggested) {
                 $post->setSuggested(1);
+            } elseif (!is_null($postponeAt)) {
+                $post->setSuggested(Post::POSTPONED);
             }
 
             if ($geo) {
@@ -449,6 +463,11 @@ final class WallPresenter extends OpenVKPresenter
             $post->attach($poll);
         }
 
+        # уведомления об отложенной записи уйдут при публикации
+        if (!is_null($postponeAt)) {
+            $this->redirect("/wall$wall/postponed");
+        }
+
         if ($wall > 0 && $wall !== $this->user->identity->getId()) {
             $disturber = $this->user->identity;
             if ($anon) {
@@ -478,6 +497,89 @@ final class WallPresenter extends OpenVKPresenter
         } else {
             $this->redirect($wallOwner->getURL());
         }
+    }
+
+    private function canPostponeOn(int $wall): bool
+    {
+        if (is_null($this->user->identity)) {
+            return false;
+        }
+
+        if ($wall > 0) {
+            return $wall === $this->user->identity->getId();
+        }
+
+        return (bool) (new Clubs())->get(abs($wall))?->canBeModifiedBy($this->user->identity);
+    }
+
+    private function parsePostponeTime($value): int
+    {
+        $time = (int) $value;
+        if ($time <= time()) {
+            $this->flashFail("err", tr("failed_to_publish_post"), tr("postpone_time_in_past"));
+        }
+
+        if ($time > time() + YEAR) {
+            $this->flashFail("err", tr("failed_to_publish_post"), tr("postpone_time_too_far"));
+        }
+
+        return $time;
+    }
+
+    private function getPostponedPost(int $wall, int $post_id): Post
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+        $this->assertNoCSRF();
+
+        $post = $this->posts->getPostById($wall, $post_id, true);
+        if (!$post || $post->isDeleted() || !$post->isPostponed()) {
+            $this->notFound();
+        }
+
+        if (!$post->canBePostponedBy($this->user->identity)) {
+            $this->flashFail("err", tr("not_enough_permissions"), tr("not_enough_permissions_comment"));
+        }
+
+        return $post;
+    }
+
+    public function renderPostponed(int $wall): void
+    {
+        $this->assertUserLoggedIn();
+
+        $owner = ($wall < 0 ? (new Clubs()) : (new Users()))->get(abs($wall));
+        if (!$owner || !$this->canPostponeOn($wall)) {
+            $this->flashFail("err", tr("error"), tr("forbidden"));
+        }
+
+        $page = max(1, (int) ($this->queryParam("p") ?? 1));
+
+        $this->template->owner = $owner;
+        $this->template->wall  = $wall;
+        $this->template->page  = $page;
+        $this->template->posts = iterator_to_array($this->posts->getPostponedPosts($wall, $page));
+        $this->template->count = $this->posts->getPostponedPostsCount($wall);
+        if ($wall < 0) {
+            $this->template->club = $owner;
+        }
+    }
+
+    public function renderPublishPostponed(int $wall, int $post_id): void
+    {
+        $post = $this->getPostponedPost($wall, $post_id);
+        $post->publishPostponed(time());
+
+        $this->redirect($post->getWallOwner()->getURL());
+    }
+
+    public function renderReschedulePostponed(int $wall, int $post_id): void
+    {
+        $post = $this->getPostponedPost($wall, $post_id);
+        $post->setCreated($this->parsePostponeTime($this->postParam("postpone_at")));
+        $post->save();
+
+        $this->redirect("/wall$wall/postponed");
     }
 
     public function renderPost(int $wall, int $post_id): void
@@ -745,7 +847,7 @@ final class WallPresenter extends OpenVKPresenter
             $this->flashFail("err", "Error", tr("error_accepting_invalid_post"), null, true);
         }
 
-        if ($post->getSuggestionType() == 0) {
+        if ($post->getSuggestionType() == 0 || $post->isPostponed()) {
             $this->flashFail("err", "Error", tr("error_accepting_not_suggested_post"), null, true);
         }
 
@@ -805,7 +907,7 @@ final class WallPresenter extends OpenVKPresenter
             $this->flashFail("err", "Error", tr("error_declining_invalid_post"), null, true);
         }
 
-        if ($post->getSuggestionType() == 0) {
+        if ($post->getSuggestionType() == 0 || $post->isPostponed()) {
             $this->flashFail("err", "Error", tr("error_declining_not_suggested_post"), null, true);
         }
 

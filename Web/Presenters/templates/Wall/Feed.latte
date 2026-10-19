@@ -22,7 +22,7 @@
     </div>
 
     <div n:class="postFeedWrapper, $thisUser->hasMicroblogEnabled() ? postFeedWrapperMicroblog">
-        {include "../components/textArea.latte", route => "/wall" . $thisUser->getId() . "/makePost", graffiti => true, polls => true, notes => true, hasSource => true, geo => true}
+        {include "../components/textArea.latte", route => "/wall" . $thisUser->getId() . "/makePost", graffiti => true, polls => true, notes => true, hasSource => true, geo => true, postpone => true}
     </div>
     
     <div class='scroll_container'>

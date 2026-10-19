@@ -437,6 +437,23 @@
 "error_loading_suggest" = "Error when loading new posts";
 
 "publishing_suggested_post" = "Publishing suggested post";
+
+"postpone_post" = "Postpone";
+"postpone_submit" = "Schedule";
+"postpone_choose_date" = "Publication date";
+"postpone_time_in_past" = "The publication time has already passed.";
+"postpone_time_too_far" = "A post can be postponed for at most a year.";
+"postpone_change_time" = "Change time";
+"postpone_publish_now" = "Publish now";
+"postponed_posts" = "Postponed posts";
+"postponed_publish_at" = "Will be published $1";
+"no_postponed_posts" = "There are no postponed posts.";
+"postponed_posts_count_zero" = "No postponed posts";
+"postponed_posts_count_one" = "One postponed post";
+"postponed_posts_count_few" = "$1 postponed posts";
+"postponed_posts_count_many" = "$1 postponed posts";
+"postponed_posts_count_other" = "$1 postponed posts";
+
 "suggested_posts_in_group_zero" = "You've looked at all the suggested posts, congratulations!";
 "suggested_posts_in_group_one" = "This group has one suggested post";
 "suggested_posts_in_group_few" = "This group has $1 suggested posts";

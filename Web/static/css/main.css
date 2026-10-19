@@ -4881,6 +4881,52 @@ body.article .floating_sidebar, body.article .page_content {
     text-align: center;
 }
 
+/* отложенные записи */
+.post-postpone {
+    margin: 4px 0;
+}
+
+.post-postpone label {
+    display: inline-block;
+    margin-right: 6px;
+}
+
+.postpone-fields select {
+    width: auto;
+    margin: 0 2px;
+    padding: 1px;
+}
+
+.postpone-date {
+    border-bottom: 1px dashed;
+    text-decoration: none;
+    cursor: pointer;
+}
+
+.postponedControls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin: 0 0 12px;
+    padding: 6px 9px;
+    border-top: 1px solid #e7e8ec;
+    background: #f7f7f7;
+}
+
+.postponedControls .postponed-at {
+    color: #626262;
+    flex-basis: 100%;
+}
+
+.postponedControls form.post-postpone {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin: 0;
+}
+
 .button.loaded {
     background: #595959 url("/assets/packages/static/openvk/img/loading_mini.gif") no-repeat 50% 50%;
     padding: 2px 9px 7px 39px;

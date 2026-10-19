@@ -32,7 +32,10 @@
             </div>
 
             <div n:if="$canPost && $type == 'all'" class="content_subtitle">
-                {include "../components/textArea.latte", route => "/wall$owner/makePost", graffiti => true, polls => true, notes => true, hasSource => true, geo => true}
+                {include "../components/textArea.latte", route => "/wall$owner/makePost", graffiti => true, polls => true, notes => true, hasSource => true, geo => true, postpone => $canPostpone}
+            </div>
+            <div n:if="$postponedCount > 0 && $type == 'all'" class="sugglist">
+                <a href="/wall{$owner}/postponed">{tr("postponed_posts_count", $postponedCount)}</a>
             </div>
             <div n:if="$type == 'search'" class="content_subtitle">
                 <form action="/wall{$owner}?type=search" method="get" enctype="multipart/form-data" class="wall_search">

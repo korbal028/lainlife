@@ -202,9 +202,35 @@ abstract class OpenVKPresenter extends SimplePresenter
         return $latte;
     }
 
+    # без крона отложенные записи публикуются из веб-запросов, не чаще раза в 30 секунд
+    private function publishDuePostponedPosts(): void
+    {
+        $stamp = OPENVK_ROOT . "/tmp/postponed-posts.stamp";
+        if (@filemtime($stamp) > time() - 30) {
+            return;
+        }
+
+        $fp = @fopen($stamp, "c");
+        if (!$fp || !flock($fp, LOCK_EX | LOCK_NB)) {
+            return;
+        }
+
+        touch($stamp);
+        try {
+            (new Posts())->publishDuePostponed();
+        } catch (\Throwable $e) {
+            trigger_error("Postponed posts publishing failed: " . $e->getMessage(), E_USER_WARNING);
+        } finally {
+            flock($fp, LOCK_UN);
+            fclose($fp);
+        }
+    }
+
     public function onStartup(): void
     {
         $user = Authenticator::i()->getUser();
+
+        $this->publishDuePostponedPosts();
 
         if (!$this->template) {
             $this->template = new \stdClass();

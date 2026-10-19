@@ -30,6 +30,14 @@ To automatically clean up pending uploads daily, add to your crontab:
 0 2 * * * cd /path/to/openvk && php openvkctl cleanup-pending-uploads
 ```
 
+### publish-postponed-posts
+Publishes postponed wall posts whose time has come. Without cron they are also published from web requests, at most once per 30 seconds.
+
+**Cron Setup:**
+```bash
+* * * * * cd /path/to/openvk && php openvkctl publish-postponed-posts
+```
+
 ### build-images
 Rebuilds photo thumbnails and image sizes.
 

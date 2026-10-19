@@ -438,6 +438,22 @@
 "suggested_posts_in_group_by_you_other" = "Вы предложили в эту группу $1 записей";
 
 "suggestion_succefully_published" = "Запись успешно опубликована";
+
+"postpone_post" = "Отложить";
+"postpone_submit" = "В очередь";
+"postpone_choose_date" = "Дата публикации";
+"postpone_time_in_past" = "Время публикации уже прошло.";
+"postpone_time_too_far" = "Запись можно отложить не больше чем на год.";
+"postpone_change_time" = "Изменить время";
+"postpone_publish_now" = "Опубликовать сейчас";
+"postponed_posts" = "Отложенные записи";
+"postponed_publish_at" = "Будет опубликована $1";
+"no_postponed_posts" = "Отложенных записей нет.";
+"postponed_posts_count_zero" = "Нет отложенных записей";
+"postponed_posts_count_one" = "$1 отложенная запись";
+"postponed_posts_count_few" = "$1 отложенные записи";
+"postponed_posts_count_many" = "$1 отложенных записей";
+"postponed_posts_count_other" = "$1 отложенных записей";
 "suggestion_succefully_declined" = "Запись успешно отклонена";
 "suggestion_press_to_go" = "Нажмите, чтобы перейти к ней";
 

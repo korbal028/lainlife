@@ -1,0 +1,8 @@
+<span class="postpone-fields" n:attr="style => ($visible ?? false) ? null : 'display: none;'">
+    <a href="javascript:void(0)" class="postpone-date"></a>{_time_at_sp}<select class="postpone-hour" autocomplete="off">
+        <option n:for="$h = 0; $h < 24; $h++" value="{$h}">{sprintf("%02d", $h)}</option>
+    </select>:<select class="postpone-minute" autocomplete="off">
+        <option n:for="$m = 0; $m < 60; $m += 5" value="{$m}">{sprintf("%02d", $m)}</option>
+    </select>
+</span>
+<input type="hidden" name="postpone_at" value="" autocomplete="off" />

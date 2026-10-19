@@ -245,7 +245,7 @@ class Posts
     public function getOwnersCountOnUserWall(int $user): int
     {
         if ($user > 0) {
-            return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "owner" => $user]));
+            return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "suggested" => 0, "owner" => $user]));
         } else {
             return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "suggested" => 0])->where("flags !=", 0));
         }
@@ -254,7 +254,7 @@ class Posts
     public function getOthersCountOnUserWall(int $user): int
     {
         if ($user > 0) {
-            return sizeof($this->posts->where(["wall" => $user, "deleted" => 0])->where("owner !=", $user));
+            return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "suggested" => 0])->where("owner !=", $user));
         } else {
             return sizeof($this->posts->where(["wall" => $user, "deleted" => 0, "suggested" => 0])->where("flags", 0));
         }
@@ -303,6 +303,42 @@ class Posts
     public function getSuggestedPostsCountByUser(int $club, int $user): int
     {
         return sizeof($this->posts->where(["wall" => $club * -1, "deleted" => 0, "suggested" => 1, "owner" => $user]));
+    }
+
+    public function getPostponedPosts(int $wall, int $page = 1, ?int $perPage = null): \Traversable
+    {
+        $sel = (clone $this->posts)
+                    ->where(["wall" => $wall, "deleted" => 0, "suggested" => Post::POSTPONED])
+                    ->order("created ASC")
+                    ->page($page, $perPage ?? OPENVK_DEFAULT_PER_PAGE);
+
+        foreach ($sel as $post) {
+            yield new Post($post);
+        }
+    }
+
+    public function getPostponedPostsCount(int $wall): int
+    {
+        return sizeof((clone $this->posts)->where(["wall" => $wall, "deleted" => 0, "suggested" => Post::POSTPONED]));
+    }
+
+    # публикует отложенные записи, время которых наступило; возвращает число опубликованных
+    public function publishDuePostponed(int $limit = 100): int
+    {
+        $sel = (clone $this->posts)
+                    ->where(["deleted" => 0, "suggested" => Post::POSTPONED])
+                    ->where("created <= ?", time())
+                    ->order("created ASC")
+                    ->limit($limit);
+
+        $published = 0;
+        foreach ($sel as $post) {
+            if ((new Post($post))->publishPostponed()) {
+                $published++;
+            }
+        }
+
+        return $published;
     }
 
     public function getCount(): int

@@ -7,11 +7,15 @@ namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection as DB;
 use openvk\Web\Models\Repositories\{Clubs, Users};
 use openvk\Web\Models\RowModel;
-use openvk\Web\Models\Entities\Notifications\LikeNotification;
+use openvk\Web\Models\Entities\Notifications\{LikeNotification, MentionNotification};
 
 class Post extends Postable
 {
     use Traits\TRichText;
+
+    # значение posts.suggested для отложенных записей
+    public const POSTPONED = 3;
+
     protected $tableName = "posts";
     protected $upperNodeReferenceColumnName = "wall";
 
@@ -367,6 +371,68 @@ class Post extends Postable
     public function getSuggestionType()
     {
         return $this->getRecord()->suggested;
+    }
+
+    public function isPostponed(): bool
+    {
+        return $this->getSuggestionType() == self::POSTPONED;
+    }
+
+    public function canBePostponedBy(?User $user = null): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        $wall = $this->getTargetWall();
+        if ($wall > 0) {
+            return $wall === $user->getId() && $this->getOwnerPost() === $user->getId();
+        }
+
+        return (bool) $this->getWallOwner()?->canBeModifiedBy($user);
+    }
+
+    # публикует отложенную запись; false, если её уже опубликовали или автор потерял права
+    public function publishPostponed(?int $time = null): bool
+    {
+        if (!$this->isPostponed() || $this->isDeleted()) {
+            return false;
+        }
+
+        $author = $this->getOwner(false);
+        if (!($author instanceof User) || !$this->canBePostponedBy($author)) {
+            $this->setDeleted(1);
+            $this->save();
+
+            return false;
+        }
+
+        $changes = ["suggested" => 0];
+        if (!is_null($time)) {
+            $changes["created"] = $time;
+        }
+
+        # условие по suggested не даёт двум процессам опубликовать запись дважды
+        $updated = DB::i()->getContext()->table("posts")
+            ->where(["id" => $this->getId(), "suggested" => self::POSTPONED])
+            ->update($changes);
+
+        if ($updated < 1) {
+            return false;
+        }
+
+        $excludeMentions = [$author->getId()];
+        if ($this->getTargetWall() > 0) {
+            $excludeMentions[] = $this->getTargetWall();
+        }
+
+        foreach ($this->resolveMentions($excludeMentions) as $mentionee) {
+            if ($mentionee instanceof User) {
+                (new MentionNotification($mentionee, $this->getOwner(), $this, strip_tags($this->getText())))->emit();
+            }
+        }
+
+        return true;
     }
 
     public function getPageURL(): string

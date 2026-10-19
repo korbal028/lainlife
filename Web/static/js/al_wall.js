@@ -3230,3 +3230,78 @@ u(document).on("click", "[data-moderation-delete]", (e) => {
     msg.getNode().find(".ovk-diag-action > button.button").first()?.classList.add("moderation-delete-btn");
     msg.getNode().find(".moderation-delete-form textarea").first()?.focus();
 });
+
+// отложенные записи: день из календаря и время из списков складываются в postpone_at
+function postponeUpdate(box) {
+    const at = new Date(Number(box.dataset.date))
+    at.setHours(Number(box.querySelector('.postpone-hour').value), Number(box.querySelector('.postpone-minute').value), 0, 0)
+
+    box.querySelector('input[name=postpone_at]').value = Math.floor(at.getTime() / 1000)
+    box.querySelector('.postpone-date').textContent = at.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
+}
+
+function postponeInit(box, at) {
+    // минуты в списке идут с шагом 5
+    at.setMinutes(Math.ceil(at.getMinutes() / 5) * 5, 0, 0)
+
+    box.dataset.date = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime()
+    box.querySelector('.postpone-hour').value = at.getHours()
+    box.querySelector('.postpone-minute').value = at.getMinutes()
+    box.querySelector('.postpone-fields').style.display = ''
+    postponeUpdate(box)
+}
+
+u(document).on('change', '.postpone-toggle', (e) => {
+    const box = e.target.closest('.post-postpone')
+    const submit = (e.target.form ?? e.target.closest('form')).querySelector('input[type=submit]')
+    submit.dataset.defaultValue ??= submit.value
+
+    if(!e.target.checked) {
+        box.querySelector('.postpone-fields').style.display = 'none'
+        box.querySelector('input[name=postpone_at]').value = ''
+        submit.value = submit.dataset.defaultValue
+        return
+    }
+
+    postponeInit(box, new Date(Date.now() + 60 * 60 * 1000))
+    submit.value = tr('postpone_submit')
+})
+
+u(document).on('click', '.postpone-reschedule', (e) => {
+    const box = e.target.closest('.post-postpone')
+    e.target.style.display = 'none'
+    box.querySelector('.postpone-save').style.display = ''
+    postponeInit(box, new Date(Number(box.dataset.at) * 1000))
+})
+
+u(document).on('change', '.postpone-hour, .postpone-minute', (e) => {
+    postponeUpdate(e.target.closest('.post-postpone'))
+})
+
+u(document).on('click', '.postpone-date', async (e) => {
+    const box = e.target.closest('.post-postpone')
+
+    // календарь подключён только в мессенджере, здесь подгружаем его по требованию
+    if(!window.openCalendarModal) {
+        await new Promise(resolve => {
+            const script = document.createElement('script')
+            script.src = '/assets/packages/static/openvk/js/al_calendar.js'
+            script.onload = script.onerror = resolve
+            document.body.appendChild(script)
+        })
+    }
+
+    const max = new Date()
+    max.setDate(max.getDate() + 364)
+
+    openCalendarModal({
+        title: tr('postpone_choose_date'),
+        initialDate: new Date(Number(box.dataset.date)),
+        minDate: new Date(),
+        maxDate: max,
+        onSelectDate: (date) => {
+            box.dataset.date = date.getTime()
+            postponeUpdate(box)
+        },
+    })
+})

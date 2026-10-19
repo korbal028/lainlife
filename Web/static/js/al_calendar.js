@@ -2,8 +2,11 @@
 // Названия месяцев и дней недели берутся из Intl, а loadMonth может погасить дни без событий
 // и ограничить листание месяцами, в которых что-то было.
 class CalendarComponent {
-    constructor({ initialDate = null, locale = undefined, loadMonth = null, onSelectDate = null } = {}) {
+    // minDate/maxDate ограничивают выбор и листание; без maxDate будущие дни погашены
+    constructor({ initialDate = null, locale = undefined, loadMonth = null, onSelectDate = null, minDate = null, maxDate = null } = {}) {
         const init = CalendarComponent.parseDate(initialDate) ?? new Date();
+        const min  = CalendarComponent.parseDate(minDate);
+        const max  = CalendarComponent.parseDate(maxDate);
 
         this.locale       = locale;
         this.loadMonth    = loadMonth;
@@ -12,8 +15,10 @@ class CalendarComponent {
         this.currentMonth = init.getMonth();
         this.selected     = new Date(init.getFullYear(), init.getMonth(), init.getDate());
         this.today        = new Date();
-        this.minKey       = null; // year * 12 + month, раньше которого листать некуда
-        this.maxKey       = null;
+        this.minDate      = min ? new Date(min.getFullYear(), min.getMonth(), min.getDate()) : null;
+        this.maxDate      = max ? new Date(max.getFullYear(), max.getMonth(), max.getDate()) : this.today;
+        this.minKey       = min ? min.getFullYear() * 12 + min.getMonth() : null; // year * 12 + month, раньше которого листать некуда
+        this.maxKey       = max ? max.getFullYear() * 12 + max.getMonth() : null;
         this.days         = null; // Set дней текущего месяца с событиями, null — неизвестно, доступны все
         this.loading      = false;
         this.container    = null;
@@ -150,7 +155,7 @@ class CalendarComponent {
 
         for(let d = 1; d <= daysInMonth; d++) {
             const date    = new Date(this.currentYear, this.currentMonth, d);
-            const enabled = !this.loading && date <= this.today && (this.days === null || this.days.has(d));
+            const enabled = !this.loading && date <= this.maxDate && (!this.minDate || date >= this.minDate) && (this.days === null || this.days.has(d));
             const classes = [
                 "ovk-cal-day",
                 enabled ? (this.days ? "ovk-cal-day-active" : "") : "ovk-cal-day-empty",
@@ -192,7 +197,7 @@ class CalendarComponent {
 }
 
 // календарь в модальном окне; выбор дня закрывает окно
-function openCalendarModal({ title = tr("messenger_go_to_date"), initialDate = null, locale = undefined, loadMonth = null, onSelectDate = null } = {}) {
+function openCalendarModal({ title = tr("messenger_go_to_date"), initialDate = null, locale = undefined, loadMonth = null, onSelectDate = null, minDate = null, maxDate = null } = {}) {
     const modal = new CMessageBox({
         title:     escapeHtml(title),
         body:      `<div class="ovk-calendar-modal-body"></div>`,
@@ -205,6 +210,8 @@ function openCalendarModal({ title = tr("messenger_go_to_date"), initialDate = n
         initialDate,
         locale,
         loadMonth,
+        minDate,
+        maxDate,
         onSelectDate: (date, meta) => {
             modal.close();
             if(onSelectDate) onSelectDate(date, meta);

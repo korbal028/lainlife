@@ -1,0 +1,47 @@
+{extends "../@layout.latte"}
+
+{block title}{_postponed_posts}{/block}
+
+{block header}
+    <a href="{$owner->getURL()}">{$owner->getCanonicalName()}</a>
+    » {_postponed_posts}
+{/block}
+
+{block content}
+    {if $count < 1}
+        {include "../components/error.latte", title => "", description => tr("no_postponed_posts")}
+    {else}
+        <h4>{tr("postponed_posts_count", $count)}</h4>
+        <div class="infContainer scroll_container">
+            {var $microblog = $thisUser->hasMicroblogEnabled()}
+            <div class="infObj scroll_node postponed-post" n:foreach="$posts as $post">
+                {if $microblog}
+                    {include "../components/post/microblogpost.latte", post => $post, commentSection => false, forceNoCommentsLink => true, forceNoPinLink => true, forceNoLike => true, forceNoShareLink => true}
+                {else}
+                    {include "../components/post/oldpost.latte", post => $post, commentSection => false, forceNoCommentsLink => true, forceNoPinLink => true, forceNoLike => true, forceNoShareLink => true}
+                {/if}
+
+                <div class="postponedControls">
+                    <span class="postponed-at">{tr("postponed_publish_at", $post->getPublicationTime())}</span>
+                    <form action="/wall{$post->getPrettyId()}/reschedule" method="post" class="post-postpone" data-at="{$post->getPublicationTime()->timestamp()}">
+                        <a href="javascript:void(0)" class="postpone-reschedule">{_postpone_change_time}</a>
+                        {include "../components/postponeFields.latte"}
+                        <input type="hidden" name="hash" value="{$csrfToken}" />
+                        <input type="submit" class="button postpone-save" value="{_save}" style="display: none;" />
+                    </form>
+                    <a class="button" href="/wall{$post->getPrettyId()}/publish?hash={rawurlencode($csrfToken)}">{_postpone_publish_now}</a>
+                </div>
+            </div>
+
+            {include "../components/paginator.latte", conf => (object) [
+                "page"     => $page,
+                "count"    => $count,
+                "amount"   => sizeof($posts),
+                "perPage"  => \OPENVK_DEFAULT_PER_PAGE,
+                "atBottom" => true,
+                "atTop"    => false,
+                "tidy"     => false
+            ]}
+        </div>
+    {/if}
+{/block}

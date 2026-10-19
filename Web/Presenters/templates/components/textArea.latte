@@ -57,6 +57,14 @@
                 </label>
             </div>
 
+            {* отложенная запись: дата и время собираются в postpone_at в al_wall.js *}
+            <div n:if="$postpone ?? false" class="post-postpone">
+                <label>
+                    <input type="checkbox" class="postpone-toggle" autocomplete="off" /> {_postpone_post}
+                </label>
+                {include "postponeFields.latte"}
+            </div>
+
             {if !($postOpts ?? true) && !is_null($thisUser)}
                 {php
                     if (!isset($GLOBALS["__ovk_managed_clubs"])) {
