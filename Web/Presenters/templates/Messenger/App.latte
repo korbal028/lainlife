@@ -93,17 +93,11 @@
                     </div>
                     <div class="msg-tools">
                         <!-- ko if: $data.uuid > 0 -->
-                        <a class="msg-tool msg-tool-pin" data-act="pin" data-bind="attr: { title: $root.pinnedMsg()?.uuid === $data.uuid ? window.MSG_STR.unpin : window.MSG_STR.pin }, css: { active: $root.pinnedMsg()?.uuid === $data.uuid }"></a>
-                        <!-- ko if: sender.id === {$thisUser->getId()} -->
-                        <!-- ko ifnot: attachments.some(a => a.type === 'sticker') -->
+                        <a class="msg-tool msg-tool-reply" data-act="reply" title="{_messenger_reply}"></a>
+                        <!-- ko if: sender.id === {$thisUser->getId()} && !attachments.some(a => a.type === 'sticker') -->
                         <a class="msg-tool msg-tool-edit" data-act="edit" title="{_messenger_edit_message}"></a>
                         <!-- /ko -->
                         <a class="msg-tool msg-tool-more" data-act="more" title="{_messenger_more}">&#8943;</a>
-                        <!-- /ko -->
-                        <!-- ko ifnot: sender.id === {$thisUser->getId()} -->
-                        <a class="msg-tool msg-tool-reply" data-act="reply" title="{_messenger_reply}"></a>
-                        <a class="msg-tool msg-tool-forward" data-act="forward" title="{_messenger_forward}"></a>
-                        <!-- /ko -->
                         <!-- /ko -->
                     </div>
                     <div class="time" align="right">
@@ -1273,42 +1267,71 @@
                 window.Msg.replyMessage(ko.dataFor(el));
             });
 
-            tippy.delegate(".messenger-app--messages", {
-                target: ".msg-tool-more",
+            const menuOptions = {
                 animation: "up_down",
                 theme: "special vk",
-                placement: "bottom-end",
                 content: "",
                 allowHTML: true,
                 interactive: true,
                 trigger: "click",
                 arrow: false,
-                offset: [0, 8],
                 appendTo: () => document.body,
+            };
 
-                onShow(tip) {
-                    const msg  = ko.dataFor(tip.reference);
-                    const menu = u(`
-                        <div style="margin: -6px -10px;">
-                            <div class="like_tooltip_wrapper crp-menu-tooltip">
-                                <div class="like_tooltip_body"></div>
-                            </div>
+            const buildMenu = (msg, tip) => {
+                const isPinned = window.pinnedMsg()?.uuid === msg.uuid;
+                const menu = u(`
+                    <div style="margin: -6px -10px;">
+                        <div class="like_tooltip_wrapper crp-menu-tooltip">
+                            <div class="like_tooltip_body"></div>
                         </div>
-                    `);
+                    </div>
+                `);
 
-                    [["reply", window.MSG_STR.reply], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
-                        const link = u(`<a></a>`).text(text);
-                        if(act === "delete") link.addClass("crp-menu-danger");
-                        link.on("click", e => {
-                            e.preventDefault();
-                            tip.hide();
-                            msgAction(act, msg);
-                        });
-                        menu.find(".like_tooltip_body").append(link);
+                [["pin", isPinned ? window.MSG_STR.unpin : window.MSG_STR.pin], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
+                    const link = u(`<a></a>`).text(text);
+                    if(act === "delete") link.addClass("crp-menu-danger");
+                    link.on("click", e => {
+                        e.preventDefault();
+                        tip.hide();
+                        msgAction(act, msg);
                     });
+                    menu.find(".like_tooltip_body").append(link);
+                });
 
-                    tip.setContent(menu.first());
+                return menu.first();
+            };
+
+            tippy.delegate(".messenger-app--messages", {
+                ...menuOptions,
+                target: ".msg-tool-more",
+                placement: "bottom-end",
+                offset: [0, 8],
+                onShow(tip) {
+                    tip.setContent(buildMenu(ko.dataFor(tip.reference), tip));
                 },
+            });
+
+            // ПКМ по сообщению открывает то же меню у курсора
+            const ctxTip = tippy(document.createElement("div"), {
+                ...menuOptions,
+                trigger: "manual",
+                placement: "bottom-start",
+                offset: [0, 0],
+            });
+
+            document.querySelector(".messenger-app--messages").addEventListener("contextmenu", e => {
+                const el = e.target.closest(".messenger-app--messages---message");
+                if(!el || e.target.closest("a, video, audio, input, textarea") || window.getSelection().toString() !== "") return;
+
+                const msg = ko.dataFor(el);
+                if(!(msg.uuid > 0)) return;
+
+                e.preventDefault();
+                const { clientX: x, clientY: y } = e;
+                ctxTip.setProps({ getReferenceClientRect: () => new DOMRect(x, y, 0, 0) });
+                ctxTip.setContent(buildMenu(msg, ctxTip));
+                ctxTip.show();
             });
 
         
