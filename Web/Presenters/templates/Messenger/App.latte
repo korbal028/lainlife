@@ -37,6 +37,7 @@
         <div class="messenger-app--selection" style="display: none;" data-bind="visible: selectedMsgs().length > 0">
             <span data-bind="text: selectionLabel()"></span>
             <div class="messenger-app--selection---actions">
+                <a class="button" data-bind="visible: selectedMsgs().length === 1, text: pinnedMsg()?.uuid === selectedMsgs()[0] ? window.MSG_STR.unpin : window.MSG_STR.pin, click: () => { window.Msg.pinMessage(selectedMsgs()[0]); selectedMsgs.removeAll(); }"></a>
                 <a class="button" data-bind="click: () => window.Msg.forwardMessages(selectedMsgs())">{_messenger_forward}</a>
                 <a class="button" data-bind="click: () => window.Msg.deleteMessages(selectedMsgs())">{_messenger_delete}</a>
                 <a class="messenger-app--selection---cancel" data-bind="click: () => selectedMsgs.removeAll()">{_messenger_cancel_selection}</a>
