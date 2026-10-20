@@ -485,6 +485,50 @@ window.player = new class {
         return this.context.object && this.context.object.url
     }
 
+    // догружает страницы контекста вперёд, потом назад, пока в очереди не появится трек
+    async loadContextUntil(id) {
+        while(this.hasContext() && !this.hasTrackWithId(id)) {
+            const pages = this.context.playedPages.map(Number)
+            const max = pages.length > 0 ? Math.max(...pages) : 0
+            const min = pages.length > 0 ? Math.min(...pages) : 1
+
+            if(max < this.context.pagesCount) {
+                await this.loadContext(max + 1, true)
+            } else if(min > 1) {
+                await this.loadContext(min - 1, false)
+            } else {
+                break
+            }
+        }
+    }
+
+    // очередь из треков, отрисованных на странице рядом с нажатым
+    queueFromPage(target) {
+        let nodes = [target.closest('.audioEmbed')]
+        const containers = [".attachments", ".content_list", ".generic_audio_list", ".audiosInsert", ".scroll_container", ".container_gray"]
+        containers.forEach(container => {
+            if(target.closest(container)) {
+                this.connectionType = container
+                nodes = Array.prototype.slice.call(target.closest(container).querySelectorAll('.audioEmbed'))
+            }
+        })
+
+        this.tracks = []
+        nodes.forEach(el => {
+            const tempAudio = u(el)
+            const name = tempAudio.attr('data-name').split(' — ')
+            this.appendTrack({
+                'id': Number(tempAudio.attr('data-realid')),
+                'available': true, // , судя по всему
+                'keys': JSON.parse(tempAudio.attr('data-keys')),
+                'length': Number(tempAudio.attr('data-length')),
+                'url': tempAudio.attr('data-url'),
+                'name': name[1],
+                'performer': name[0]
+            })
+        })
+    }
+
     reorderTracks(ids) {
         // переставляет треки на занятых ими же местах в очереди
         const slots = this.tracks.map((track, i) => ids.includes(Number(track.id)) ? i : -1).filter(i => i != -1)
@@ -617,7 +661,7 @@ window.player = new class {
     }
 
     isAtCurrentContextPage() {
-        return this.isAtAudiosPage() && this.context.object.url == location.pathname + location.search
+        return this.isAtAudiosPage() && this.context.object?.url == location.pathname + location.search
     }
 
     dump() {
@@ -1102,40 +1146,35 @@ u(document).on('click', '.audioEntry .playerButton > .playIcon', async (e) => {
     }
 
     if(!window.player.hasTrackWithId(id) && !window.player.isAtAudiosPage()) {
-        let _nodes = null
-
-        try_these_containers = [".attachments", ".content_list", ".generic_audio_list", ".audiosInsert", ".scroll_container", ".container_gray"]
-        try_these_containers.forEach(__container => {
-            if(u(e.target).closest(__container).length > 0) {
-                window.player.connectionType = __container
-                _nodes = u(e.target).closest(__container).find('.audioEmbed').nodes
-            }
-        })
-
-        window.player.tracks = []
-        _nodes.forEach(el => {
-            const tempAudio = u(el)
-            const name = tempAudio.attr('data-name').split(' — ')
-            window.player.appendTrack({
-                'id': Number(tempAudio.attr('data-realid')),
-                'available': true, // , судя по всему
-                'keys': JSON.parse(tempAudio.attr('data-keys')),
-                'length': Number(tempAudio.attr('data-length')),
-                'url': tempAudio.attr('data-url'),
-                'name': name[1],
-                'performer': name[0]
-            })
-        })
+        window.player.queueFromPage(e.target)
     } else if(!window.player.hasTrackWithId(id) && window.player.isAtAudiosPage()) {
-        window.player.__renewContext()
-        await window.player.loadContext(window.__current_page_audio_context.page ?? 1)
-        if(!isNaN(parseInt(location.hash.replace('#', '')))) {
-            const adp = parseInt(location.hash.replace('#', ''))
-            await window.player.loadContext(adp)
-        } else if((new URL(location.href)).searchParams.p) {
-            const adp = (new URL(location.href)).searchParams.p
-            await window.player.loadContext(adp)
+        // трек мог подгрузиться прокруткой со страницы, которой ещё нет в очереди
+        if(window.__current_page_audio_context) {
+            if(!window.player.isAtCurrentContextPage()) {
+                window.player.__renewContext()
+                await window.player.loadContext(window.__current_page_audio_context.page ?? 1)
+                if(!isNaN(parseInt(location.hash.replace('#', '')))) {
+                    const adp = parseInt(location.hash.replace('#', ''))
+                    await window.player.loadContext(adp)
+                } else if((new URL(location.href)).searchParams.p) {
+                    const adp = (new URL(location.href)).searchParams.p
+                    await window.player.loadContext(adp)
+                }
+            }
+
+            await window.player.loadContextUntil(id)
         }
+
+        // контекста у страницы нет или трек в нём не нашёлся — берём треки со страницы
+        if(!window.player.hasTrackWithId(id)) {
+            window.player.queueFromPage(e.target)
+        }
+    }
+
+    // иначе ниже поставилась бы на паузу или продолжила играть прежняя дорожка
+    if(!window.player.hasTrackWithId(id)) {
+        makeError(tr("unable_to_load_queue"))
+        return
     }
 
     if(window.player.current_track_id != id) {
