@@ -3236,21 +3236,26 @@ function postponeForm(el) {
     return el.form ?? el.closest('form')
 }
 
+const pad2 = n => ('0' + n).slice(-2)
+
+// часы или минуты из поля, ограниченные data-max
+function postponeTimeValue(input) {
+    const n = parseInt(input.value, 10)
+    return Number.isNaN(n) ? 0 : Math.min(Math.max(n, 0), Number(input.dataset.max))
+}
+
 function postponeUpdate(box) {
     const at = new Date(Number(box.dataset.date))
-    at.setHours(Number(box.querySelector('.postpone-hour').value), Number(box.querySelector('.postpone-minute').value), 0, 0)
+    at.setHours(postponeTimeValue(box.querySelector('.postpone-hour')), postponeTimeValue(box.querySelector('.postpone-minute')), 0, 0)
 
     box.querySelector('input[name=postpone_at]').value = Math.floor(at.getTime() / 1000)
     box.querySelector('.postpone-date-text').textContent = `${ at.toLocaleDateString(undefined, { day: 'numeric', month: 'long' }) } ${ at.getFullYear() }`
 }
 
 function postponeOpen(box, at) {
-    // минуты в списке идут с шагом 5
-    at.setMinutes(Math.ceil(at.getMinutes() / 5) * 5, 0, 0)
-
     box.dataset.date = new Date(at.getFullYear(), at.getMonth(), at.getDate()).getTime()
-    box.querySelector('.postpone-hour').value = at.getHours()
-    box.querySelector('.postpone-minute').value = at.getMinutes()
+    box.querySelector('.postpone-hour').value = pad2(at.getHours())
+    box.querySelector('.postpone-minute').value = pad2(at.getMinutes())
     box.style.display = ''
     postponeUpdate(box)
 }
@@ -3296,9 +3301,116 @@ u(document).on('click', '.postpone-reschedule', (e) => {
     postponeOpen(form.querySelector('.postpone-box'), new Date(Number(form.dataset.at) * 1000))
 })
 
-u(document).on('change', '.postpone-hour, .postpone-minute', (e) => {
-    postponeUpdate(e.target.closest('.postpone-box'))
+// список часов/минут в стиле темы, значение можно и вписать вручную
+let postponeList = null
+
+function postponeListClose() {
+    if(!postponeList) return
+    postponeList.input.parentNode.classList.remove('open')
+    postponeList.remove()
+    postponeList = null
+}
+
+function postponeListMark(n) {
+    if(!postponeList) return
+    postponeList.querySelector('.selected')?.classList.remove('selected')
+
+    const item = postponeList.children[n]
+    item.classList.add('selected')
+    postponeList.scrollTop = item.offsetTop - (postponeList.clientHeight - item.offsetHeight) / 2
+}
+
+function postponeListOpen(input) {
+    if(postponeList?.input === input) return
+    postponeListClose()
+
+    const list = document.createElement('div')
+    list.className = 'postpone-time-list'
+    list.input = input
+    for(let i = 0; i <= Number(input.dataset.max); i++) {
+        const item = document.createElement('a')
+        item.className = 'postpone-time-item'
+        item.textContent = pad2(i)
+        list.append(item)
+    }
+
+    // фокус остаётся в поле, иначе список закроется до клика
+    list.addEventListener('mousedown', e => e.preventDefault())
+    list.addEventListener('click', e => {
+        const item = e.target.closest('.postpone-time-item')
+        if(!item) return
+        postponeTimeSet(input, Array.prototype.indexOf.call(list.children, item))
+        postponeListClose()
+    })
+
+    const rect = input.parentNode.getBoundingClientRect()
+    list.style.left = `${ rect.left + window.scrollX }px`
+    list.style.top = `${ rect.bottom + window.scrollY + 2 }px`
+    list.style.minWidth = `${ rect.width }px`
+
+    document.body.append(list)
+    input.parentNode.classList.add('open')
+    postponeList = list
+    postponeListMark(postponeTimeValue(input))
+}
+
+function postponeTimeSet(input, n) {
+    input.value = pad2(n)
+    postponeUpdate(input.closest('.postpone-box'))
+}
+
+u(document).on('click', '.postpone-hour, .postpone-minute', (e) => {
+    postponeListOpen(e.target)
+    e.target.select()
 })
+
+u(document).on('focusin', '.postpone-hour, .postpone-minute', (e) => {
+    postponeListOpen(e.target)
+})
+
+u(document).on('focusout', '.postpone-hour, .postpone-minute', (e) => {
+    postponeListClose()
+    postponeTimeSet(e.target, postponeTimeValue(e.target))
+})
+
+u(document).on('input', '.postpone-hour, .postpone-minute', (e) => {
+    const input = e.target
+    input.value = input.value.replace(/\D/g, '')
+    if(input.value === '') return
+
+    postponeListOpen(input)
+    postponeListMark(postponeTimeValue(input))
+    postponeUpdate(input.closest('.postpone-box'))
+})
+
+u(document).on('keydown', '.postpone-hour, .postpone-minute', (e) => {
+    const input = e.target
+    const max = Number(input.dataset.max) + 1
+
+    switch(e.key) {
+        case 'ArrowUp':
+        case 'ArrowDown': {
+            e.preventDefault()
+            const n = (postponeTimeValue(input) + (e.key === 'ArrowUp' ? -1 : 1) + max) % max
+            postponeTimeSet(input, n)
+            postponeListOpen(input)
+            postponeListMark(n)
+            input.select()
+            break
+        }
+        // Enter не отправляет форму, а подтверждает время
+        case 'Enter':
+            e.preventDefault()
+            postponeTimeSet(input, postponeTimeValue(input))
+            postponeListClose()
+            break
+        case 'Escape':
+            postponeListClose()
+            break
+    }
+})
+
+window.addEventListener('resize', postponeListClose)
 
 u(document).on('click', '.postpone-date', async (e) => {
     const box = e.target.closest('.postpone-box')

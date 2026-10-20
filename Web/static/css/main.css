@@ -4890,8 +4890,9 @@ body.article .floating_sidebar, body.article .page_content {
     margin: 4px 0;
 }
 
+/* отступ слева как у чекбоксов над блоком */
 .postpone-box {
-    margin: 8px 0 4px;
+    margin: 8px 0 4px 3px;
 }
 
 .postpone-title {
@@ -4946,11 +4947,81 @@ body.article .floating_sidebar, body.article .page_content {
     border-color: #8fa1b6;
 }
 
-.postpone-row select {
-    width: auto;
-    min-width: 54px;
+.postpone-time {
+    position: relative;
+    display: inline-block;
+}
+
+.postpone-time::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    right: 9px;
+    width: 5px;
+    height: 5px;
+    margin-top: -5px;
+    border: solid #8fa1b6;
+    border-width: 0 1.5px 1.5px 0;
+    transform: rotate(45deg);
+    pointer-events: none;
+}
+
+.postpone-time.open::after {
+    margin-top: -1px;
+    transform: rotate(-135deg);
+}
+
+.postpone-row .postpone-time input {
+    width: 50px;
     height: 28px;
+    box-sizing: border-box;
     margin: 0;
+    padding: 0 20px 0 8px;
+    border: 1px solid #c0cad5;
+    border-radius: 2px;
+    background: #fff;
+    color: #333;
+}
+
+.postpone-row .postpone-time input:focus {
+    border-color: #8fa1b6;
+}
+
+.postpone-time-list {
+    position: absolute;
+    z-index: 1000;
+    max-height: 128px;
+    overflow-y: auto;
+    box-sizing: border-box;
+    padding: 4px 0;
+    border: 1px solid #c0cad5;
+    border-radius: 2px;
+    background: #fff;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, .15);
+}
+
+.postpone-time-item {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 0 8px;
+    line-height: 24px;
+    color: #333;
+    text-decoration: none !important;
+    cursor: pointer;
+}
+
+.postpone-time-item:hover {
+    background: #e9edf1;
+}
+
+.postpone-time-item.selected {
+    color: #45688e;
+    font-weight: bold;
+}
+
+.postpone-time-item.selected::after {
+    content: "✓";
 }
 
 .postpone-word {

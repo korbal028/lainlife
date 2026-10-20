@@ -988,6 +988,37 @@ ul {
     color: #c6d2e8;
 }
 
+.postpone-row .postpone-time input {
+    border-color: #2c2640;
+    color: #c6d2e8;
+}
+
+.postpone-row .postpone-time input:focus {
+    border-color: #473e66;
+}
+
+.postpone-time::after {
+    border-color: #6f82a8;
+}
+
+.postpone-time-list {
+    background: #181826;
+    border-color: #2c2640;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .5);
+}
+
+.postpone-time-item {
+    color: #c6d2e8;
+}
+
+.postpone-time-item:hover {
+    background: #231f36;
+}
+
+.postpone-time-item.selected {
+    color: #7c94c5;
+}
+
 .postpone-cancel path {
     stroke: #6f82a8;
 }

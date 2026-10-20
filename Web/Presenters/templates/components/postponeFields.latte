@@ -1,4 +1,4 @@
-{* блок «Время публикации»: день из календаря и время из списков складываются в postpone_at в al_wall.js *}
+{* блок «Время публикации»: день из календаря и время из полей со списками складываются в postpone_at в al_wall.js *}
 <div class="postpone-box" style="display: none;">
     <div class="postpone-title">
         <img class="postpone-clock" src="/assets/packages/static/openvk/img/clock.svg" width="15" height="15" alt="" />
@@ -11,13 +11,9 @@
             <img class="postpone-date-icon" src="/assets/packages/static/openvk/img/calendar.svg" width="16" height="17" alt="" />
         </a>
         <span class="postpone-word">{trim(tr("time_at_sp"))}</span>
-        <select class="postpone-hour" autocomplete="off">
-            <option n:for="$h = 0; $h < 24; $h++" value="{$h}">{sprintf("%02d", $h)}</option>
-        </select>
+        <span class="postpone-time"><input type="text" class="postpone-hour" inputmode="numeric" maxlength="2" autocomplete="off" data-max="23" /></span>
         <span class="postpone-word">:</span>
-        <select class="postpone-minute" autocomplete="off">
-            <option n:for="$m = 0; $m < 60; $m += 5" value="{$m}">{sprintf("%02d", $m)}</option>
-        </select>
+        <span class="postpone-time"><input type="text" class="postpone-minute" inputmode="numeric" maxlength="2" autocomplete="off" data-max="59" /></span>
     </div>
     <input type="hidden" name="postpone_at" value="" autocomplete="off" />
 </div>
