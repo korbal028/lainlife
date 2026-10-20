@@ -3265,7 +3265,8 @@ function postponeClose(form) {
     box.style.display = 'none'
     box.querySelector('input[name=postpone_at]').value = ''
 
-    const toggle = form.querySelector('.postpone-toggle')
+    // в vkify чекбокс лежит в меню шестерёнки вне формы и привязан к ней через form=
+    const toggle = form.querySelector('.postpone-toggle') ?? document.querySelector(`.postpone-toggle[form="${ form.id }"]`)
     if(toggle) {
         toggle.checked = false
         toggle.closest('label').style.display = ''
