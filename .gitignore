@@ -4,6 +4,7 @@ chandler.yml
 update.pid
 update.pid.old
 Web/static/js/node_modules
+Web/static/js/legacy
 
 tmp/*
 !tmp/api-storage/.gitkeep

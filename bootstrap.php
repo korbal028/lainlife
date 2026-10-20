@@ -263,6 +263,16 @@ function ovk_strftime_safe(string $format, ?int $timestamp = null): string
     return $str;
 }
 
+// ES5-копия скрипта от Web/static/js/build-legacy.js (js/x.js -> js/legacy/x.js), если она не старше исходника
+function ovk_legacy_js(string $file, ?string $baseDir = null): string
+{
+    $baseDir ??= OPENVK_ROOT . "/Web/static";
+    $legacy    = (dirname($file) === "." ? "" : dirname($file) . "/") . "legacy/" . basename($file);
+    $built     = @filemtime("$baseDir/$legacy");
+
+    return $built !== false && $built >= (int) @filemtime("$baseDir/$file") ? $legacy : $file;
+}
+
 function ovk_is_ssl(): bool
 {
     if (!isset($GLOBALS["requestIsSSL"])) {

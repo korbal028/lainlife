@@ -1,43 +1,65 @@
-window.API = new Proxy(Object.create(null), {
+function brpcCall(classSymbol, method, args) {
+    return new Promise((resolv, rej) => {
+        let xhr = new XMLHttpRequest();
+        xhr.open("POST", "/rpc", true);
+        xhr.responseType = "arraybuffer";
+
+        xhr.onload = e => {
+            try {
+                let resp = msgpack.decode(new Uint8Array(e.target.response));
+                if(typeof resp.error !== "undefined")
+                    rej(resp.error);
+                else
+                    resolv(resp.result);
+            } catch (e) {
+                rej({
+                    "code": -1,
+                    "message": `Network error`,
+                    "error": e
+                })
+            }
+        };
+
+        xhr.send(msgpack.encode({
+            "brpc": 1,
+            "method": `${classSymbol.toString()}.${method}`,
+            "params": args
+        }));
+    });
+}
+
+window.API = typeof Proxy === "function" ? new Proxy(Object.create(null), {
     get(apiObj, name, recv) {
         if(name === "Types")
             return apiObj.Types;
         
         return new Proxy(new window.String(name), {
             get(classSymbol, method, recv) {
-                return ((...args) => {
-                    return new Promise((resolv, rej) => {
-                        let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/rpc", true);
-                        xhr.responseType = "arraybuffer";
-
-                        xhr.onload = e => {
-                            try {
-                                let resp = msgpack.decode(new Uint8Array(e.target.response));
-                                if(typeof resp.error !== "undefined")
-                                    rej(resp.error);
-                                else
-                                    resolv(resp.result);
-                            } catch (e) {
-                                rej({
-                                    "code": -1,
-                                    "message": `Network error`,
-                                    "error": e
-                                })
-                            }
-                        };
-
-                        xhr.send(msgpack.encode({
-                            "brpc": 1,
-                            "method": `${classSymbol.toString()}.${method}`,
-                            "params": args
-                        }));
-                    });
-                })
+                return ((...args) => brpcCall(classSymbol, method, args))
             }
         });
     }
-});
+}) : (() => {
+    // старые браузеры без Proxy: только методы, которые вызывает фронтенд
+    const methods = {
+        Apps:          ["getRegularToken", "getUserInfo", "pay", "updatePermission", "withdrawFunds"],
+        Mentions:      ["resolve"],
+        Notes:         ["getNote"],
+        Notifications: ["fetch"],
+        Polls:         ["vote", "unvote"],
+        Service:       ["getTime"],
+        Stickers:      ["buyPack", "getMyPacks", "getPackInfo", "uninstallPack"],
+        Wall:          ["newStatus"],
+    };
+
+    const api = {};
+    Object.keys(methods).forEach(cls => {
+        api[cls] = {};
+        methods[cls].forEach(method => api[cls][method] = (...args) => brpcCall(cls, method, args));
+    });
+
+    return api;
+})();
 
 window.API.Types = {};
 window.API.Types.Message = (class Message {
