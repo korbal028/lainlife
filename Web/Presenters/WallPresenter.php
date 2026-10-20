@@ -465,7 +465,7 @@ final class WallPresenter extends OpenVKPresenter
 
         # уведомления об отложенной записи уйдут при публикации
         if (!is_null($postponeAt)) {
-            $this->redirect("/wall$wall/postponed");
+            $this->redirect($this->postponeReturnUrl("/wall$wall/postponed"));
         }
 
         if ($wall > 0 && $wall !== $this->user->identity->getId()) {
@@ -510,6 +510,14 @@ final class WallPresenter extends OpenVKPresenter
         }
 
         return (bool) (new Clubs())->get(abs($wall))?->canBeModifiedBy($this->user->identity);
+    }
+
+    # тема может вернуть на свою страницу (vkify — на стену группы), принимаем только локальный путь
+    private function postponeReturnUrl(string $default): string
+    {
+        $url = (string) ($this->postParam("postpone_return", false) ?? "");
+
+        return preg_match('#^/[^/\\\\]#', $url) ? $url : $default;
     }
 
     private function parsePostponeTime($value): int
@@ -579,7 +587,7 @@ final class WallPresenter extends OpenVKPresenter
         $post->setCreated($this->parsePostponeTime($this->postParam("postpone_at")));
         $post->save();
 
-        $this->redirect("/wall$wall/postponed");
+        $this->redirect($this->postponeReturnUrl("/wall$wall/postponed"));
     }
 
     public function renderPost(int $wall, int $post_id): void
