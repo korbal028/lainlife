@@ -156,10 +156,10 @@ class Message extends RowModel
     function toggleReaction(User $user, string $reaction): void
     {
         $context = DatabaseConnection::i()->getContext();
-        $current = $context->table("message_reactions")->where(["message" => $this->getId(), "user" => $user->getId()])->fetch();
+        $current = $context->table("message_reactions")->where(["message" => $this->getId(), "user" => $user->getId()])->fetchField("reaction");
 
         $context->table("message_reactions")->where(["message" => $this->getId(), "user" => $user->getId()])->delete();
-        if (!$current || $current->reaction !== $reaction) {
+        if ($current !== $reaction) {
             $context->table("message_reactions")->insert([
                 "message"  => $this->getId(),
                 "user"     => $user->getId(),
