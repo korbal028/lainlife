@@ -1459,6 +1459,7 @@
 "messenger_forward" = "Forward";
 "messenger_delete" = "Delete";
 "messenger_more" = "More";
+"messenger_reactions_all" = "All reactions";
 "messenger_pinned_message" = "Pinned message";
 "messenger_selected_count" = "Messages selected: $1";
 "messenger_cancel_selection" = "Cancel";

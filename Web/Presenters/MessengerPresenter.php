@@ -145,6 +145,8 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->disable_ajax  = 1;
         $this->template->selId         = $sel;
         $this->template->correspondent = $correspondent;
+        $this->template->reactions     = Message::REACTIONS;
+        $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
     }
 
     // renderEvents()/маршрут "/im{num}" (long-poll на signaler->listen) удалены: веб-мессенджер
@@ -595,6 +597,30 @@ final class MessengerPresenter extends OpenVKPresenter
 
         header("Content-Type: application/json");
         exit(json_encode(["pinned" => $msg ? $msg->simplify() : null]));
+    }
+
+    public function renderApiReactMessage(int $sel, int $msgId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $correspondent = $this->getCorrespondent($sel);
+        $msg           = (new Messages())->get($msgId);
+        if (!$correspondent || !$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $reaction = (string) $this->postParam("reaction");
+        if (!in_array($reaction, Message::REACTIONS, true)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
+
+        $msg->toggleReaction($this->user->identity, $reaction);
+
+        header("Content-Type: application/json");
+        exit(json_encode(["reactions" => $msg->getReactions()]));
     }
 
     // карточка собеседника для меню вложений

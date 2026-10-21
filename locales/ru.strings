@@ -1389,6 +1389,7 @@
 "messenger_forward" = "Переслать";
 "messenger_delete" = "Удалить";
 "messenger_more" = "Ещё";
+"messenger_reactions_all" = "Все реакции";
 "messenger_pinned_message" = "Закреплённое сообщение";
 "messenger_selected_count" = "Выбрано сообщений: $1";
 "messenger_cancel_selection" = "Отменить";

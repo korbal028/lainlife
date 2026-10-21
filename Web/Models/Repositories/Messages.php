@@ -89,6 +89,19 @@ class Messages
     }
 
     // подстрока для LIKE, без подстановочных символов из самого запроса
+    // сколько раз пользователь ставит каждую реакцию, для строки частых в меню
+    public function getReactionStats(User $user): array
+    {
+        $rows = $this->context->query("SELECT `reaction`, COUNT(*) AS `cnt` FROM `message_reactions` WHERE `user` = ? GROUP BY `reaction`", $user->getId());
+
+        $stats = [];
+        foreach ($rows as $row) {
+            $stats[(string) $row->reaction] = (int) $row->cnt;
+        }
+
+        return $stats;
+    }
+
     public static function likePattern(string $query): string
     {
         return "%" . addcslashes($query, "%_\\") . "%";

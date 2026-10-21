@@ -104,6 +104,72 @@ class Message extends RowModel
     public const MAX_FORWARDS      = 100;
     public const MAX_FORWARD_DEPTH = 10;
 
+    public const REACTIONS = [
+        "❤️", "⚡", "😁", "👍", "🤝", "💔", "🔥", "👀",
+        "👎", "👏", "🤔", "😱", "😢", "🎉",
+        "💩", "🙏", "👌", "🕊️", "🤡", "😍",
+        "🐳", "🌚", "🌭", "🤣", "🍌",
+        "😐", "🍓", "🍾", "💋", "🖕", "😈", "😴", "😭", "🤓",
+        "😇", "😨",
+        "🎄", "☃️", "💅", "🗿", "💘",
+        "😘", "💊", "😎", "👾", "🤷",
+    ];
+
+    /**
+     * Reactions grouped by emoji, most popular first.
+     *
+     * @returns array
+     */
+    function getReactions(): array
+    {
+        $rows = DatabaseConnection::i()->getContext()->table("message_reactions")
+            ->where("message", $this->getId())
+            ->order("created ASC");
+
+        $users  = new Users();
+        $groups = [];
+        foreach ($rows as $row) {
+            $user = $users->get((int) $row->user);
+            if (!$user) {
+                continue;
+            }
+
+            $groups[(string) $row->reaction][] = [
+                "id"   => $user->getId(),
+                "name" => $user->getCanonicalName(),
+            ];
+        }
+
+        $reactions = [];
+        foreach ($groups as $emoji => $reacted) {
+            $reactions[] = ["emoji" => (string) $emoji, "users" => $reacted];
+        }
+
+        usort($reactions, fn($a, $b) => sizeof($b["users"]) <=> sizeof($a["users"]));
+        return $reactions;
+    }
+
+    /**
+     * Повторная та же реакция снимает её, другая — заменяет.
+     */
+    function toggleReaction(User $user, string $reaction): void
+    {
+        $context = DatabaseConnection::i()->getContext();
+        $current = $context->table("message_reactions")->where(["message" => $this->getId(), "user" => $user->getId()])->fetch();
+
+        $context->table("message_reactions")->where(["message" => $this->getId(), "user" => $user->getId()])->delete();
+        if (!$current || $current->reaction !== $reaction) {
+            $context->table("message_reactions")->insert([
+                "message"  => $this->getId(),
+                "user"     => $user->getId(),
+                "reaction" => $reaction,
+                "created"  => time(),
+            ]);
+        }
+
+        $context->query("UPDATE `messages` SET `reactions_changed` = ? WHERE `id` = ?", time(), $this->getId());
+    }
+
     function getReplyTo(): ?Message
     {
         $id = $this->getRecord()->reply_to;
@@ -314,6 +380,7 @@ class Message extends RowModel
             "fwd"         => $depth < self::MAX_FORWARD_DEPTH ? array_map(fn($m) => $m->simplify($depth + 1), $this->getForwardedMessages()) : [],
             "read"        => !$this->isUnread(),
             "attachments" => $attachments,
+            "reactions"   => $depth === 0 ? $this->getReactions() : [],
         ];
     }
     

@@ -90,6 +90,14 @@
                         <div class="fwd-messages-count" data-bind="text: window.fwdCountLabel(fwd.length)"></div>
                         <div class="fwd-messages-container" data-bind="template: { name: 'msg-fwd-tpl', foreach: fwd }"></div>
                         <!-- /ko -->
+                        <!-- ko if: $data.reactions && reactions.length -->
+                        <div class="msg-reactions" data-bind="foreach: reactions">
+                            <a class="msg-reaction" data-bind="css: { mine: users.some(u => u.id === {$thisUser->getId()}) }, attr: { title: users.map(u => u.name).join(', ') }">
+                                <span class="msg-reaction--emoji" data-bind="html: emoji_span(emoji)"></span>
+                                <span class="msg-reaction--count" data-bind="text: users.length"></span>
+                            </a>
+                        </div>
+                        <!-- /ko -->
                     </div>
                     <div class="msg-tools">
                         <!-- ko if: $data.uuid > 0 -->
@@ -323,7 +331,17 @@
                 forwardTo: {tr("messenger_forward_to")},
                 noDialogs: {tr("no_messages")},
                 fwdCount: {tr("messenger_forwarded_count", "%COUNT%")},
+                reactionsAll: {tr("messenger_reactions_all")},
             };
+
+            // все реакции и сколько раз пользователь ставил каждую, частые идут в строку над меню
+            const REACTIONS       = {$reactions};
+            const REACTION_STATS  = {$reactionStats};
+            const QUICK_REACTIONS = ["❤️", "👍", "🔥", "🤣", "😭", "👎"];
+            const quickReactions  = () => [...new Set([
+                ...Object.keys(REACTION_STATS).filter(e => REACTIONS.includes(e)).sort((a, b) => REACTION_STATS[b] - REACTION_STATS[a]),
+                ...QUICK_REACTIONS,
+            ])].slice(0, QUICK_REACTIONS.length);
 
             window.fwdCountLabel = count => window.MSG_STR.fwdCount.replace("%COUNT%", count);
 
@@ -525,15 +543,20 @@
                                         let msgs = window.messages();
                                         for(let i = 0; i < msgs.length; i++) {
                                             if(msgs[i].uuid === message.uuid) {
+                                                // реакции приходят повторно ещё один опрос, лишний раз не перерисовываем
+                                                if(msgs[i].text === message.text && JSON.stringify(msgs[i].timing) === JSON.stringify(message.timing) && JSON.stringify(msgs[i].reactions) === JSON.stringify(message.reactions)) break;
+
                                                 let updated = Object.assign({}, msgs[i], {
                                                     text: message.text,
-                                                    timing: message.timing
+                                                    timing: message.timing,
+                                                    reactions: message.reactions
                                                 });
                                                 window.messages.splice(i, 1, updated);
                                                 break;
                                             }
                                         }
                                     });
+                                    if((data.edited || []).length) this.hydrateMedia();
 
                                     this.removeMessages(data.deleted || []);
 
@@ -767,6 +790,45 @@
                         this.setPinned(res.pinned);
                     } catch(e) {
                         console.error("Pin failed", e);
+                    }
+                }
+
+                setReactions(msgId, reactions) {
+                    const msgs = window.messages();
+                    const i    = msgs.findIndex(m => m.uuid === msgId);
+                    if(i === -1 || JSON.stringify(msgs[i].reactions) === JSON.stringify(reactions)) return;
+
+                    window.messages.splice(i, 1, Object.assign({}, msgs[i], { reactions }));
+                    this.hydrateMedia();
+                }
+
+                // та же реакция снимается, другая заменяет прежнюю; показываем сразу, не дожидаясь ответа
+                async reactMessage(msgId, emoji) {
+                    const msg = window.messages().find(m => m.uuid === msgId);
+                    if(!msg) return;
+
+                    const myId   = {$thisUser->getId()};
+                    const before = msg.reactions || [];
+                    const had    = before.some(r => r.emoji === emoji && r.users.some(u => u.id === myId));
+                    const after  = before
+                        .map(r => ({ emoji: r.emoji, users: r.users.filter(u => u.id !== myId) }))
+                        .filter(r => r.users.length);
+
+                    if(!had) {
+                        let group = after.find(r => r.emoji === emoji);
+                        if(!group) after.push(group = { emoji, users: [] });
+                        group.users.push({ id: myId, name: {$thisUser->getCanonicalName()} });
+                        REACTION_STATS[emoji] = (REACTION_STATS[emoji] || 0) + 1;
+                    }
+
+                    this.setReactions(msgId, after);
+
+                    try {
+                        const res = await this._post(`/im/api/messages${ PEER_SEL }/${ msgId }/react.json`, { reaction: emoji });
+                        this.setReactions(msgId, res.reactions);
+                    } catch(e) {
+                        this.setReactions(msgId, before);
+                        fastError(tr("messages_error_1"));
                     }
                 }
 
@@ -1247,6 +1309,12 @@
                     return;
                 }
 
+                const reaction = e.target.closest(".msg-reaction");
+                if(reaction) {
+                    e.preventDefault();
+                    return window.Msg.reactMessage(ko.dataFor(reaction.closest(".messenger-app--messages---message")).uuid, ko.dataFor(reaction).emoji);
+                }
+
                 const el = e.target.closest(".messenger-app--messages---message");
                 if(!el || e.target.closest("a, button, video, audio, input, textarea, .bsdn, .attachments, .msg-tools, .reply-msg-container")) return;
                 if(window.getSelection().toString() !== "") return;
@@ -1278,15 +1346,48 @@
                 appendTo: () => document.body,
             };
 
-            const buildMenu = (msg, tip) => {
+            // строка частых реакций над меню, стрелка раскрывает все
+            const buildReactionBar = (msg, tip, menu, context) => {
+                const mine = (msg.reactions || []).find(r => r.users.some(u => u.id === {$thisUser->getId()}))?.emoji;
+                const bar  = u(`
+                    <div class="like_tooltip_wrapper crp-menu-tooltip msg-react-bar${ context ? " crp-menu-context" : "" }">
+                        <div class="like_tooltip_body">
+                            <div class="msg-react-quick"></div>
+                            <span class="msg-react-more" role="button"></span>
+                            <div class="msg-react-all"></div>
+                        </div>
+                    </div>
+                `);
+
+                const button = emoji => u(`<span class="msg-react${ emoji === mine ? " active" : "" }" role="button">${ emoji_span(emoji) }</span>`)
+                    .on("click", e => {
+                        e.preventDefault();
+                        tip.hide();
+                        window.Msg.reactMessage(msg.uuid, emoji);
+                    });
+
+                quickReactions().forEach(emoji => bar.find(".msg-react-quick").append(button(emoji)));
+
+                bar.find(".msg-react-more").attr("title", window.MSG_STR.reactionsAll).on("click", e => {
+                    e.preventDefault();
+                    REACTIONS.forEach(emoji => bar.find(".msg-react-all").append(button(emoji)));
+                    menu.addClass("expanded");
+                    tip.popperInstance?.update();
+                });
+
+                return bar;
+            };
+
+            const buildMenu = (msg, tip, context = false) => {
                 const isPinned = window.pinnedMsg()?.uuid === msg.uuid;
                 const menu = u(`
-                    <div style="margin: -6px -10px;">
-                        <div class="like_tooltip_wrapper crp-menu-tooltip">
+                    <div class="msg-menu">
+                        <div class="like_tooltip_wrapper crp-menu-tooltip crp-menu-context msg-menu-actions">
                             <div class="like_tooltip_body"></div>
                         </div>
                     </div>
                 `);
+                menu.prepend(buildReactionBar(msg, tip, menu, context));
 
                 [["pin", isPinned ? window.MSG_STR.unpin : window.MSG_STR.pin], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
                     const link = u(`<a></a>`).text(text);
@@ -1296,7 +1397,7 @@
                         tip.hide();
                         msgAction(act, msg);
                     });
-                    menu.find(".like_tooltip_body").append(link);
+                    menu.find(".msg-menu-actions .like_tooltip_body").append(link);
                 });
 
                 return menu.first();
@@ -1330,7 +1431,7 @@
                 e.preventDefault();
                 const { clientX: x, clientY: y } = e;
                 ctxTip.setProps({ getReferenceClientRect: () => new DOMRect(x, y, 0, 0) });
-                ctxTip.setContent(buildMenu(msg, ctxTip));
+                ctxTip.setContent(buildMenu(msg, ctxTip, true));
                 ctxTip.show();
             });
 

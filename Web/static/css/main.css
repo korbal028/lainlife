@@ -2474,6 +2474,140 @@ span.ok-smile.ok-smile {
     color: #828a99;
 }
 
+/* реакции под сообщением */
+.msg-reactions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin-top: 5px;
+}
+
+.msg-reaction {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    height: 22px;
+    padding: 0 8px 0 6px;
+    border: 1px solid transparent;
+    border-radius: 11px;
+    background: rgba(81, 129, 184, .1);
+    color: #2b587a;
+    font-size: 11px;
+    font-weight: bold;
+    cursor: pointer;
+    user-select: none;
+}
+
+.msg-reaction:hover {
+    background: rgba(81, 129, 184, .18);
+    text-decoration: none;
+}
+
+.msg-reaction.mine {
+    background: #5e81a8;
+    color: #fff;
+}
+
+/* перебиваем общие правила для span в сообщениях */
+.messenger-app--messages---message ._content .msg-reaction > span {
+    display: inline;
+    width: auto;
+    margin: 0;
+    overflow: visible;
+    font-size: 11px;
+    line-height: 1;
+}
+
+.messenger-app--messages---message ._content .msg-reaction > .msg-reaction--emoji {
+    display: flex;
+}
+
+/* меню сообщения: строка реакций и действия отдельными блоками */
+.tippy-box[data-theme]:has(.msg-menu),
+.tippy-box[data-theme]:has(.msg-menu) > .tippy-content {
+    padding: 0 !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    border: 0 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+
+.msg-menu {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.msg-menu.expanded .msg-menu-actions,
+.msg-menu.expanded .msg-react-quick,
+.msg-menu.expanded .msg-react-more {
+    display: none;
+}
+
+.like_tooltip_wrapper.crp-menu-tooltip.msg-react-bar .like_tooltip_body {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    padding: 3px 4px;
+}
+
+.msg-react-quick {
+    display: flex;
+}
+
+.msg-react {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    user-select: none;
+    transition: transform .1s;
+}
+
+/* спрайт смайликов ВК 16px, в меню крупнее */
+.msg-react .emoji {
+    zoom: 1.375;
+    cursor: pointer;
+}
+
+.msg-react:hover {
+    transform: scale(1.2);
+}
+
+.msg-react.active {
+    background: rgba(81, 129, 184, .18);
+}
+
+.msg-react-more {
+    flex-shrink: 0;
+    width: 22px;
+    height: 22px;
+    margin: 0 2px 0 4px;
+    border-radius: 50%;
+    background: #e1e7ed url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23828a99' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E") no-repeat center / 16px;
+    cursor: pointer;
+}
+
+.msg-react-more:hover {
+    background-color: #d3dbe4;
+}
+
+.msg-react-all {
+    display: none;
+    grid-template-columns: repeat(8, 30px);
+    gap: 2px;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.msg-menu.expanded .msg-react-all {
+    display: grid;
+}
+
 /* панель выделения */
 .messenger-app--selection {
     display: flex;

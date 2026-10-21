@@ -343,6 +343,8 @@ routes:
       handler: "Messenger->apiDeleteMessage"
     - url: "/im/api/messages{num}/{num}/edit.json"
       handler: "Messenger->apiEditMessage"
+    - url: "/im/api/messages{num}/{num}/react.json"
+      handler: "Messenger->apiReactMessage"
     - url: "/im/api/peer{num}.json"
       handler: "Messenger->apiPeerInfo"
     - url: "/im/api/peer{num}/attachments.json"

@@ -446,7 +446,7 @@ class Correspondence
         $connection = DatabaseConnection::i()->getConnection();
         $msgs = $connection->query(
             "SELECT * FROM `messages`
-             WHERE (`edited` > ?)
+             WHERE (`edited` > ? OR `reactions_changed` >= ?)
                AND (`id` > ?)" . $this->getHiddenCondition() . "
                AND (
                  (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
@@ -454,6 +454,7 @@ class Correspondence
                  (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
                )
              ORDER BY `edited` ASC",
+            $since,
             $since,
             $this->getClearedTill(),
             get_class($this->correspondents[0]), get_class($this->correspondents[1]),
