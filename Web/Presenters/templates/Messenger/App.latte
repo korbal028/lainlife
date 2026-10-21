@@ -91,10 +91,12 @@
                         <div class="fwd-messages-container" data-bind="template: { name: 'msg-fwd-tpl', foreach: fwd }"></div>
                         <!-- /ko -->
                         <!-- ko if: $data.reactions && reactions.length -->
-                        <div class="msg-reactions" data-bind="foreach: reactions">
+                        <div class="msg-reactions avatar-style-{$thisUser->getStyleAvatar()}" data-bind="foreach: reactions">
                             <a class="msg-reaction" data-bind="css: { mine: users.some(u => u.id === {$thisUser->getId()}) }, attr: { title: users.map(u => u.name).join(', ') }">
                                 <span class="msg-reaction--emoji" data-bind="html: emoji_span(emoji)"></span>
-                                <span class="msg-reaction--count" data-bind="text: users.length"></span>
+                                <span class="msg-reaction--users" data-bind="foreach: users">
+                                    <img class="msg-reaction--ava" data-bind="attr: { src: avatar, alt: name }, style: { zIndex: $parent.users.length - $index() }" />
+                                </span>
                             </a>
                         </div>
                         <!-- /ko -->
@@ -817,7 +819,7 @@
                     if(!had) {
                         let group = after.find(r => r.emoji === emoji);
                         if(!group) after.push(group = { emoji, users: [] });
-                        group.users.push({ id: myId, name: {$thisUser->getCanonicalName()} });
+                        group.users.push({ id: myId, name: {$thisUser->getCanonicalName()}, avatar: {$thisUser->getAvatarUrl("miniscule")} });
                         REACTION_STATS[emoji] = (REACTION_STATS[emoji] || 0) + 1;
                     }
 

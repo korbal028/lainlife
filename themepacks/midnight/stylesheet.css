@@ -712,29 +712,17 @@ ul {
 }
 
 .msg-reaction {
-    background: rgba(122, 156, 196, .15);
-    color: #8b9ab5;
+    --msg-reaction-bg: #1e1a2b;
+    border-color: #2c2640;
 }
 
-.msg-reaction:hover {
-    background: rgba(122, 156, 196, .25);
-}
-
+.msg-reaction:hover,
 .msg-reaction.mine {
-    background: #4a5f86;
-    color: #fff;
+    --msg-reaction-bg: #272138;
 }
 
 .msg-react.active {
     background: #272138;
-}
-
-.msg-react-more {
-    background-color: #272138;
-}
-
-.msg-react-more:hover {
-    background-color: #2c2640;
 }
 
 .crp-list.crp-dragging .crp-entry.dragging {

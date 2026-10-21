@@ -2482,44 +2482,55 @@ span.ok-smile.ok-smile {
     margin-top: 5px;
 }
 
+/* как строка реакций в меню; фон в переменной, им же обводка аватарок */
 .msg-reaction {
+    --msg-reaction-bg: #fff;
     display: inline-flex;
     align-items: center;
     gap: 4px;
     height: 22px;
-    padding: 0 8px 0 6px;
-    border: 1px solid transparent;
-    border-radius: 11px;
-    background: rgba(81, 129, 184, .1);
-    color: #2b587a;
-    font-size: 11px;
-    font-weight: bold;
+    padding: 0 4px;
+    border: 1px solid #878787;
+    background: var(--msg-reaction-bg);
+    box-shadow: 0px 2px 6px -5px rgba(0, 0, 0, 0.8);
     cursor: pointer;
     user-select: none;
 }
 
 .msg-reaction:hover {
-    background: rgba(81, 129, 184, .18);
+    --msg-reaction-bg: #e1e7ed;
     text-decoration: none;
 }
 
 .msg-reaction.mine {
-    background: #5e81a8;
-    color: #fff;
+    --msg-reaction-bg: #dfe6ee;
 }
 
 /* перебиваем общие правила для span в сообщениях */
 .messenger-app--messages---message ._content .msg-reaction > span {
-    display: inline;
+    display: flex;
+    align-items: center;
     width: auto;
     margin: 0;
     overflow: visible;
-    font-size: 11px;
-    line-height: 1;
 }
 
-.messenger-app--messages---message ._content .msg-reaction > .msg-reaction--emoji {
-    display: flex;
+/* аватарки поставивших: первая сверху, следующие уходят под неё */
+.msg-reaction--ava {
+    position: relative;
+    width: 16px;
+    height: 16px;
+    object-fit: cover;
+    object-position: top;
+    box-shadow: 0 0 0 1px var(--msg-reaction-bg);
+}
+
+.msg-reaction--ava + .msg-reaction--ava {
+    margin-left: -5px;
+}
+
+.msg-reactions.avatar-style-2 .msg-reaction--ava {
+    border-radius: 50%;
 }
 
 /* меню сообщения: строка реакций и действия отдельными блоками */
@@ -2562,7 +2573,6 @@ span.ok-smile.ok-smile {
     justify-content: center;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
     cursor: pointer;
     user-select: none;
     transition: transform .1s;
@@ -2577,7 +2587,7 @@ span.ok-smile.ok-smile {
 }
 
 .msg-react.active {
-    background: rgba(81, 129, 184, .18);
+    background: #dfe6ee;
 }
 
 .msg-react-more {
@@ -2585,13 +2595,13 @@ span.ok-smile.ok-smile {
     width: 22px;
     height: 22px;
     margin: 0 2px 0 4px;
-    border-radius: 50%;
-    background: #e1e7ed url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23828a99' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E") no-repeat center / 16px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Cpath fill='none' stroke='%23828a99' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='m4.5 6.5 3.5 3.5 3.5-3.5'/%3E%3C/svg%3E") no-repeat center / 16px;
+    opacity: .7;
     cursor: pointer;
 }
 
 .msg-react-more:hover {
-    background-color: #d3dbe4;
+    opacity: 1;
 }
 
 .msg-react-all {

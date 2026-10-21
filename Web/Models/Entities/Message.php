@@ -135,8 +135,9 @@ class Message extends RowModel
             }
 
             $groups[(string) $row->reaction][] = [
-                "id"   => $user->getId(),
-                "name" => $user->getCanonicalName(),
+                "id"     => $user->getId(),
+                "name"   => $user->getCanonicalName(),
+                "avatar" => $user->getAvatarUrl("miniscule"),
             ];
         }
 
