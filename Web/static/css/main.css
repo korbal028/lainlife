@@ -2560,17 +2560,15 @@ span.ok-smile.ok-smile {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 30px;
-    height: 30px;
+    width: 28px;
+    height: 28px;
     border-radius: 50%;
     cursor: pointer;
     user-select: none;
     transition: transform .1s;
 }
 
-/* спрайт смайликов ВК 16px, в меню крупнее */
 .msg-react .emoji {
-    zoom: 1.375;
     cursor: pointer;
 }
 
@@ -2598,7 +2596,7 @@ span.ok-smile.ok-smile {
 
 .msg-react-all {
     display: none;
-    grid-template-columns: repeat(8, 30px);
+    grid-template-columns: repeat(8, 28px);
     gap: 2px;
     max-height: 200px;
     overflow-y: auto;
