@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace openvk\Web\Presenters;
 
 use openvk\Web\Models\Repositories\{Users, GroupChats};
-use openvk\Web\Models\Entities\{GroupChat, Photo};
+use openvk\Web\Models\Entities\{GroupChat, Photo, Correspondence};
 
 // управление беседами; сами сообщения бесед обслуживает MessengerPresenter
 final class GroupChatPresenter extends OpenVKPresenter
@@ -215,10 +215,14 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
 
         $chat = $this->getManagedChat($peer);
-        if (!(new Users())->get($userId) || !$this->groupChats->addParticipant($chat->getId(), $userId)) {
+        $user = (new Users())->get($userId);
+        if (!$user || !$this->groupChats->addParticipant($chat->getId(), $userId)) {
             header("HTTP/1.1 400 Bad Request");
             $this->returnJson(["success" => false, "error" => "User already in chat"]);
         }
+
+        // история до вступления не считается непрочитанной
+        (new Correspondence($user, $chat))->markAsRead();
 
         $this->returnJson(["success" => true]);
     }

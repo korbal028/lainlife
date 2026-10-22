@@ -50,6 +50,7 @@ class Correspondence
     }
 
     private ?int $clearedTill = null;
+    private ?int $readTill    = null;
 
     // второй корреспондент — беседа: сообщения адресованы ей, а не паре собеседников
     private function isGroup(): bool
@@ -60,6 +61,45 @@ class Correspondence
     private function getClearedTill(): int
     {
         return $this->clearedTill ??= (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["cleared_till"];
+    }
+
+    // до какого сообщения беседы дочитал первый корреспондент
+    private function getReadTill(): int
+    {
+        return $this->readTill ??= (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["read_till"];
+    }
+
+    /**
+     * Отметить беседу прочитанной до последнего сообщения. В личке непрочитанность хранится в самих сообщениях.
+     */
+    public function markAsRead(): void
+    {
+        if (!$this->isGroup()) {
+            return;
+        }
+
+        $last = (int) DatabaseConnection::i()->getConnection()->query(
+            "SELECT MAX(`id`) AS id FROM `messages` WHERE `recipient_type` = ? AND `recipient_id` = ?",
+            GroupChat::class,
+            $this->correspondents[1]->getId()
+        )->fetch()->id;
+
+        if ($last > $this->getReadTill()) {
+            (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], ["read_till" => $last]);
+            $this->readTill = $last;
+        }
+    }
+
+    /**
+     * Не прочитано ли сообщение: в беседе — чужое после отметки прочтения первого корреспондента.
+     */
+    public function isUnread(Message $message): bool
+    {
+        if (!$this->isGroup()) {
+            return $message->isUnread();
+        }
+
+        return $message->getId() > $this->getReadTill() && !$message->hasParticipant($this->correspondents[0]);
     }
 
     private function getHiddenCondition(): string
@@ -256,7 +296,9 @@ class Correspondence
             $params[] = $padding;
         }
 
-        if ($limit === null && !$this->isGroup()) {
+        if ($limit === null && $this->isGroup()) {
+            $this->markAsRead();
+        } elseif ($limit === null) {
             DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId() . " AND recipient_id = " . $this->correspondents[0]->getId());
         }
 

@@ -762,7 +762,27 @@ class User extends RowModel
 
     public function getUnreadMessagesCount(): int
     {
-        return sizeof(DatabaseConnection::i()->getContext()->table("messages")->where(["recipient_id" => $this->getId(), "recipient_type" => self::class, "unread" => 1, "deleted" => 0]));
+        $personal = sizeof(DatabaseConnection::i()->getContext()->table("messages")->where(["recipient_id" => $this->getId(), "recipient_type" => self::class, "unread" => 1, "deleted" => 0]));
+
+        // в беседах — чужие сообщения после отметки прочтения или очистки истории
+        $groups = DatabaseConnection::i()->getConnection()->query(
+            "SELECT COUNT(*) AS cnt FROM `messages` m
+             JOIN `group_chats` c ON c.`id` = m.`recipient_id`
+             LEFT JOIN `messenger_dialogs` d ON d.`owner_type` = ? AND d.`owner_id` = ? AND d.`peer_type` = ? AND d.`peer_id` = c.`id`
+             WHERE m.`recipient_type` = ? AND m.`deleted` = 0
+               AND c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
+               AND NOT (m.`sender_type` = ? AND m.`sender_id` = ?)
+               AND m.`id` > GREATEST(COALESCE(d.`read_till`, 0), COALESCE(d.`cleared_till`, 0))",
+            self::class,
+            $this->getId(),
+            GroupChat::class,
+            GroupChat::class,
+            (string) $this->getId(),
+            self::class,
+            $this->getId()
+        )->fetch()->cnt;
+
+        return $personal + (int) $groups;
     }
 
     public function getClubs(int $page = 1, bool $admin = false, int $count = OPENVK_DEFAULT_PER_PAGE, bool $offset = false): \Traversable

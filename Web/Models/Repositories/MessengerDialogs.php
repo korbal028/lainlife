@@ -16,6 +16,7 @@ class MessengerDialogs
         "archived"     => 0,
         "muted"        => 0,
         "cleared_till"   => 0,
+        "read_till"      => 0,
         "pinned_message" => 0,
     ];
 
@@ -40,7 +41,7 @@ class MessengerDialogs
             return self::DEFAULTS;
         }
 
-        return array_intersect_key((array) $row, self::DEFAULTS);
+        return array_merge(self::DEFAULTS, array_intersect_key((array) $row, self::DEFAULTS));
     }
 
     /**
