@@ -1776,9 +1776,7 @@
                             ${ info.chat ? `
                                 <div class="im-peer-section">
                                     <div class="im-peer-row im-peer-members--head">
-                                        <img src="${ OXYGEN }apps/system-users.png" alt="" />
                                         <span>${ escapeHtml(info.members_label) }</span>
-                                        ${ info.can_invite ? `<a class="im-peer-members--add" data-act="add-members" title="${ escapeHtml(PEER_STR.addMembers) }"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6M19 8v6M16 11h6"/></svg></a>` : "" }
                                     </div>
                                     ${ info.can_invite ? `
                                         <a class="im-peer-row" data-act="add-members">

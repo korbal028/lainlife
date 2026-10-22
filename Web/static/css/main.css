@@ -1965,18 +1965,6 @@ span.ok-smile.ok-smile {
     margin-top: 8px;
 }
 
-.im-peer-members--add {
-    display: flex;
-    margin-left: auto;
-    color: #2B587A;
-    cursor: pointer;
-    opacity: .85;
-}
-
-.im-peer-members--add:hover {
-    opacity: 1;
-}
-
 .im-add-members {
     max-height: 360px;
     overflow-y: auto;
