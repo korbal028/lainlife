@@ -67,7 +67,7 @@ function getAvatarUrl(string $size = 'normal'): string
     $fresh = $db->table("group_chats")->get($this->getId());
     $avatar = $fresh->avatar ?? null;
     if(empty($avatar)) {
-        return "/assets/packages/static/openvk/img/group_default.png";
+        return ovk_scheme(true) . $_SERVER["HTTP_HOST"] . "/assets/packages/static/openvk/img/camera_200.png";
     }
     if(preg_match('/\/photo(\d+)_(\d+)/', $avatar, $matches)) {
         $ownerId = (int)$matches[1];
@@ -81,7 +81,7 @@ function getAvatarUrl(string $size = 'normal'): string
             return $photo->getURLBySizeId($size === 'miniscule' ? 'miniscule' : 'normal');
         }
     }
-    return "/assets/packages/static/openvk/img/group_default.png";
+    return ovk_scheme(true) . $_SERVER["HTTP_HOST"] . "/assets/packages/static/openvk/img/camera_200.png";
 }
     /**
      * Get chat creation date.
