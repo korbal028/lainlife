@@ -1728,6 +1728,13 @@ table.User {
     float: right;
     display: flex;
     align-items: center;
+    height: 14px;
+}
+
+/* не выше строки шапки, иначе она растягивается */
+.im-header-right svg {
+    width: 14px;
+    height: 14px;
 }
 
 .im-header-online {
