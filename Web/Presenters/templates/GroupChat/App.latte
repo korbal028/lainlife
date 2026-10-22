@@ -5,9 +5,9 @@
     <a href="/im/convs">Мои беседы</a> »
     <a href="{$chat->getURL()}">{$chat->getName()}</a>
     <div style="float: right;">
-    <a href="/im/convs{$chat->getId()}/members" style="font-size: 11px; color: #999;">{$chat->getParticipantsCount()} участников</a>
+    <a href="/im/sel{$chat->getPeerId()}/members" style="font-size: 11px; color: #999;">{$chat->getParticipantsCount()} участников</a>
     {if $chat->isCreator($thisUser->getId())}
-        | <a href="/im/convs{$chat->getId()}/edit" style="font-size: 11px; color: #999;">⚙ Настройки</a>
+        | <a href="/im/sel{$chat->getPeerId()}/edit" style="font-size: 11px; color: #999;">⚙ Настройки</a>
     {/if}
     </div>
 {/block}
@@ -225,7 +225,7 @@
 
             _loadHistory() {
                 let xhr = new XMLHttpRequest();
-                xhr.open("GET", "/im/convs/api/messages" + {$chat->getId()} + "/" + this.histOffset + ".json", false);
+                xhr.open("GET", "/im/api/messages" + {$chat->getPeerId()} + "/" + this.histOffset + ".json", false);
                 xhr.send();
                 let messages = JSON.parse(xhr.responseText);
                 if(messages.length === 0) return;
@@ -243,7 +243,7 @@
             _setupListener() {
                 let listenLongpool = () => {
                     let xhr = new XMLHttpRequest();
-                    xhr.open("GET", "/im/convs/api/events" + {$chat->getId()}, true);
+                    xhr.open("GET", "/im/api/events" + {$chat->getPeerId()}, true);
                     xhr.onload = () => {
                         try {
                             let data = JSON.parse(xhr.responseText);
@@ -353,7 +353,7 @@
                         let newText = document.getElementById("edit-msg-input").value;
                         if(!newText || newText === cleanText) return;
                         let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/" + msgId + "/edit.json", true);
+                        xhr.open("POST", "/im/api/messages" + {$chat->getPeerId()} + "/" + msgId + "/edit.json", true);
                         xhr.onreadystatechange = function() {
                             if(xhr.readyState !== 4) return;
                             if(xhr.status === 200) {
@@ -383,7 +383,7 @@
                 MessageBox("Удалить сообщение?", "Это действие нельзя отменить.", ["Удалить", "Отмена"], [
                     () => {
                         let xhr = new XMLHttpRequest();
-                        xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/" + msgId + "/delete.json", true);
+                        xhr.open("POST", "/im/api/messages" + {$chat->getPeerId()} + "/" + msgId + "/delete.json", true);
                         xhr.onreadystatechange = function() {
                             if(xhr.readyState !== 4) return;
                             if(xhr.status === 200) {
@@ -415,7 +415,7 @@
                 }
 
                 try {
-                    const res = await fetch("/im/convs/api/messages" + {$chat->getId()} + "/write.json", { method: "POST", body: fd });
+                    const res = await fetch("/im/api/messages" + {$chat->getPeerId()} + "/create.json", { method: "POST", body: fd });
                     if(res.status !== 202) throw new Error(res.status);
 
                     const sent = await res.json();
@@ -455,7 +455,7 @@
 
                 let that = this;
                 let xhr = new XMLHttpRequest();
-                xhr.open("POST", "/im/convs/api/messages" + {$chat->getId()} + "/write.json", true);
+                xhr.open("POST", "/im/api/messages" + {$chat->getPeerId()} + "/create.json", true);
                 xhr.onreadystatechange = function() {
                     if(xhr.readyState !== 4) return;
                     if(xhr.status === 202) {

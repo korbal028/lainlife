@@ -307,6 +307,121 @@ routes:
       handler: "Stickers->serveLegacyImage"
       placeholders:
           stickerFile: ".++"
+    # Беседы: peer_id = 2000000000 + id, должны стоять выше роутов мессенджера
+    - url: "/im/convs"
+      handler: "GroupChat->index"
+    - url: "/im/convs/create"
+      handler: "GroupChat->create"
+    - url: "/im/convs/api/create.json"
+      handler: "GroupChat->apiCreateChat"
+    - url: "/im/sel{?chat}"
+      handler: "GroupChat->app"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/sel{?chat}/edit"
+      handler: "GroupChat->edit"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/sel{?chat}/members"
+      handler: "GroupChat->members"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/events{?chat}"
+      handler: "GroupChat->events"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/{num}.json"
+      handler: "GroupChat->apiGetMessages"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/sync{?chat}/{num}.json"
+      handler: "GroupChat->apiSync"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/create.json"
+      handler: "GroupChat->apiWriteMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/delete-many.json"
+      handler: "GroupChat->apiDeleteMessages"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/pin.json"
+      handler: "GroupChat->apiPinMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/typing.json"
+      handler: "GroupChat->apiSendTypingStatus"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/search.json"
+      handler: "GroupChat->apiSearchMessages"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/history.json"
+      handler: "GroupChat->apiHistory"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/calendar.json"
+      handler: "GroupChat->apiCalendar"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/{num}/delete.json"
+      handler: "GroupChat->apiDeleteMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/{num}/edit.json"
+      handler: "GroupChat->apiEditMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/{num}/react.json"
+      handler: "GroupChat->apiReactMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/messages{?chat}/{num}/forward.json"
+      handler: "GroupChat->apiForwardMessage"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/peer{?chat}.json"
+      handler: "GroupChat->apiPeerInfo"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/peer{?chat}/attachments.json"
+      handler: "GroupChat->apiPeerAttachments"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/avatar/set.json"
+      handler: "GroupChat->apiSetAvatar"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/avatar/delete.json"
+      handler: "GroupChat->apiDeleteAvatar"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/friends.json"
+      handler: "GroupChat->apiGetFriends"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/add{num}.json"
+      handler: "GroupChat->apiAddParticipant"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/remove{num}.json"
+      handler: "GroupChat->apiRemoveParticipant"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/make-admin{num}.json"
+      handler: "GroupChat->apiMakeAdmin"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/remove-admin{num}.json"
+      handler: "GroupChat->apiRemoveAdmin"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/leave.json"
+      handler: "GroupChat->apiLeave"
+      placeholders:
+          chat: "2\\d{9}"
     - url: "/im"
       handler: "Messenger->index"
     - url: "/im/archive"
@@ -520,55 +635,6 @@ routes:
     - url: "/fave"
       handler: "User->fave"
 
-    # Групповые чаты (отключены до доработки)
-#    - url: "/im/convs"
-#      handler: "GroupChat->index"
-
-#    - url: "/im/convs/create"
-#      handler: "GroupChat->create"
-
-#    - url: "/im/convs{num}"
-#      handler: "GroupChat->app"
-
-#    - url: "/im/convs{num}/edit"
-#      handler: "GroupChat->edit"
-
-#    - url: "/im/convs/api/events{num}"
-#      handler: "GroupChat->events"
-
-#    - url: "/im/convs/api/messages{num}/{num}.json"
-#      handler: "GroupChat->apiGetMessages"
-
-#    - url: "/im/convs/api/messages{num}/write.json"
-#      handler: "GroupChat->apiWriteMessage"
-
-#    - url: "/im/convs/api/messages{num}/{num}/edit.json"
-#      handler: "GroupChat->apiEditMessage"
-
-#    - url: "/im/convs/api/messages{num}/{num}/delete.json"
-#      handler: "GroupChat->apiDeleteMessage"
-
-#    - url: "/im/convs/api/messages{num}/{num}/forward.json"
-#      handler: "GroupChat->apiForwardMessage"
-
-#    - url: "/im/convs/api/create.json"
-#      handler: "GroupChat->apiCreateChat"
-
-#    - url: "/im/convs/api/avatar{num}/set.json"
-#      handler: "GroupChat->apiSetAvatar"
-
-#    - url: "/im/convs/api/avatar{num}/delete.json"
-#      handler: "GroupChat->apiDeleteAvatar"
-
-#    - url: "/im/convs/api/friends{num}.json"
-#      handler: "GroupChat->apiGetFriends"
-
-#    - url: "/im/convs/api/add-participant{num}/{num}.json"
-#      handler: "GroupChat->apiAddParticipant"
-
-#    - url: "/im/convs/api/remove-participant{num}/{num}.json"
-#      handler: "GroupChat->apiRemoveParticipant"
-
     - url: "/{?shortCode}"
       handler: "UnknownTextRouteStrategy->delegate"
       placeholders:
@@ -577,11 +643,3 @@ routes:
       handler: "Maintenance->section"
     - url: "/maintenances/"
       handler: "Maintenance->all"
-#    - url: "/im/convs{num}/members"
-#      handler: "GroupChat->members"
-#    - url: "/im/convs/api/leave{num}.json"
-#      handler: "GroupChat->apiLeave"
-#    - url: "/im/convs/api/make-admin{num}/{num}.json"
-#      handler: "GroupChat->apiMakeAdmin"
-#    - url: "/im/convs/api/remove-admin{num}/{num}.json"
-#      handler: "GroupChat->apiRemoveAdmin"

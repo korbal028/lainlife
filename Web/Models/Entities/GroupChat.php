@@ -10,6 +10,9 @@ use openvk\Web\Util\DateTime;
  */
 class GroupChat extends RowModel
 {
+    // peer_id беседы = PEER_OFFSET + id, как в VK/OpenVK
+    public const PEER_OFFSET = 2000000000;
+
     protected $tableName = "group_chats";
 
     public function getRecord(): ?\Nette\Database\Table\ActiveRow
@@ -121,7 +124,12 @@ function getAvatarUrl(string $size = 'normal'): string
      */
     function getURL(): string
     {
-        return "/im/convs" . $this->getId();
+        return "/im?sel=" . $this->getPeerId();
+    }
+
+    function getPeerId(): int
+    {
+        return self::PEER_OFFSET + $this->getId();
     }
 
     /**

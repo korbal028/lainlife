@@ -29,6 +29,15 @@ class GroupChats
         return new GroupChat($chat);
     }
 
+    public function getByPeerId(int $peerId): ?GroupChat
+    {
+        if ($peerId <= GroupChat::PEER_OFFSET) {
+            return null;
+        }
+
+        return $this->get($peerId - GroupChat::PEER_OFFSET);
+    }
+
     /**
      * Get all group chats for a user.
      */

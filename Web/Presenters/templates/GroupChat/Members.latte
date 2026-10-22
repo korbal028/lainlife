@@ -36,7 +36,7 @@
             </div>
         {/foreach}
 
-        <div id="data" data-chat-id="{$chat->getId()}" data-hash="{$csrfToken}" style="display:none;"></div>
+        <div id="data" data-chat-id="{$chat->getPeerId()}" data-hash="{$csrfToken}" style="display:none;"></div>
         <script>
         var d = document.getElementById("data");
         var chatId = d.getAttribute("data-chat-id");
@@ -51,7 +51,7 @@
 function leaveChat() {
     MessageBox("Покинуть беседу?", "Вы больше не сможете писать в эту беседу.", ["Покинуть", "Отмена"], [
         () => {
-            apiPost("/im/convs/api/leave" + chatId + ".json").then(data => {
+            apiPost("/im/api/chat" + chatId + "/leave.json").then(data => {
                 if(data.success) location.href = "/im/convs";
                 else MessageBox("Ошибка", data.error || "Неизвестная ошибка", ["OK"], [Function.noop]);
             });
@@ -62,7 +62,7 @@ function leaveChat() {
 function removeParticipant(userId) {
     MessageBox("Удалить участника?", "Участник будет исключён из беседы.", ["Удалить", "Отмена"], [
         () => {
-            apiPost("/im/convs/api/remove-participant" + chatId + "/" + userId + ".json").then(data => {
+            apiPost("/im/api/chat" + chatId + "/remove" + userId + ".json").then(data => {
                 if(data.success) location.reload();
                 else MessageBox("Ошибка", data.error || "Неизвестная ошибка", ["OK"], [Function.noop]);
             });
@@ -71,14 +71,14 @@ function removeParticipant(userId) {
     ]);
 }
         function makeAdmin(userId) {
-            apiPost("/im/convs/api/make-admin" + chatId + "/" + userId + ".json").then(data => {
+            apiPost("/im/api/chat" + chatId + "/make-admin" + userId + ".json").then(data => {
                 if(data.success) location.reload();
                 else alert("Ошибка");
             });
         }
 
         function removeAdmin(userId) {
-            apiPost("/im/convs/api/remove-admin" + chatId + "/" + userId + ".json").then(data => {
+            apiPost("/im/api/chat" + chatId + "/remove-admin" + userId + ".json").then(data => {
                 if(data.success) location.reload();
                 else alert("Ошибка");
             });

@@ -149,11 +149,6 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
     }
 
-    // renderEvents()/маршрут "/im{num}" (long-poll на signaler->listen) удалены: веб-мессенджер
-    // теперь синхронизируется коротким поллингом через renderApiSync() ниже — это не держит
-    // воркер сервера открытым и не зависит от Redis/SQLite сигнального слоя Chandler.
-    // renderVKEvents() ниже НЕ трогали — это отдельный протокол для VK-API совместимых клиентов.
-
     public function renderVKEvents(int $id): void
     {
         header("Access-Control-Allow-Origin: *");
@@ -217,9 +212,7 @@ final class MessengerPresenter extends OpenVKPresenter
         exit(json_encode($messages));
     }
 
-    // короткий поллинг вместо long-poll: клиент дёргает этот эндпоинт каждые несколько секунд
-    // вместо блокирующего signaler->listen(), который зависел от Redis/SQLite сигнального слоя
-    // и не доставлял события в реальном времени
+    // short-poll instead long-poll
     public function renderApiSync(int $sel, int $lastMsg): void
     {
         $this->assertUserLoggedIn();

@@ -16,7 +16,7 @@
             </div>
         </div>
 
-        <form method="post" action="/im/convs{$chat->getId()}/edit">
+        <form method="post" action="/im/sel{$chat->getPeerId()}/edit">
             <input type="hidden" name="hash" value="{$csrfToken}" />
             <div style="margin-bottom: 10px;">
                 <label>Название беседы:</label><br/>
@@ -51,7 +51,7 @@
             {/if}
         {/foreach}
 
-        <div id="edit-data" data-chat-id="{$chat->getId()}" data-hash="{$csrfToken}" style="display:none;"></div>
+        <div id="edit-data" data-chat-id="{$chat->getPeerId()}" data-hash="{$csrfToken}" style="display:none;"></div>
         <script>
         var editData = document.getElementById("edit-data");
         var chatId = editData.getAttribute("data-chat-id");
@@ -63,7 +63,7 @@
             var fd = new FormData();
             fd.append("avatar", file);
             fd.append("hash", csrfHash);
-            fetch("/im/convs/api/avatar" + chatId + "/set.json", { method: "POST", body: fd })
+            fetch("/im/api/chat" + chatId + "/avatar/set.json", { method: "POST", body: fd })
                 .then(r => r.json())
                 .then(data => {
                     if(data.success) {
@@ -77,7 +77,7 @@
         function deleteAvatar() {
             var fd = new FormData();
             fd.append("hash", csrfHash);
-            fetch("/im/convs/api/avatar" + chatId + "/delete.json", { method: "POST", body: fd })
+            fetch("/im/api/chat" + chatId + "/avatar/delete.json", { method: "POST", body: fd })
                 .then(r => r.json())
                 .then(data => {
                     if(data.success) location.reload();
@@ -87,7 +87,7 @@
         function addParticipant(userId) {
             var fd = new FormData();
             fd.append("hash", csrfHash);
-            fetch("/im/convs/api/add-participant" + chatId + "/" + userId + ".json", { method: "POST", body: fd })
+            fetch("/im/api/chat" + chatId + "/add" + userId + ".json", { method: "POST", body: fd })
                 .then(r => r.json())
                 .then(data => {
                     if(data.success) location.reload();
@@ -99,7 +99,7 @@
             if(!confirm("Удалить участника?")) return;
             var fd = new FormData();
             fd.append("hash", csrfHash);
-            fetch("/im/convs/api/remove-participant" + chatId + "/" + userId + ".json", { method: "POST", body: fd })
+            fetch("/im/api/chat" + chatId + "/remove" + userId + ".json", { method: "POST", body: fd })
                 .then(r => r.json())
                 .then(data => {
                     if(data.success) location.reload();

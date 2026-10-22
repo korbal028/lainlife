@@ -7,9 +7,7 @@
 </form>
 
 <script>
-    // как в Telegram: нажатие на строку открывает поиск с вкладками вместо списка чатов, крестик или Esc закрывают его;
-    // результаты обновляются по мере ввода, как поиск по сообщениям в чате, и догружаются при прокрутке;
-    // контейнер результатов стоит ниже этого скрипта, поэтому при обычной загрузке ждём разбора страницы
+
     (() => {
         const init = () => {
             const form = document.querySelector(".im-search-bar");
@@ -70,7 +68,6 @@
                 const q = input.value.trim();
                 if(q === last && !force) return;
 
-                // вложения по запросу не фильтруются, поэтому новый запрос уводит с них к чатам или сообщениям
                 if(q !== last && q !== "" && section !== "chats" && section !== "messages") section = null;
                 last = q;
 
@@ -105,7 +102,6 @@
             };
 
             const close = () => {
-                // на странице поиска списка чатов нет: закрыть поиск — значит вернуться к чатам
                 if(!dialogs) return window.router ? window.router.navigate("/im") : location.assign("/im");
 
                 clearTimeout(timer);
@@ -144,7 +140,6 @@
             cross.addEventListener("mousedown", e => e.preventDefault());
             cross.addEventListener("click", close);
 
-            // Enter ищет сразу, без перехода на другую страницу
             form.addEventListener("submit", e => {
                 e.preventDefault();
                 open();
@@ -159,7 +154,6 @@
             if(nearBottom()) loadMore();
 
             live.addEventListener("click", e => {
-                // вкладки переключаются на месте, без перехода
                 const tab = e.target.closest(".im-search-tabs a[data-section]");
                 if(tab) {
                     e.preventDefault();
@@ -172,7 +166,6 @@
                     return update(true);
                 }
 
-                // фото и видео открываются в просмотрщике, как в меню вложений чата
                 const photo = e.target.closest(".im-peer-att--photo[data-id]");
                 if(photo) {
                     e.preventDefault();
