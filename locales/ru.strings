@@ -1413,7 +1413,6 @@
 "messenger_delete_chat_for_everyone" = "Также удалить для всех";
 "messenger_chat_owner" = "владелец";
 "messenger_chat_admin" = "админ";
-"messenger_invite_link" = "Пригласить по ссылке";
 "messenger_invite_link_hint" = "Любой, у кого есть эта ссылка, сможет вступить в беседу.";
 "messenger_invite_link_copy" = "Копировать";
 "messenger_invite_link_reset" = "Сбросить ссылку";

@@ -1590,7 +1590,6 @@
                 leaveBtn:   {tr("messenger_leave_chat_button")},
                 owner:      {tr("messenger_chat_owner")},
                 admin:      {tr("messenger_chat_admin")},
-                invite:     {tr("messenger_invite_link")},
                 inviteHint: {tr("messenger_invite_link_hint")},
                 inviteCopy: {tr("messenger_invite_link_copy")},
                 inviteReset: {tr("messenger_invite_link_reset")},
@@ -1646,8 +1645,8 @@
                 }
             };
 
-            const openInvite = async () => {
-                const post = async act => {
+            const openAddMembers = async () => {
+                const postInvite = async act => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
                     fd.set("act", act);
@@ -1658,37 +1657,12 @@
                     return (await res.json()).link;
                 };
 
-                let link;
+                let friends, link;
                 try {
-                    link = await post("get");
-                } catch(e) {
-                    return fastError(tr("messages_error_1"));
-                }
-
-                MessageBox(PEER_STR.invite, `
-                    <div class="im-invite--hint">${ escapeHtml(PEER_STR.inviteHint) }</div>
-                    <input type="text" class="im-invite--link" readonly value="${ escapeHtml(link) }" onclick="this.select()" />
-                `, [PEER_STR.inviteCopy, PEER_STR.inviteReset, PEER_STR.close], [
-                    async () => {
-                        await copyToClipboard(link);
-                        NewNotification(PEER_STR.inviteCopied, "", null, Function.noop, 3000, false);
-                    },
-                    async () => {
-                        try {
-                            await post("reset");
-                        } catch(e) {
-                            return fastError(tr("messages_error_1"));
-                        }
-                        openInvite();
-                    },
-                    Function.noop,
-                ]);
-            };
-
-            const openAddMembers = async () => {
-                let friends;
-                try {
-                    friends = await (await fetch(`/im/api/chat${ PEER_SEL }/friends.json`)).json();
+                    [friends, link] = await Promise.all([
+                        fetch(`/im/api/chat${ PEER_SEL }/friends.json`).then(res => res.json()),
+                        postInvite("get"),
+                    ]);
                 } catch(e) {
                     return fastError(tr("messages_error_1"));
                 }
@@ -1696,12 +1670,22 @@
                 const list = friends.length ? friends.map(f => `
                     <label class="im-add-member">
                         <input type="checkbox" value="${ Number(f.id) }" ${ f.already_in_chat ? "checked disabled" : "" } />
-                        <img src="${ escapeHtml(f.avatar) }" alt="" loading="lazy" />
+                        <img class="avatar-style-${ Number(window.openvk?.avatar_style ?? 0) }" src="${ escapeHtml(f.avatar) }" alt="" loading="lazy" />
                         <span class="im-add-member--name">${ escapeHtml(f.name) }</span>
                         ${ f.already_in_chat ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.inChat) }</span>` : "" }
                     </label>`).join("") : `<div class="im-add-member--empty">${ escapeHtml(PEER_STR.noFriends) }</div>`;
 
-                MessageBox(PEER_STR.addMembers, `<div class="im-add-members">${ list }</div>`, [PEER_STR.addBtn, PEER_STR.cancel], [async () => {
+                const root = MessageBox(PEER_STR.addMembers, `
+                    <div class="im-invite">
+                        <div class="im-invite--hint">${ escapeHtml(PEER_STR.inviteHint) }</div>
+                        <input type="text" class="im-invite--link" readonly value="${ escapeHtml(link) }" onclick="this.select()" />
+                        <div class="im-invite--actions">
+                            <a class="button" data-act="copy">${ escapeHtml(PEER_STR.inviteCopy) }</a>
+                            <a class="button" data-act="reset">${ escapeHtml(PEER_STR.inviteReset) }</a>
+                        </div>
+                    </div>
+                    <div class="im-add-members">${ list }</div>
+                `, [PEER_STR.addBtn, PEER_STR.cancel], [async () => {
                     const ids = [...document.querySelectorAll(".im-add-members input:checked:not(:disabled)")].map(i => i.value);
                     for(const id of ids) {
                         const fd = new FormData();
@@ -1711,7 +1695,22 @@
                     }
 
                     if(ids.length) openPeerInfo();
-                }, Function.noop]);
+                }, Function.noop], true).getNode().first();
+
+                const input = root.querySelector(".im-invite--link");
+                root.querySelector(".im-invite--actions").addEventListener("click", async e => {
+                    const act = e.target.closest("[data-act]")?.dataset.act;
+                    if(act === "copy") {
+                        await copyToClipboard(input.value);
+                        NewNotification(PEER_STR.inviteCopied, "", null, Function.noop, 3000, false);
+                    } else if(act === "reset") {
+                        try {
+                            input.value = await postInvite("reset");
+                        } catch(err) {
+                            fastError(tr("messages_error_1"));
+                        }
+                    }
+                });
             };
 
             // page — раздел, с которого открыть окно: "main" или "search"
@@ -1782,9 +1781,9 @@
                                         ${ info.can_invite ? `<a class="im-peer-members--add" data-act="add-members" title="${ escapeHtml(PEER_STR.addMembers) }"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="9" cy="8" r="4"/><path d="M2 20c0-3.3 3.1-6 7-6s7 2.7 7 6M19 8v6M16 11h6"/></svg></a>` : "" }
                                     </div>
                                     ${ info.can_invite ? `
-                                        <a class="im-peer-row" data-act="invite">
+                                        <a class="im-peer-row" data-act="add-members">
                                             <img src="${ OXYGEN }actions/list-add-user.png" alt="" />
-                                            <span>${ escapeHtml(PEER_STR.invite) }</span>
+                                            <span>${ escapeHtml(PEER_STR.addMembers) }</span>
                                         </a>` : "" }
                                     ${ info.members.map(m => `
                                         <a class="im-peer-member" href="${ escapeHtml(m.link) }">
@@ -2024,10 +2023,6 @@
                         if(act.dataset.act === "search") return showSearch();
 
                         if(act.dataset.act === "leave") return askLeave();
-                        if(act.dataset.act === "invite") {
-                            close();
-                            return openInvite();
-                        }
 
                         return act.dataset.act === "delete" ? askDelete() : toggleBlock(act);
                     }

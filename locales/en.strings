@@ -1483,7 +1483,6 @@
 "messenger_delete_chat_for_everyone" = "Also delete for everyone";
 "messenger_chat_owner" = "owner";
 "messenger_chat_admin" = "admin";
-"messenger_invite_link" = "Invite via link";
 "messenger_invite_link_hint" = "Anyone with this link can join the chat.";
 "messenger_invite_link_copy" = "Copy";
 "messenger_invite_link_reset" = "Reset link";

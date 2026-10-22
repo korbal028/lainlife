@@ -1942,6 +1942,12 @@ span.ok-smile.ok-smile {
     color: #888;
 }
 
+.im-invite {
+    padding-bottom: 12px;
+    margin-bottom: 8px;
+    border-bottom: 1px solid #e7e8ec;
+}
+
 .im-invite--hint {
     margin-bottom: 8px;
     color: #888;
@@ -1950,6 +1956,13 @@ span.ok-smile.ok-smile {
 .im-invite--link {
     width: 100%;
     box-sizing: border-box;
+}
+
+.im-invite--actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 6px;
+    margin-top: 8px;
 }
 
 .im-peer-members--add {
@@ -1982,6 +1995,10 @@ span.ok-smile.ok-smile {
     width: 32px;
     height: 32px;
     object-fit: cover;
+    border-radius: 2px;
+}
+
+.im-add-member img.avatar-style-2 {
     border-radius: 50%;
 }
 
