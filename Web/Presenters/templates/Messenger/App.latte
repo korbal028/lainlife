@@ -12,6 +12,9 @@
 <a href="{$correspondent->getURL()}">{$correspondent->getCanonicalName()}</a>    
 {/if}
     <div class="im-header-right">
+        <div n:if="$isGroupChat" class="im-header-online">
+            <span>{tr("participants", $correspondent->getParticipantsCount())}</span>
+        </div>
         <div n:if="!$isGroupChat && $correspondent->getId() !== $thisUser->getId() && ($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" class="im-header-online">
             {var $diff = date_diff(date_create(), date_create('@' . $online))}
             {if 5 >= $diff->i}
