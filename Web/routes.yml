@@ -308,12 +308,6 @@ routes:
       placeholders:
           stickerFile: ".++"
     # Управление беседами: peer_id = 2000000000 + id; переписку бесед обслуживает Messenger
-    - url: "/im/convs"
-      handler: "GroupChat->index"
-    - url: "/im/convs/create"
-      handler: "GroupChat->create"
-    - url: "/im/convs/api/create.json"
-      handler: "GroupChat->apiCreateChat"
     - url: "/im/sel{?chat}/edit"
       handler: "GroupChat->edit"
       placeholders:

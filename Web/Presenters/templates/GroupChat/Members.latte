@@ -1,7 +1,7 @@
 {extends "../@layout.latte"}
 {block title}Участники — {$chat->getName()}{/block}
 {block header}
-    <a href="/im/convs">Мои беседы</a> »
+    <a href="/im">{_my_messages}</a> »
     <a href="{$chat->getURL()}">{$chat->getName()}</a> »
     Участники
     <div style="float: right;">
@@ -52,7 +52,7 @@ function leaveChat() {
     MessageBox("Покинуть беседу?", "Вы больше не сможете писать в эту беседу.", ["Покинуть", "Отмена"], [
         () => {
             apiPost("/im/api/chat" + chatId + "/leave.json").then(data => {
-                if(data.success) location.href = "/im/convs";
+                if(data.success) location.href = "/im";
                 else MessageBox("Ошибка", data.error || "Неизвестная ошибка", ["OK"], [Function.noop]);
             });
         },

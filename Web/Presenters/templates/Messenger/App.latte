@@ -7,7 +7,7 @@
 {if !$isGroupChat && $correspondent->getId() === $thisUser->getId()}
     {_saved_messages}
 {elseif $isGroupChat}
-<a href="/im/sel{$correspondent->getPeerId()}/members">{$correspondent->getCanonicalName()}</a>
+    {$correspondent->getCanonicalName()}
 {else}
 <a href="{$correspondent->getURL()}">{$correspondent->getCanonicalName()}</a>    
 {/if}
