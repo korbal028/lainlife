@@ -1591,9 +1591,7 @@
                 owner:      {tr("messenger_chat_owner")},
                 admin:      {tr("messenger_chat_admin")},
                 inviteHint: {tr("messenger_invite_link_hint")},
-                inviteCopy: {tr("messenger_invite_link_copy")},
                 inviteReset: {tr("messenger_invite_link_reset")},
-                inviteCopied: {tr("messenger_invite_link_copied")},
                 addMembers: {tr("messenger_add_members")},
                 addBtn:     {tr("messenger_add_members_button")},
                 inChat:     {tr("messenger_already_in_chat")},
@@ -1680,7 +1678,6 @@
                         <div class="im-invite--hint">${ escapeHtml(PEER_STR.inviteHint) }</div>
                         <input type="text" class="im-invite--link" readonly value="${ escapeHtml(link) }" onclick="this.select()" />
                         <div class="im-invite--actions">
-                            <a class="button" data-act="copy">${ escapeHtml(PEER_STR.inviteCopy) }</a>
                             <a class="button" data-act="reset">${ escapeHtml(PEER_STR.inviteReset) }</a>
                         </div>
                     </div>
@@ -1700,10 +1697,7 @@
                 const input = root.querySelector(".im-invite--link");
                 root.querySelector(".im-invite--actions").addEventListener("click", async e => {
                     const act = e.target.closest("[data-act]")?.dataset.act;
-                    if(act === "copy") {
-                        await copyToClipboard(input.value);
-                        NewNotification(PEER_STR.inviteCopied, "", null, Function.noop, 3000, false);
-                    } else if(act === "reset") {
+                    if(act === "reset") {
                         try {
                             input.value = await postInvite("reset");
                         } catch(err) {

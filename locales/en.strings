@@ -1484,9 +1484,7 @@
 "messenger_chat_owner" = "owner";
 "messenger_chat_admin" = "admin";
 "messenger_invite_link_hint" = "Anyone with this link can join the chat.";
-"messenger_invite_link_copy" = "Copy";
 "messenger_invite_link_reset" = "Reset link";
-"messenger_invite_link_copied" = "Link copied";
 "messenger_join_chat_title" = "Chat invitation";
 "messenger_join_chat" = "Join chat";
 "messenger_add_members" = "Add members";
