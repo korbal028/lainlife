@@ -1930,6 +1930,10 @@ span.ok-smile.ok-smile {
     width: 100px;
     height: 100px;
     object-fit: cover;
+    border-radius: 2px;
+}
+
+.im-join--avatar.avatar-style-2 {
     border-radius: 50%;
 }
 
