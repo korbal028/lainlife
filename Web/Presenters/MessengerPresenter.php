@@ -33,28 +33,39 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->hideFooter = true;
     }
 
-    // собеседник или беседа (peer_id >= 2000000000) для настроек диалога в списке
-    private function getDialogPeer(int $sel): ?object
+    // собеседник: пользователь, клуб (отрицательный id) или беседа (2000000000 + id), где есть текущий пользователь
+    private function getCorrespondent(int $id): ?object
     {
-        if ($sel <= GroupChat::PEER_OFFSET) {
-            return $this->getCorrespondent($sel);
-        }
+        if ($id > GroupChat::PEER_OFFSET) {
+            $chat = (new GroupChats())->getByPeerId($id);
 
-        $chats = new GroupChats();
-        $chat  = $chats->getByPeerId($sel);
-
-        return ($chat && !$chat->getRecord()->deleted && $chats->isParticipant($chat->getId(), $this->user->id)) ? $chat : null;
-    }
-
-    private function getCorrespondent(int $id): object
-    {
-        if ($id > 0) {
+            return ($chat && !$chat->getRecord()->deleted && $chat->isParticipant($this->user->id)) ? $chat : null;
+        } elseif ($id > 0) {
             return (new Users())->get($id);
         } elseif ($id < 0) {
             return (new Clubs())->get(abs($id));
         } elseif ($id === 0) {
             return $this->user->identity;
         }
+    }
+
+    // писать можно себе, в свои беседы и тем, кто разрешил это настройками приватности
+    private function canWrite(object $peer): bool
+    {
+        return $peer instanceof GroupChat
+            || ($peer instanceof User && $peer->getId() === $this->user->id)
+            || $peer->getPrivacyPermission("messages.write", $this->user->identity);
+    }
+
+    // события signaler для VK API клиентов; у беседы их нет, она синхронизируется поллингом
+    private function signalPeers(Message $msg, object $event): void
+    {
+        $recipient = $msg->getRecipient();
+        if ($recipient && !($recipient instanceof GroupChat)) {
+            $this->signaler->triggerEvent($event, $recipient->getId());
+        }
+
+        $this->signaler->triggerEvent($event, $msg->getSender()->getId());
     }
 
     // ответить можно только на живое сообщение из этого же диалога
@@ -66,7 +77,7 @@ final class MessengerPresenter extends OpenVKPresenter
         }
 
         $msg = $this->messages->get($id);
-        if (!$msg || $msg->isDeleted() || !$msg->isBetween($this->user->identity, $correspondent)) {
+        if (!$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -86,7 +97,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $messages = [];
         foreach ($ids as $id) {
             $msg = $this->messages->get($id);
-            if (!$msg || $msg->isDeleted() || !$msg->hasParticipant($this->user->identity)) {
+            if (!$msg || $msg->isDeleted() || !$msg->isVisibleTo($this->user->identity)) {
                 header("HTTP/1.1 403 Forbidden");
                 exit();
             }
@@ -151,12 +162,13 @@ final class MessengerPresenter extends OpenVKPresenter
             $this->notFound();
         }
 
-        if (!$this->user->identity->getPrivacyPermission('messages.write', $correspondent)) {
+        if (!($correspondent instanceof GroupChat) && !$this->user->identity->getPrivacyPermission('messages.write', $correspondent)) {
             $this->flash("err", tr("warning"), tr("user_may_not_reply"));
         }
 
         $this->template->disable_ajax  = 1;
         $this->template->selId         = $sel;
+        $this->template->isGroupChat   = $correspondent instanceof GroupChat;
         $this->template->correspondent = $correspondent;
         $this->template->reactions     = Message::REACTIONS;
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
@@ -240,9 +252,6 @@ final class MessengerPresenter extends OpenVKPresenter
 
         $correspondence = new Correspondence($this->user->identity, $correspondent);
 
-        // CAP_BEHAVIOUR_START_MESSAGE_ID => `id` > $lastMsg (в отличие от apiGetMessages/_loadHistory,
-        // которым нужны СТАРЫЕ сообщения для пагинации вверх, здесь нужны НОВЫЕ — те, что пришли
-        // после последнего известного клиенту id); reverse=true отдаёт их в хронологическом порядке
         $messages = [];
         foreach ($correspondence->getMessages(Correspondence::CAP_BEHAVIOUR_START_MESSAGE_ID, $lastMsg === 0 ? null : $lastMsg, null, 0, true) as $message) {
             $simple = $message->simplify();
@@ -264,8 +273,12 @@ final class MessengerPresenter extends OpenVKPresenter
             }
         }
 
-        $typing = false;
-        if (function_exists("apcu_fetch")) {
+        $typing      = false;
+        $typingNames = [];
+        if ($correspondent instanceof GroupChat) {
+            $typingNames = array_map(fn($u) => $u->getFirstName(), $correspondence->getGroupTypingUsers($this->user->id));
+            $typing      = sizeof($typingNames) > 0;
+        } elseif (function_exists("apcu_fetch")) {
             $typing = (bool) apcu_fetch("typing:{$correspondent->getId()}:{$this->user->id}");
         }
 
@@ -281,6 +294,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "edited"   => $edited,
             "deleted"  => $deleted,
             "typing"   => $typing,
+            "typing_names" => $typingNames,
             "pinned"   => $pinned,
         ]));
     }
@@ -296,7 +310,7 @@ final class MessengerPresenter extends OpenVKPresenter
         }
 
         $sel = $this->getCorrespondent($sel);
-        if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
+        if (!$sel || !$this->canWrite($sel)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -384,7 +398,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
 
         $sel = $this->getCorrespondent($sel);
-        if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
+        if (!$sel || !$this->canWrite($sel)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -426,10 +440,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $msg->setEdited(time());
         $msg->save();
 
-        $recipient = $msg->getRecipient();
-        $sender = $msg->getSender();
-        $this->signaler->triggerEvent(new EditMessageEvent($msg), $recipient->getId());
-        $this->signaler->triggerEvent(new EditMessageEvent($msg), $sender->getId());
+        $this->signalPeers($msg, new EditMessageEvent($msg));
 
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
@@ -457,10 +468,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $msg->setEdited(time()); // используется как метка "изменено" для поллинга (apiSync)
         $msg->save();
 
-        $recipient = $msg->getRecipient();
-        $sender = $msg->getSender();
-        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $recipient->getId());
-        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
+        $this->signalPeers($msg, new DeleteMessageEvent($msgId));
 
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
@@ -483,7 +491,7 @@ final class MessengerPresenter extends OpenVKPresenter
         if ($this->postParam("act") === "reorder") {
             $position = 1;
             foreach (explode(",", (string) $this->postParam("order")) as $sel) {
-                $peer = $this->getDialogPeer((int) $sel);
+                $peer = $this->getCorrespondent((int) $sel);
                 if ($peer && $dialogs->get($me, $peer)["pinned"] > 0) {
                     $dialogs->set($me, $peer, ["pinned" => $position++]);
                 }
@@ -493,7 +501,7 @@ final class MessengerPresenter extends OpenVKPresenter
             exit(json_encode(["success" => true]));
         }
 
-        $correspondent = $this->getDialogPeer((int) $this->postParam("sel"));
+        $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
         if (!$correspondent) {
             header("HTTP/1.1 404 Not Found");
             exit();
@@ -570,7 +578,7 @@ final class MessengerPresenter extends OpenVKPresenter
                 $msg->setEdited(time()); // метка для поллинга (apiSync)
                 $msg->save();
 
-                $this->signaler->triggerEvent(new DeleteMessageEvent($id), $msg->getRecipient()->getId());
+                $this->signalPeers($msg, new DeleteMessageEvent($id));
                 $deleted[] = $id;
             } else {
                 $hidden[] = $id;
@@ -648,6 +656,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $me     = $this->user->identity;
         $isUser = $peer instanceof User;
         $isSelf = $isUser && $peer->getId() === $me->getId();
+        $isChat = $peer instanceof GroupChat;
 
         $birthday = null;
         if ($isUser && !$isSelf && $peer->getBirthday() && $peer->getBirthdayPrivacy() < 2 && $peer->getPrivacyPermission("page.info.read", $me)) {
@@ -667,9 +676,10 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->returnJson([
             "name"      => $isSelf ? tr("saved_messages") : $peer->getCanonicalName(),
             "avatar"    => $peer->getAvatarUrl("normal"),
-            "link"      => $peer->getURL(),
+            "link"      => $isChat ? "/im/sel" . $peer->getPeerId() . "/members" : $peer->getURL(),
             "self"      => $isSelf,
-            "shortcode" => $isSelf ? null : $peer->getShortCode(),
+            "shortcode" => ($isSelf || $isChat) ? null : $peer->getShortCode(),
+            "members"   => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
             "birthday"  => $birthday ? trim($birthday) : null,
             "counts"    => $counts,
             "blocked"   => ($isUser && !$isSelf) ? $peer->isBlacklistedBy($me) : null,
@@ -753,7 +763,11 @@ final class MessengerPresenter extends OpenVKPresenter
     // id собеседника как в /im?sel= (у клубов отрицательный)
     private function getSel(object $peer): int
     {
-        return $peer instanceof Club ? -$peer->getId() : $peer->getId();
+        return match (true) {
+            $peer instanceof Club      => -$peer->getId(),
+            $peer instanceof GroupChat => $peer->getPeerId(),
+            default                    => $peer->getId(),
+        };
     }
 
     private function isSelf(object $peer): bool
@@ -766,7 +780,7 @@ final class MessengerPresenter extends OpenVKPresenter
     {
         $sender = $message->getSender();
 
-        return $this->isSelf($sender) ? $message->getRecipient() : $sender;
+        return ($message->isInGroupChat() || $this->isSelf($sender)) ? $message->getRecipient() : $sender;
     }
 
     // текст найденного сообщения без разметки, с подсвеченным запросом; длинный обрезается вокруг первого совпадения
@@ -820,8 +834,6 @@ final class MessengerPresenter extends OpenVKPresenter
         $requested = (string) $this->queryParam("section");
         $matchSelf = $query === "" || mb_stripos(tr("saved_messages"), $query) !== false;
 
-        // вкладки показываются всегда, как в Telegram; чаты и сообщения ищутся по запросу, а вложения показываются все,
-        // без запроса во вкладке чатов — все чаты, новые первыми
         $counts = [
             "chats"    => $this->messages->searchCorrespondenciesCount($me, $query, $matchSelf),
             "messages" => $query !== "" ? $this->messages->searchMessagesCount($me, $query) : 0,
@@ -1012,10 +1024,10 @@ final class MessengerPresenter extends OpenVKPresenter
         $archived = (bool) $this->queryParam("archived");
 
         $result = [];
-        foreach ($this->messages->getCorrespondencies($this->user->identity, $page, $perPage, null, $archived) as $cor) {
+        foreach ($this->messages->getCorrespondencies($this->user->identity, $page, $perPage, null, $archived, true) as $cor) {
             $recipient = $cor->getCorrespondents()[1];
             $result[] = [
-                "id"     => $recipient instanceof User ? $recipient->getId() : -$recipient->getId(),
+                "id"     => $cor->getID(),
                 "name"   => $recipient->getCanonicalName(),
                 "avatar" => $recipient->getAvatarUrl('miniscule'),
             ];
@@ -1024,7 +1036,7 @@ final class MessengerPresenter extends OpenVKPresenter
         header("Content-Type: application/json");
         exit(json_encode([
             "items" => $result,
-            "more"  => $page * $perPage < $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
+            "more"  => $page * $perPage < $this->messages->getCorrespondenciesCount($this->user->identity, $archived, true),
         ]));
     }
 }

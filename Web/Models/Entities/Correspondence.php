@@ -51,6 +51,12 @@ class Correspondence
 
     private ?int $clearedTill = null;
 
+    // второй корреспондент — беседа: сообщения адресованы ей, а не паре собеседников
+    private function isGroup(): bool
+    {
+        return $this->correspondents[1] instanceof GroupChat;
+    }
+
     private function getClearedTill(): int
     {
         return $this->clearedTill ??= (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["cleared_till"];
@@ -70,6 +76,10 @@ class Correspondence
      */
     public function hasMessage(Message $message): bool
     {
+        if ($this->isGroup()) {
+            return $message->isInGroupChat() && (int) $message->getRecord()->recipient_id === $this->correspondents[1]->getId();
+        }
+
         $sender    = $message->getSender();
         $recipient = $message->getRecipient();
         if (!$sender || !$recipient) {
@@ -100,7 +110,9 @@ class Correspondence
 
     public function getPinnedMessage(): ?Message
     {
-        $id = (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["pinned_message"];
+        $id = $this->isGroup()
+            ? (int) (DatabaseConnection::i()->getContext()->table("group_chats")->get($this->correspondents[1]->getId())->pinned_message ?? 0)
+            : (int) (new MessengerDialogs())->get($this->correspondents[0], $this->correspondents[1])["pinned_message"];
         if ($id === 0) {
             return null;
         }
@@ -118,6 +130,12 @@ class Correspondence
      */
     public function setPinnedMessage(int $messageId): void
     {
+        // в беседе закреп один на всех участников
+        if ($this->isGroup()) {
+            DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->correspondents[1]->getId())->update(["pinned_message" => $messageId]);
+            return;
+        }
+
         $dialogs = new MessengerDialogs();
         $dialogs->set($this->correspondents[0], $this->correspondents[1], ["pinned_message" => $messageId]);
         if ($this->correspondents[0]->getId() !== $this->correspondents[1]->getId() || get_class($this->correspondents[0]) !== get_class($this->correspondents[1])) {
@@ -125,10 +143,16 @@ class Correspondence
         }
     }
 
-    private function getPairCondition(): array
+    // $alias — псевдоним таблицы messages в запросе
+    private function getPairCondition(string $alias = ""): array
     {
+        $p = $alias === "" ? "" : "$alias.";
+        if ($this->isGroup()) {
+            return ["({$p}`recipient_type` = ? AND {$p}`recipient_id` = ?)", GroupChat::class, $this->correspondents[1]->getId()];
+        }
+
         return [
-            "((`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?) OR (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?))",
+            "(({$p}`sender_type` = ? AND {$p}`recipient_type` = ? AND {$p}`sender_id` = ? AND {$p}`recipient_id` = ?) OR ({$p}`sender_type` = ? AND {$p}`recipient_type` = ? AND {$p}`sender_id` = ? AND {$p}`recipient_id` = ?))",
             get_class($this->correspondents[0]), get_class($this->correspondents[1]),
             $this->correspondents[0]->getId(), $this->correspondents[1]->getId(),
             get_class($this->correspondents[1]), get_class($this->correspondents[0]),
@@ -158,6 +182,10 @@ class Correspondence
      */
     public function deleteForAll(): void
     {
+        if ($this->isGroup()) {
+            return;
+        }
+
         $params = $this->getPairCondition();
         $cond   = array_shift($params);
         DatabaseConnection::i()->getConnection()->query("UPDATE `messages` SET `deleted` = 1, `edited` = ? WHERE `deleted` = 0 AND $cond", time(), ...$params);
@@ -175,14 +203,15 @@ class Correspondence
      */
     public function getURL(): string
     {
-        $id = $this->correspondents[1]->getId();
-        $id = get_class($this->correspondents[1]) === 'openvk\Web\Models\Entities\Club' ? $id * -1 : $id;
-
-        return "/im?sel=$id";
+        return "/im?sel=" . $this->getID();
     }
 
     public function getID(): int
     {
+        if ($this->isGroup()) {
+            return $this->correspondents[1]->getPeerId();
+        }
+
         $id = $this->correspondents[1]->getId();
         $id = get_class($this->correspondents[1]) === 'openvk\Web\Models\Entities\Club' ? $id * -1 : $id;
 
@@ -210,38 +239,25 @@ class Correspondence
      */
     public function getMessages(int $capBehavior = 1, ?int $cap = null, ?int $limit = null, ?int $padding = null, bool $reverse = false): array
     {
-        $query  = file_get_contents(__DIR__ . "/../sql/get-messages.tsql");
-        $query = str_replace("(`deleted` = 0)", "(`deleted` = 0)\n  AND (`id` > " . $this->getClearedTill() . ")" . $this->getHiddenCondition(), $query);
+        $pair = $this->getPairCondition();
+        $cond = array_shift($pair);
 
-        $params = [
-            [get_class($this->correspondents[0]), get_class($this->correspondents[1])],
-            [$this->correspondents[0]->getId(), $this->correspondents[1]->getId()],
-            [$limit ?? OPENVK_DEFAULT_PER_PAGE],
-        ];
-        $params = array_merge($params[0], $params[1], array_reverse($params[0]), array_reverse($params[1]), $params[2]);
-
-        if ($limit === null) {
-            DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId() . " AND recipient_id = " . $this->correspondents[0]->getId());
+        $params = [];
+        $query  = "SELECT * FROM `messages` WHERE (`deleted` = 0)\n  AND (`id` > " . $this->getClearedTill() . ")" . $this->getHiddenCondition();
+        if (!is_null($cap)) {
+            $query   .= "\n  AND (`id` " . ($capBehavior === self::CAP_BEHAVIOUR_END_MESSAGE_ID ? "<" : ">") . " ?)";
+            $params[] = $cap;
         }
 
-        if (is_null($cap)) {
-            $query = str_replace("\n  AND (`id` > ?)", "", $query);
-        } else {
-            if ($capBehavior === 1) {
-                $query = str_replace("\n  AND (`id` > ?)", "\n  AND (`id` < ?)", $query);
-            }
-
-            array_unshift($params, $cap);
-        }
-
-        if (is_null($padding)) {
-            $query = str_replace("\nOFFSET\n?", "", $query);
-        } else {
+        $query .= "\n  AND $cond\nORDER BY `created` " . ($reverse ? "ASC" : "DESC") . "\nLIMIT ?";
+        $params = array_merge($params, $pair, [$limit ?? OPENVK_DEFAULT_PER_PAGE]);
+        if (!is_null($padding)) {
+            $query   .= "\nOFFSET ?";
             $params[] = $padding;
         }
 
-        if ($reverse) {
-            $query = str_replace("`created` DESC", "`created` ASC", $query);
+        if ($limit === null && !$this->isGroup()) {
+            DatabaseConnection::i()->getConnection()->query("UPDATE messages SET unread = 0 WHERE sender_id = " . $this->correspondents[1]->getId() . " AND recipient_id = " . $this->correspondents[0]->getId());
         }
 
         $msgs   = DatabaseConnection::i()->getConnection()->query($query, ...$params);
@@ -383,6 +399,8 @@ class Correspondence
     private function attachmentsQuery(string $select, string $tail = ""): array
     {
         $kind = self::ATTACHMENT_KIND_SQL;
+        $pair = $this->getPairCondition("m");
+        $cond = array_shift($pair);
 
         $query = "SELECT $select FROM (
             SELECT a.attachable_type, a.attachable_id, m.id AS message_id, $kind AS kind
@@ -391,14 +409,10 @@ class Correspondence
             LEFT JOIN documents d ON a.attachable_type = ? AND d.id = a.attachable_id
             WHERE m.deleted = 0
               AND m.id > " . $this->getClearedTill() . str_replace("`id`", "m.id", $this->getHiddenCondition()) . "
-              AND ((m.sender_type = ? AND m.sender_id = ? AND m.recipient_type = ? AND m.recipient_id = ?)
-                OR (m.sender_type = ? AND m.sender_id = ? AND m.recipient_type = ? AND m.recipient_id = ?))
+              AND $cond
         ) att WHERE att.kind IS NOT NULL $tail";
 
-        [$a, $b] = $this->correspondents;
-        return [$query, Message::class, Document::class,
-            get_class($a), $a->getId(), get_class($b), $b->getId(),
-            get_class($b), $b->getId(), get_class($a), $a->getId()];
+        return [$query, Message::class, Document::class, ...$pair];
     }
 
     /**
@@ -443,24 +457,18 @@ class Correspondence
      */
     public function getChangedMessages(int $since): array
     {
-        $connection = DatabaseConnection::i()->getConnection();
-        $msgs = $connection->query(
+        $pair = $this->getPairCondition();
+        $cond = array_shift($pair);
+        $msgs = DatabaseConnection::i()->getConnection()->query(
             "SELECT * FROM `messages`
              WHERE (`edited` > ? OR `reactions_changed` >= ?)
                AND (`id` > ?)" . $this->getHiddenCondition() . "
-               AND (
-                 (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
-                 OR
-                 (`sender_type` = ? AND `recipient_type` = ? AND `sender_id` = ? AND `recipient_id` = ?)
-               )
+               AND $cond
              ORDER BY `edited` ASC",
             $since,
             $since,
             $this->getClearedTill(),
-            get_class($this->correspondents[0]), get_class($this->correspondents[1]),
-            $this->correspondents[0]->getId(), $this->correspondents[1]->getId(),
-            get_class($this->correspondents[1]), get_class($this->correspondents[0]),
-            $this->correspondents[1]->getId(), $this->correspondents[0]->getId()
+            ...$pair
         );
 
         return array_map(function ($message) {
@@ -522,6 +530,23 @@ class Correspondence
      */
     public function sendMessage(Message $message, bool $dontReverse = false)
     {
+        // в беседе отправитель всегда первый корреспондент, непрочитанность не ведётся
+        if ($this->isGroup()) {
+            [$sender, $chat] = $this->correspondents;
+
+            $message->setSender_Id($sender->getId());
+            $message->setSender_Type(get_class($sender));
+            $message->setRecipient_Id($chat->getId());
+            $message->setRecipient_Type(GroupChat::class);
+            $message->setCreated(time());
+            $message->setUnread(0);
+            $message->save();
+
+            $this->pushGroupNotifications($message, $sender, $chat);
+
+            return $message;
+        }
+
         if (!$dontReverse) {
             $user = (new Users())->getByChandlerUser(Authenticator::i()->getUser());
             if (!$user) {
@@ -574,10 +599,7 @@ class Correspondence
             return;
         }
 
-        $preview = trim(strip_tags($message->getPreviewText()));
-        if (iconv_strlen($preview) > 100) {
-            $preview = iconv_substr($preview, 0, 100) . "…";
-        }
+        $preview = $this->getNotificationPreview($message);
 
         $senderUrlId = $senderClass === Club::class ? $senderId * -1 : $senderId;
 
@@ -598,6 +620,73 @@ class Correspondence
         }
     }
 
+    private function getNotificationPreview(Message $message): string
+    {
+        $preview = trim(strip_tags($message->getPreviewText()));
+        if (iconv_strlen($preview) > 100) {
+            $preview = iconv_substr($preview, 0, 100) . "…";
+        }
+
+        return $preview;
+    }
+
+    // уведомления всем участникам беседы, кроме автора и тех, у кого она без звука
+    private function pushGroupNotifications(Message $message, RowModel $sender, GroupChat $chat): void
+    {
+        $notifConf = OPENVK_ROOT_CONF["openvk"]["credentials"]["notificationsBroker"] ?? [];
+        if (!($notifConf["enable"] ?? false)) {
+            return;
+        }
+
+        $preview = $sender->getCanonicalName() . ": " . $this->getNotificationPreview($message);
+        $dialogs = new MessengerDialogs();
+        $users   = new Users();
+        foreach ($chat->getParticipantIds() as $userId) {
+            $user = $userId === $sender->getId() ? null : $users->get($userId);
+            if (!$user || $dialogs->get($user, $chat)["muted"]) {
+                continue;
+            }
+
+            try {
+                NotificationBroker::i()->push($userId, [
+                    "kind" => "message",
+                    "data" => [
+                        "senderId"   => $chat->getPeerId(),
+                        "senderName" => $chat->getName(),
+                        "body"       => $preview,
+                        "ava"        => $chat->getAvatarUrl(),
+                        "url"        => $chat->getURL(),
+                        "timestamp"  => time(),
+                    ],
+                ]);
+            } catch (\Throwable $e) {
+                error_log("Message notification push error: " . $e->getMessage());
+            }
+        }
+    }
+
+    /**
+     * Кто сейчас печатает в беседе, кроме $viewerId.
+     *
+     * @returns User[]
+     */
+    public function getGroupTypingUsers(int $viewerId): array
+    {
+        if (!$this->isGroup() || !function_exists("apcu_fetch")) {
+            return [];
+        }
+
+        $users = [];
+        foreach ((apcu_fetch("gtyping:" . $this->correspondents[1]->getId()) ?: []) as $userId => $until) {
+            $user = ($until > time() && $userId !== $viewerId) ? (new Users())->get($userId) : null;
+            if ($user) {
+                $users[] = $user;
+            }
+        }
+
+        return $users;
+    }
+
     /**
      * Send typing event.
      *
@@ -605,6 +694,18 @@ class Correspondence
      */
     public function sendTypingEvent()
     {
+        // в беседе печатающие хранятся одним массивом [id => до какого времени]
+        if ($this->isGroup()) {
+            if (function_exists("apcu_fetch")) {
+                $key    = "gtyping:" . $this->correspondents[1]->getId();
+                $typing = array_filter(apcu_fetch($key) ?: [], fn($until) => $until > time());
+                $typing[$this->correspondents[0]->getId()] = time() + 5;
+                apcu_store($key, $typing, 10);
+            }
+
+            return true;
+        }
+
         $ids     = [$this->correspondents[0]->getId(), $this->correspondents[1]->getId()];
 
         if ($ids[0] !== $ids[1]) {

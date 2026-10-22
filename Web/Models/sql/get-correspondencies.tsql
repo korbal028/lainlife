@@ -18,6 +18,8 @@ FROM
     AND
       sender_type = ?
     AND
+      recipient_type <> ?
+    AND
       deleted = 0
   ) UNION ALL (
     SELECT

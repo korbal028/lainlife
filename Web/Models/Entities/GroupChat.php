@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection;
-use openvk\Web\Models\Repositories\{Users, GroupMessages};
+use openvk\Web\Models\Repositories\{Users, Messages};
 use openvk\Web\Models\RowModel;
 use openvk\Web\Util\DateTime;
 
@@ -105,18 +105,26 @@ function getAvatarUrl(string $size = 'normal'): string
     /**
      * Get last message in chat.
      */
-    function getLastMessage(): ?GroupMessage
+    function getLastMessage(): ?Message
     {
-        if (!$this->getId()) {
-            return null;
-        }
-        try {
-            $messages = new GroupMessages();
-            $msgs = $messages->getMessagesFromChat($this->getId(), 0, 1);
-            return $msgs[0] ?? null;
-        } catch (\Throwable $e) {
-            return null;
-        }
+        $row = DatabaseConnection::i()->getContext()->table("messages")
+            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "deleted" => 0])
+            ->order("id DESC")
+            ->fetch();
+
+        return $row ? (new Messages())->get((int) $row->id) : null;
+    }
+
+    function getParticipantIds(): array
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+
+        return array_values(array_map("intval", array_filter(explode(",", (string) ($fresh->participants ?? "")))));
+    }
+
+    function isParticipant(int $userId): bool
+    {
+        return in_array($userId, $this->getParticipantIds(), true);
     }
 
     /**
@@ -145,6 +153,7 @@ function getAvatarUrl(string $size = 'normal'): string
     {
         return [
             "id"        => $this->getId(),
+            "peer_id"   => $this->getPeerId(),
             "name"      => $this->getName(),
             "avatar"    => $this->getAvatarUrl('miniscule'),
             "members_count" => $this->getParticipantsCount(),

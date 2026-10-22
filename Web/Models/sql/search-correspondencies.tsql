@@ -16,6 +16,8 @@ FROM
     AND
       sender_type = ?
     AND
+      recipient_type <> ?
+    AND
       deleted = 0
   ) UNION ALL (
     SELECT
@@ -30,6 +32,23 @@ FROM
       recipient_type = ?
     AND
       deleted = 0
+  ) UNION ALL (
+    SELECT
+      m.id AS mid,
+      m.recipient_id AS id,
+      m.recipient_type AS class,
+      m.created AS time
+    FROM messages m
+    JOIN group_chats c
+      ON c.id = m.recipient_id
+    WHERE
+      m.recipient_type = ?
+    AND
+      m.deleted = 0
+    AND
+      c.deleted = 0
+    AND
+      FIND_IN_SET(?, c.participants) > 0
   )
 ) dt
 LEFT JOIN messenger_dialogs d
@@ -43,6 +62,9 @@ LEFT JOIN profiles p
 LEFT JOIN `groups` g
   ON dt.class = ?
   AND g.id = dt.id
+LEFT JOIN group_chats gc
+  ON dt.class = ?
+  AND gc.id = dt.id
 WHERE
   dt.mid > COALESCE(d.cleared_till, 0)
 AND
@@ -54,6 +76,7 @@ AND
     CONCAT_WS(' ', p.first_name, p.last_name) LIKE ?
       OR CONCAT_WS(' ', p.last_name, p.first_name) LIKE ?
       OR g.name LIKE ?
+      OR gc.name LIKE ?
   )
 GROUP BY
   dt.id,

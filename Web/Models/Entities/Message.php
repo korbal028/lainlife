@@ -3,6 +3,7 @@ namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection;
 use openvk\Web\Models\Repositories\Clubs;
 use openvk\Web\Models\Repositories\Users;
+use openvk\Web\Models\Repositories\GroupChats;
 use openvk\Web\Models\Entities\{Photo, Video, Audio, Note, Document};
 use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\RowModel;
@@ -42,9 +43,9 @@ class Message extends RowModel
     /**
      * Get the destination of the message.
      * 
-     * Returns either user or club.
+     * Returns user, club or group chat.
      * 
-     * @returns User|Club
+     * @returns User|Club|GroupChat
      */
     function getRecipient(): ?RowModel
     {
@@ -52,6 +53,15 @@ class Message extends RowModel
             return (new Users)->get($this->getRecord()->recipient_id);
         else if($this->getRecord()->recipient_type === 'openvk\Web\Models\Entities\Club')
             return (new Clubs)->get($this->getRecord()->recipient_id);
+        else if($this->getRecord()->recipient_type === GroupChat::class)
+            return (new GroupChats)->get((int) $this->getRecord()->recipient_id);
+
+        return null;
+    }
+
+    function isInGroupChat(): bool
+    {
+        return $this->getRecord()->recipient_type === GroupChat::class;
     }
     
     function getUnreadState(): int
@@ -222,6 +232,18 @@ class Message extends RowModel
         $me  = [get_class($entity), $entity->getId()];
 
         return [$rec->sender_type, (int) $rec->sender_id] === $me || [$rec->recipient_type, (int) $rec->recipient_id] === $me;
+    }
+
+    // видно ли сообщение пользователю: своё, личное ему или из беседы, где он состоит
+    function isVisibleTo(User $user): bool
+    {
+        if ($this->hasParticipant($user)) {
+            return true;
+        }
+
+        $chat = $this->isInGroupChat() ? $this->getRecipient() : null;
+
+        return $chat && $chat->isParticipant($user->getId());
     }
 
     function isBetween(RowModel $a, RowModel $b): bool

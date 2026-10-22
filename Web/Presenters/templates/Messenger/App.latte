@@ -1,16 +1,22 @@
 {extends "../@layout.latte"}
-{block title}{if $correspondent->getId() === $thisUser->getId()}{_saved_messages}{else}{$correspondent->getCanonicalName()}{/if}{/block}
+{block title}{if !$isGroupChat && $correspondent->getId() === $thisUser->getId()}{_saved_messages}{else}{$correspondent->getCanonicalName()}{/if}{/block}
 
 {block header}
     
 <a href="/im">{_my_messages}</a> »
-{if $correspondent->getId() === $thisUser->getId()}
+{if !$isGroupChat && $correspondent->getId() === $thisUser->getId()}
     {_saved_messages}
+{elseif $isGroupChat}
+<a href="/im/sel{$correspondent->getPeerId()}/members">{$correspondent->getCanonicalName()}</a>
 {else}
 <a href="{$correspondent->getURL()}">{$correspondent->getCanonicalName()}</a>    
 {/if}
     <div class="im-header-right">
-        <div n:if="$correspondent->getId() !== $thisUser->getId() && ($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" class="im-header-online">
+        <div n:if="$isGroupChat" class="im-header-online">
+            <a href="/im/sel{$correspondent->getPeerId()}/members">{tr("participants", $correspondent->getParticipantsCount())}</a>
+            <a n:if="$correspondent->isCreator($thisUser->getId())" href="/im/sel{$correspondent->getPeerId()}/edit">{_edit}</a>
+        </div>
+        <div n:if="!$isGroupChat && $correspondent->getId() !== $thisUser->getId() && ($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" class="im-header-online">
             {var $diff = date_diff(date_create(), date_create('@' . $online))}
             {if 5 >= $diff->i}
                 <span><b>{_online}</b></span>
@@ -116,7 +122,7 @@
                 </div>
             </div>
             <div class="messenger-app--typing-status" style="display:none;opacity:0;">
-                {tr('message_user_typing', $correspondent->getFirstName())}
+                {tr('message_user_typing', $isGroupChat ? '' : $correspondent->getFirstName())}
             </div>
             <a class="im-jump-bottom" title="{_messenger_jump_to_recent}"></a>
         </div>
@@ -125,7 +131,7 @@
             <div class="post-vertical" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
         <div class="messenger-app--input" data-bind="css: { 'with-reply': replyTo() || forwardMsgs().length }">
-            {if $correspondent->getId() === $thisUser->getId() || $correspondent->getPrivacyPermission('messages.write', $thisUser)}
+            {if $isGroupChat || $correspondent->getId() === $thisUser->getId() || $correspondent->getPrivacyPermission('messages.write', $thisUser)}
                 <img class="ava" src="{$thisUser->getAvatarUrl('miniscule')}" alt="{$thisUser->getCanonicalName()}" />
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
@@ -320,7 +326,8 @@
     <script>
         // страница может прийти через ajax-переход, поэтому всё внутри своей области видимости
         (() => {
-            const PEER_SEL = {$correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId()};
+            const PEER_SEL = {$isGroupChat ? $correspondent->getPeerId() : ($correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId())};
+            const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
 
             window.MSG_STR = {
                 pin:     {tr("messenger_pin_message")},
@@ -491,7 +498,7 @@
                     if(this.historyEnd) return;
 
                     let xhr = new XMLHttpRequest();
-                    xhr.open("GET", "/im/api/messages" + {$correspondent->getId()} + `/${ this.offset }.json`, false);
+                    xhr.open("GET", "/im/api/messages" + PEER_SEL + `/${ this.offset }.json`, false);
                     xhr.send();
                 
                     let messages    = JSON.parse(xhr.responseText);
@@ -520,7 +527,7 @@
                         if(!document.body.contains(this.appEl)) return;
 
                         let xhr = new XMLHttpRequest();
-                        xhr.open("GET", `/im/api/sync${ {$correspondent->getId()} }/${ this.newestId }.json?since=${ this.lastSync }`, true);
+                        xhr.open("GET", `/im/api/sync${ PEER_SEL }/${ this.newestId }.json?since=${ this.lastSync }`, true);
                         xhr.onload = () => {
                             if(xhr.status === 200 && xhr.responseText) {
                                 let data = null;
@@ -567,7 +574,7 @@
                                     }
 
                                     if(data.typing) {
-                                        this.setTypingStatus();
+                                        this.setTypingStatus(data.typing_names);
                                     }
 
                                     if(typeof data.ts === "number") {
@@ -660,13 +667,15 @@
                     this.lastTypingSentAt = now;
 
                     let xhr = new XMLHttpRequest();
-                    xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/typing.json", true);
+                    xhr.open("POST", "/im/api/messages" + PEER_SEL + "/typing.json", true);
                     let fd = new FormData();
                     fd.set("hash", {$csrfToken});
                     xhr.send(fd);
                 }
 
-                setTypingStatus() {
+                setTypingStatus(names = []) {
+                    // в беседе печатать могут несколько человек
+                    if (names.length) this.typeEl.textContent = TYPING_TPL.replace("%NAMES%", names.join(", "));
                     if (this.typeEl.style.display == "block" && this.typeTimer !== null) {
                         clearTimeout(this.typeTimer);
                     }
@@ -717,7 +726,7 @@
                             "id": {$correspondent->getId()},
                             "link": {$correspondent->getURL()},
                             "avatar": {$correspondent->getAvatarUrl()},
-                            "name": {$correspondent->getFirstName()}
+                            "name": {$isGroupChat ? $correspondent->getName() : $correspondent->getFirstName()}
                         },
                         "timing": {
                             "sent": window.API.Service.getTime(),
@@ -788,7 +797,7 @@
                     if(msgId !== 0 && window.pinnedMsg()?.uuid === msgId) msgId = 0;
 
                     try {
-                        const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/pin.json", { msg_id: msgId });
+                        const res = await this._post("/im/api/messages" + PEER_SEL + "/pin.json", { msg_id: msgId });
                         this.setPinned(res.pinned);
                     } catch(e) {
                         console.error("Pin failed", e);
@@ -892,7 +901,7 @@
                         box.close();
                         window.selectedMsgs.removeAll();
 
-                        if(id === {$correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId()}) {
+                        if(id === PEER_SEL) {
                             window.forwardMsgs(msgs);
                             u("textarea[name=message]").nodes[0]?.focus();
                             return;
@@ -935,7 +944,7 @@
                             let newText = document.getElementById("edit-msg-input").value;
                             if(!newText || newText === cleanText) return;
                             let xhr = new XMLHttpRequest();
-                            xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/" + msgId + "/edit.json", true);
+                            xhr.open("POST", "/im/api/messages" + PEER_SEL + "/" + msgId + "/edit.json", true);
                             xhr.onreadystatechange = function() {
                                 if(this.readyState !== 4) return;
                                 if(this.status === 200) {
@@ -1106,7 +1115,7 @@
 
                 deleteMessages(msgIds) {
                     msgIds = [...msgIds];
-                    const isSelfChat = {$correspondent->getId() === $thisUser->getId()};
+                    const isSelfChat = {$isGroupChat ? false : $correspondent->getId() === $thisUser->getId()};
                     const hasOwn = window.messages().some(m => msgIds.includes(m.uuid) && m.sender.id === {$thisUser->getId()});
 
                     let body = {tr("messenger_delete_messages_confirm", "%COUNT%")}.replace("%COUNT%", msgIds.length);
@@ -1118,7 +1127,7 @@
                         async () => {
                             const forAll = isSelfChat || (document.getElementById("msg_delete_for_all")?.checked ?? false);
                             try {
-                                const res = await this._post("/im/api/messages" + {$correspondent->getId()} + "/delete-many.json", {
+                                const res = await this._post("/im/api/messages" + PEER_SEL + "/delete-many.json", {
                                     ids: msgIds.join(","),
                                     for_all: forAll ? "1" : "0",
                                 });
@@ -1148,7 +1157,7 @@
                     }
 
                     try {
-                        const res = await fetch("/im/api/messages" + {$correspondent->getId()} + "/create.json", { method: "POST", body: fd });
+                        const res = await fetch("/im/api/messages" + PEER_SEL + "/create.json", { method: "POST", body: fd });
                         if(res.status !== 202) throw new Error(res.status);
 
                         const sent = await res.json();
@@ -1199,7 +1208,7 @@
                 
                     let that = this;
                     let xhr  = new XMLHttpRequest();
-                    xhr.open("POST", "/im/api/messages" + {$correspondent->getId()} + "/create.json", true);
+                    xhr.open("POST", "/im/api/messages" + PEER_SEL + "/create.json", true);
                     xhr.onreadystatechange = (function() {
                         if(this.readyState !== 4)
                             return;

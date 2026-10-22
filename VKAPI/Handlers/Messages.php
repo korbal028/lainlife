@@ -116,7 +116,7 @@ final class Messages extends VKAPIRequestHandler
             $message = $msgs->get((int) $id);
             if (!$message) {
                 continue;
-            } elseif ($message->getSender()->getId() !== $this->getUser()->getId() && $message->getRecipient()->getId() !== $this->getUser()->getId()) {
+            } elseif ($message->isInGroupChat() || !$message->hasParticipant($this->getUser())) {
                 continue;
             }
 
@@ -225,7 +225,7 @@ final class Messages extends VKAPIRequestHandler
         $forwards = [];
         foreach (array_unique(array_filter(array_map("intval", preg_split("%, ?%", $forward_messages)))) as $fwdId) {
             $fwd = (new MSGRepo())->get($fwdId);
-            if (!$fwd || $fwd->isDeleted() || ($fwd->getSender()->getId() !== $this->getUser()->getId() && $fwd->getRecipient()->getId() !== $this->getUser()->getId())) {
+            if (!$fwd || $fwd->isDeleted() || !$fwd->isVisibleTo($this->getUser())) {
                 $this->fail(15, "Access to forwarded message denied");
             }
 
@@ -280,8 +280,9 @@ final class Messages extends VKAPIRequestHandler
         $items = [];
         foreach ($ids as $id) {
             $message = $msgs->get((int) $id);
-            if (!$message || $message->getSender()->getId() !== $this->getUser()->getId() && $message->getRecipient()->getId() !== $this->getUser()->getId()) {
+            if (!$message || !$message->hasParticipant($this->getUser())) {
                 $items[$id] = 0;
+                continue;
             }
 
             $message->delete();

@@ -15,6 +15,8 @@ SELECT COUNT(*) AS cnt FROM
       AND
         sender_type = ?
       AND
+        recipient_type <> ?
+      AND
         deleted = 0
     ) UNION ALL (
       SELECT

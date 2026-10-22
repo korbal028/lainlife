@@ -4,45 +4,27 @@ declare(strict_types=1);
 
 namespace openvk\Web\Presenters;
 
-use Chandler\Signaling\SignalManager;
-use openvk\Web\Events\NewMessageEvent;
-use openvk\Web\Events\NewGroupMessageEvent;
-use openvk\Web\Events\DeleteMessageEvent;
-use openvk\Web\Events\EditMessageEvent;
-use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs, GroupChats, GroupMessages};
-use openvk\Web\Models\Entities\Messages\Sticker;
-use openvk\Web\Models\Entities\{Message, Correspondence, User, Club, Photo, Video, Audio, Document, GroupChat, GroupMessage};
+use openvk\Web\Models\Repositories\{Users, GroupChats};
+use openvk\Web\Models\Entities\{GroupChat, Photo};
 
+// управление беседами; сами сообщения бесед обслуживает MessengerPresenter
 final class GroupChatPresenter extends OpenVKPresenter
 {
-    private $messages;
     private $groupChats;
-    private $groupMessages;
-    private $signaler;
     protected $presenterName = "groupchat";
 
-    public function __construct(Messages $messages, GroupChats $groupChats, GroupMessages $groupMessages)
+    public function __construct(GroupChats $groupChats)
     {
-        $this->messages      = $messages;
-        $this->groupChats    = $groupChats;
-        $this->groupMessages = $groupMessages;
-        $this->signaler      = SignalManager::i();
+        $this->groupChats = $groupChats;
 
         parent::__construct();
-    }
-
-    public function onStartup(): void
-    {
-        parent::onStartup();
-
-        $this->template->hideFooter = true;
     }
 
     // беседа по peer_id (2000000000 + id), только для её участников
     private function getChat(int $peer): GroupChat
     {
         $chat = $this->groupChats->getByPeerId($peer);
-        if (!$chat || $chat->getRecord()->deleted || !$this->groupChats->isParticipant($chat->getId(), $this->user->id)) {
+        if (!$chat || $chat->getRecord()->deleted || !$chat->isParticipant($this->user->id)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -50,970 +32,319 @@ final class GroupChatPresenter extends OpenVKPresenter
         return $chat;
     }
 
-    // живое сообщение именно из этой беседы
-    private function getChatMessage(GroupChat $chat, int $msgId): GroupMessage
+    private function getManagedChat(int $peer): GroupChat
     {
-        $msg = $this->groupMessages->get($msgId);
-        if (!$msg || $msg->getRecord()->deleted || (int) $msg->getRecord()->chat_id !== $chat->getId()) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
-        }
-
-        return $msg;
-    }
-
-    private function getParticipantIds(GroupChat $chat): array
-    {
-        return array_map("intval", array_filter(explode(",", (string) $chat->getRecord()->participants)));
-    }
-
-    private function getCorrespondent(int $id): object
-    {
-        if ($id > 0) {
-            return (new Users())->get($id);
-        } elseif ($id < 0) {
-            return (new Clubs())->get(abs($id));
-        } elseif ($id === 0) {
-            return $this->user->identity;
-        }
-    }
-
-    // ответить можно только на живое сообщение из этого же диалога
-    private function getReplyTarget(object $correspondent): ?Message
-    {
-        $id = (int) $this->postParam("reply_to");
-        if ($id <= 0) {
-            return null;
-        }
-
-        $msg = $this->messages->get($id);
-        if (!$msg || $msg->isDeleted() || !$msg->isBetween($this->user->identity, $correspondent)) {
+        $chat = $this->getChat($peer);
+        if (!$chat->canManageParticipants($this->user->id)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
 
-        return $msg;
+        return $chat;
     }
 
-    // переслать можно любые сообщения из своих диалогов
-    private function getForwardTargets(): array
+    private function getCreatedChat(int $peer): GroupChat
     {
-        $ids = array_unique(array_filter(array_map("intval", explode(",", (string) $this->postParam("forward_messages")))));
-        if (sizeof($ids) > Message::MAX_FORWARDS) {
-            header("HTTP/1.1 400 Bad Request");
+        $chat = $this->getChat($peer);
+        if (!$chat->isCreator($this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
             exit();
         }
 
-        $messages = [];
-        foreach ($ids as $id) {
-            $msg = $this->messages->get($id);
-            if (!$msg || $msg->isDeleted() || !$msg->hasParticipant($this->user->identity)) {
-                header("HTTP/1.1 403 Forbidden");
-                exit();
-            }
+        return $chat;
+    }
 
-            $messages[] = $msg;
+    private function getParticipants(GroupChat $chat): array
+    {
+        $users = new Users();
+        $participants = [];
+        foreach ($chat->getParticipantIds() as $id) {
+            $user = $users->get($id);
+            if ($user) {
+                $participants[] = $user;
+            }
         }
 
-        usort($messages, fn($a, $b) => $a->getId() <=> $b->getId());
-        return $messages;
+        return $participants;
+    }
+
+    private function getFriendsSortedByMessages(): array
+    {
+        $friends = iterator_to_array($this->user->identity->getFriends(1, 100));
+        $db = \Chandler\Database\DatabaseConnection::i()->getContext();
+        $myId = $this->user->identity->getId();
+
+        $lastMsgTimes = [];
+        foreach ($friends as $friend) {
+            $fid = $friend->getId();
+            $last = $db->table("messages")
+                ->where("(sender_id = ? AND recipient_id = ? AND recipient_type = ?) OR (sender_id = ? AND recipient_id = ? AND recipient_type = ?)", $myId, $fid, get_class($friend), $fid, $myId, get_class($friend))
+                ->order("created DESC")
+                ->fetch();
+            $lastMsgTimes[$fid] = $last ? $last->created : 0;
+        }
+
+        usort($friends, function ($a, $b) use ($lastMsgTimes) {
+            return $lastMsgTimes[$b->getId()] - $lastMsgTimes[$a->getId()];
+        });
+
+        return $friends;
+    }
+
+    private function createChat(string $name, array $members): GroupChat
+    {
+        $users     = new Users();
+        $members[] = $this->user->id;
+        $members   = array_values(array_unique(array_filter(array_map("intval", $members), fn($id) => $id > 0 && $users->get($id))));
+
+        return $this->groupChats->createChat([
+            "name"               => $name,
+            "description"        => $this->postParam("description"),
+            "creator_id"         => $this->user->id,
+            "participants"       => implode(",", $members),
+            "participants_count" => count($members),
+        ]);
     }
 
     public function renderIndex(): void
     {
         $this->assertUserLoggedIn();
 
-        if (isset($_GET["sel"])) {
-            $this->pass("openvk!Messenger->app", $_GET["sel"]);
-        }
+        $page  = (int) ($_GET["p"] ?? 1);
+        $chats = iterator_to_array($this->groupChats->getUserChats($this->user->id, $page));
 
-        $this->renderList(false);
-    }
-
-    public function renderArchive(): void
-    {
-        $this->assertUserLoggedIn();
-
-        $this->template->_template = "Messenger/Index.latte";
-        $this->renderList(true);
-    }
-
-    public function renderApiList(): void
-    {
-        $this->assertUserLoggedIn();
-
-        $this->renderList(($_GET["archive"] ?? "0") === "1");
-    }
-
-    private function renderList(bool $archived): void
-    {
-        $page = (int) ($_GET["p"] ?? 1);
-        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page, null, null, $archived));
-
-        $this->template->isArchive = $archived;
-        $this->template->corresps = $correspondences;
-        $this->template->dialogSettings = (new MessengerDialogs())->getAllFor($this->user->identity);
+        $this->template->chats = $chats;
         $this->template->paginatorConf = (object) [
-            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
-            "page"    => (int) ($_GET["p"] ?? 1),
-            "amount"  => sizeof($this->template->corresps),
+            "count"   => $this->groupChats->getUserChatsCount($this->user->id),
+            "page"    => $page,
+            "amount"  => sizeof($chats),
             "perPage" => OPENVK_DEFAULT_PER_PAGE,
             "tidy"    => false,
             "atTop"   => false,
         ];
     }
 
-    public function renderApp(int $peer): void
+    public function renderCreate(): void
     {
         $this->assertUserLoggedIn();
 
-        $chat = $this->getChat($peer);
-
-        $this->template->disable_ajax = 1;
-        $this->template->chatId       = $chat->getId();
-        $this->template->chat         = $chat;
-    }
-
-    // long-poll для старого GroupChat/App.latte
-    public function renderEvents(int $peer): void
-    {
-        $this->assertUserLoggedIn();
-
-        $this->getChat($peer);
-
-        header("Content-Type: application/json");
-        $this->signaler->listen(function ($event, $id) {
-            exit(json_encode([[
-                "UUID"  => $id,
-                "event" => $event->getLongPoolSummary(),
-            ]]));
-        }, $this->user->id);
-    }
-
-    public function renderVKEvents(int $id): void
-    {
-        header("Access-Control-Allow-Origin: *");
-        header("Content-Type: application/json");
-
-        if ($this->queryParam("act") !== "a_check") {
-            header("HTTP/1.1 400 Bad Request");
-            exit();
-        } elseif (!$this->queryParam("key")) {
-            header("HTTP/1.1 403 Forbidden");
-            exit();
-        }
-
-        $key       = $this->queryParam("key");
-        $payload   = hex2bin(substr($key, 0, 16));
-        $signature = hex2bin(substr($key, 16));
-        if (($signature ^ (~CHANDLER_ROOT_CONF["security"]["secret"] | ((string) $id))) !== $payload) {
-            exit(json_encode([
-                "failed" => 3,
-            ]));
-        }
-
-        $legacy = $this->queryParam("version") < 3;
-
-        $time = intval($this->queryParam("wait"));
-
-        if ($time > 60) {
-            $time = 60;
-        } elseif ($time == 0) {
-            $time = 25;
-        } // default
-
-        $this->signaler->listen(function ($event, $eId) use ($id) {
-            exit(json_encode([
-                "ts"      => time(),
-                             "updates" => [
-                                 $event->getVKAPISummary($id),
-                             ],
-            ]));
-        }, $id, $time);
-    }
-
-    public function renderApiGetMessages(int $peer, int $lastMsg): void
-    {
-        $this->assertUserLoggedIn();
-
-        $chat = $this->getChat($peer);
-
-        $messages = [];
-        foreach ($this->groupMessages->getMessagesFromChat($chat->getId(), $lastMsg) as $message) {
-            $simple = $message->simplify();
-            $this->enrichAttachmentsWithHTML($message, $simple);
-            $messages[] = $simple;
-        }
-
-        header("Content-Type: application/json");
-        exit(json_encode($messages));
-    }
-
-    // short-poll instead long-poll
-    public function renderApiSync(int $peer, int $lastMsg): void
-    {
-        $this->assertUserLoggedIn();
-        $chat = $this->getChat($peer);
-        $id   = $chat->getId();
-        $since = (int) ($this->queryParam("since") ?? 0);
-
-        $messages = [];
-        foreach ($this->groupMessages->getNewer($id, $lastMsg) as $m) { // id > lastMsg, ASC)
-            $s = $m->simplify();
-            $this->enrichAttachmentsWithHTML($m, $s);
-            $messages[] = $s;
-        }
-
-        $edited = $deleted = [];
-        if ($since > 0) {
-            foreach ($this->groupMessages->getChanged($id, $since) as $m) { // edited > since OR reactions_changed >= since
-                if ($m->isDeleted()) { $deleted[] = $m->getId(); continue; }
-                $s = $m->simplify();
-                $this->enrichAttachmentsWithHTML($m, $s);
-                $edited[] = $s;
-            }
-        }
-
-        $typing = [];
-        if (function_exists("apcu_fetch")) {
-            foreach ((apcu_fetch("gtyping:$id") ?: []) as $uid => $exp) {
-                if ($exp > time() && $uid != $this->user->id) $typing[] = (new Users)->get($uid)?->getFirstName();
-            }
-        }
-
-        $this->groupChats->markRead($id, $this->user->id, $lastMsg);
-        $this->returnJson([
-            "ts" => time(), "messages" => $messages, "edited" => $edited, "deleted" => $deleted,
-                          "typing" => array_values(array_filter($typing)), "pinned" => $chat->getPinnedMessage()?->simplify(),
-                          "members_count" => $chat->getParticipantsCount(), // фронт перечитает участников при изменении
-        ]);
-    }
-
-    public function renderApiWriteMessage(int $peer): void
-    {
-        $this->assertUserLoggedIn();
-        $this->willExecuteWriteAction();
-
-        if (empty($this->postParam("content")) && empty($this->postParam("attachments"))) {
-            header("HTTP/1.1 400 Bad Request");
-            exit("<b>Argument error</b>: param 'content' expected to be string, undefined given.");
-        }
-
-        $chat = $this->getChat($peer);
-
-        $attachments = [];
-        if (!empty($this->postParam("attachments"))) {
-            $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
-            if (sizeof($attachments_array) > 0) {
-                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker']);
-            }
-        }
-
-        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity)) {
-            header("HTTP/1.1 400 Bad Request");
-            exit();
-        }
-
-        $row = \Chandler\Database\DatabaseConnection::i()->getContext()->table("group_messages")->insert([
-            "chat_id"        => $chat->getId(),
-            "sender_id"      => $this->user->identity->getId(),
-            "sender_type"    => get_class($this->user->identity),
-            "content"        => $this->postParam("content") ?? "",
-            "created"        => time(),
-            "unread"         => 0,
-            "deleted"        => 0,
-            "forwarded_from" => !empty($this->postParam("reply_to")) ? (int) $this->postParam("reply_to") : null,
-        ]);
-        $msg = $this->groupMessages->get((int) $row->id);
-
-        foreach ($attachments as $attachment) {
-            if (!$attachment || $attachment->isDeleted() || !$attachment->canBeViewedBy($this->user->identity)) {
-                continue;
-            }
-
-            $msg->attach($attachment);
-        }
-
-        foreach ($this->getParticipantIds($chat) as $participantId) {
-            if ($participantId !== $this->user->id) {
-                $this->signaler->triggerEvent(new NewGroupMessageEvent($msg), $participantId);
-            }
-        }
-
-        header("HTTP/1.1 202 Accepted");
-        header("Content-Type: application/json");
-        $simple = $msg->simplify();
-        $this->enrichAttachmentsWithHTML($msg, $simple);
-        exit(json_encode($simple));
-    }
-
-    private function enrichAttachmentsWithHTML(Message|GroupMessage $messageObj, array &$simplifiedArray): void
-    {
-        $children = iterator_to_array($messageObj->getChildren());
-        foreach ($simplifiedArray['attachments'] as $index => &$attachmentData) {
-            if (!isset($children[$index])) {
-                continue;
-            }
-            $originalObj = $children[$index];
-            $html = "";
-            if ($attachmentData['type'] === 'audio') {
-                $html = $this->getTemplatingEngine()->renderToString(
-                    # костыль жоский
-                    dirname(__FILE__) . '/templates/Audio/player.latte',
-                                                                     [
-                                                                         'audio' => $originalObj,
-                                                                     'thisUser' => $this->user->identity,
-                                                                     'hideButtons' => false,
-                                                                     'club' => null,
-                                                                     ]
-                );
-            }
-            if ($html !== "") {
-                $attachmentData['html'] = $html;
-            }
-        }
-        unset($attachmentData);
-
-        // плееры нужны и во вложениях пересланных сообщений
-        if (!empty($simplifiedArray['fwd'])) {
-            foreach ($messageObj->getForwardedMessages() as $index => $fwd) {
-                if (isset($simplifiedArray['fwd'][$index])) {
-                    $this->enrichAttachmentsWithHTML($fwd, $simplifiedArray['fwd'][$index]);
-                }
-            }
-        }
-    }
-
-    public function renderApiSendTypingStatus(int $sel): void
-    {
-        $this->assertUserLoggedIn();
-        $this->willExecuteWriteAction();
-
-        $sel = $this->getCorrespondent($sel);
-        if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
-            header("HTTP/1.1 403 Forbidden");
-            exit();
-        }
-
-        $cor = new Correspondence($this->user->identity, $sel);
-        $result = $cor->sendTypingEvent();
-        header("HTTP/1.1 202 Accepted");
-        header("Content-Type: application/json");
-        exit(json_encode($result));
-    }
-
-    public function renderApiEditMessage(int $peer, int $msgId): void
-    {
-        $this->assertUserLoggedIn();
-        $this->willExecuteWriteAction();
-
-        if (empty($this->postParam("content"))) {
-            header("HTTP/1.1 400 Bad Request");
-            exit();
-        }
-
-        $chat = $this->getChat($peer);
-        $msg  = $this->getChatMessage($chat, $msgId);
-
-        // текст к стикеру не добавить
-        if (Sticker::isIn($msg->getChildren())) {
-            header("HTTP/1.1 400 Bad Request");
-            exit();
-        }
-        if ($msg->getSender()->getId() !== $this->user->id) {
-            header("HTTP/1.1 403 Forbidden");
-            exit();
-        }
-
-        $msg->setContent($this->postParam("content"));
-        $msg->setEdited(time());
-        $msg->save();
-
-        foreach ($this->getParticipantIds($chat) as $participantId) {
-            $this->signaler->triggerEvent(new EditMessageEvent($msg), $participantId);
-        }
-
-        header("HTTP/1.1 200 OK");
-        header("Content-Type: application/json");
-        exit(json_encode($msg->simplify()));
-    }
-
-    public function renderApiDeleteMessage(int $peer, int $msgId): void
-    {
-        $this->assertUserLoggedIn();
-        $this->willExecuteWriteAction();
-
-        $chat = $this->getChat($peer);
-        $msg  = $this->getChatMessage($chat, $msgId);
-
-        if ($msg->getSender()->getId() !== $this->user->id) {
-            header("HTTP/1.1 403 Forbidden");
-            exit();
-        }
-
-        $msg->setDeleted(1);
-        $msg->setEdited(time()); // метка для поллинга (apiSync)
-        $msg->save();
-
-        foreach ($this->getParticipantIds($chat) as $participantId) {
-            $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $participantId);
-        }
-
-        header("HTTP/1.1 200 OK");
-        header("Content-Type: application/json");
-        exit(json_encode(["success" => true]));
-    }
-
-    public function renderApiDialogAction(): void
-    {
-        $this->assertUserLoggedIn();
-        $this->willExecuteWriteAction(true);
+        $this->template->friends = $this->getFriendsSortedByMessages();
 
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
-            header("HTTP/1.1 405 Method Not Allowed");
-            exit();
+            return;
         }
 
-        $dialogs = new MessengerDialogs();
-        $me      = $this->user->identity;
+        $this->willExecuteWriteAction();
 
-        if ($this->postParam("act") === "reorder") {
-            $position = 1;
-            foreach (explode(",", (string) $this->postParam("order")) as $sel) {
-                $peer = $this->getCorrespondent((int) $sel);
-                if ($peer && $dialogs->get($me, $peer)["pinned"] > 0) {
-                    $dialogs->set($me, $peer, ["pinned" => $position++]);
-                }
-            }
-
-            header("Content-Type: application/json");
-            exit(json_encode(["success" => true]));
+        $name = trim((string) $this->postParam("name"));
+        if ($name === "") {
+            $this->flashFail("err", tr("error"), "Введите название беседы.");
         }
 
-        $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
-        if (!$correspondent) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
-        }
-
-        switch ($this->postParam("act")) {
-            case "pin":
-                $dialogs->pinToTop($me, $correspondent);
-                break;
-            case "unpin":
-                $dialogs->set($me, $correspondent, ["pinned" => 0]);
-                break;
-            case "archive":
-                $dialogs->set($me, $correspondent, ["archived" => 1, "pinned" => 0]);
-                break;
-            case "unarchive":
-                $dialogs->set($me, $correspondent, ["archived" => 0]);
-                break;
-            case "mute":
-                $dialogs->set($me, $correspondent, ["muted" => 1]);
-                break;
-            case "unmute":
-                $dialogs->set($me, $correspondent, ["muted" => 0]);
-                break;
-            case "delete":
-                $cor = new Correspondence($me, $correspondent);
-                if ($this->postParam("for_all") === "1" && $correspondent->getId() !== $me->getId()) {
-                    $cor->deleteForAll();
-                } else {
-                    $cor->clearForOwner();
-                }
-                break;
-            default:
-                header("HTTP/1.1 400 Bad Request");
-                exit();
-        }
-
-        header("Content-Type: application/json");
-        exit(json_encode(["success" => true]));
+        $chat = $this->createChat($name, $_POST["members"] ?? []);
+        $this->redirect($chat->getURL());
     }
 
-    public function renderApiDeleteMessages(int $sel): void
+    public function renderApiCreateChat(): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $correspondent = $this->getCorrespondent($sel);
-        if (!$correspondent) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
+        $name = trim((string) $this->postParam("name"));
+        if ($name === "") {
+            header("HTTP/1.1 400 Bad Request");
+            exit("<b>Argument error</b>: param 'name' expected.");
         }
 
-        $cor    = new Correspondence($this->user->identity, $correspondent);
-        $forAll = $this->postParam("for_all") === "1";
-        $repo   = new Messages();
+        $chat = $this->createChat($name, explode(",", (string) $this->postParam("participants")));
 
-        $deleted = [];
-        $hidden  = [];
-        foreach (array_unique(array_map("intval", explode(",", (string) $this->postParam("ids")))) as $id) {
-            $msg = $repo->get($id);
-            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
-                continue;
-            }
-
-            $sender = $msg->getSender();
-            if ($forAll && $sender instanceof User && $sender->getId() === $this->user->id) {
-                $msg->setDeleted(1);
-                $msg->setEdited(time()); // метка для поллинга (apiSync)
-                $msg->save();
-
-                $this->signaler->triggerEvent(new DeleteMessageEvent($id), $msg->getRecipient()->getId());
-                $deleted[] = $id;
-            } else {
-                $hidden[] = $id;
-            }
-        }
-
-        $cor->hideMessagesForOwner($hidden);
-
-        header("Content-Type: application/json");
-        exit(json_encode(["deleted" => $deleted, "hidden" => $hidden]));
+        header("HTTP/1.1 201 Created");
+        $this->returnJson($chat->simplify());
     }
 
-    public function renderApiPinMessage(int $sel): void
+    public function renderEdit(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+
+        $chat = $this->getChat($peer);
+        if (!$chat->isCreator($this->user->id)) {
+            $this->flash("err", tr("warning"), "Только создатель может редактировать настройки чата");
+            $this->redirect($chat->getURL());
+        }
+
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $this->willExecuteWriteAction();
+
+            $name = trim((string) $this->postParam("name"));
+            if ($name === "") {
+                $this->flash("err", tr("warning"), "Название чата не может быть пустым");
+                $this->redirect("/im/sel" . $chat->getPeerId() . "/edit");
+            }
+
+            $chat->getRecord()->update([
+                "name"        => $name,
+                "description" => $this->postParam("description"),
+            ]);
+
+            $this->flash("ok", tr("ok"), tr("settings_saved"));
+            $this->redirect("/im/sel" . $chat->getPeerId() . "/edit");
+        }
+
+        $friends = $this->getFriendsSortedByMessages();
+
+        $this->template->chat            = $chat;
+        $this->template->participants    = $this->getParticipants($chat);
+        $this->template->friends         = $friends;
+        $this->template->friendsIds      = array_map(fn($f) => $f->getId(), $friends);
+        $this->template->participantsIds = array_map("strval", $chat->getParticipantIds());
+    }
+
+    public function renderMembers(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+
+        $chat = $this->getChat($peer);
+
+        $this->template->chat         = $chat;
+        $this->template->participants = $this->getParticipants($chat);
+    }
+
+    public function renderApiAddParticipant(int $peer, int $userId): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $correspondent = $this->getCorrespondent($sel);
-        if (!$correspondent) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
+        $chat = $this->getManagedChat($peer);
+        if (!(new Users())->get($userId) || !$this->groupChats->addParticipant($chat->getId(), $userId)) {
+            header("HTTP/1.1 400 Bad Request");
+            $this->returnJson(["success" => false, "error" => "User already in chat"]);
         }
 
-        $cor   = new Correspondence($this->user->identity, $correspondent);
-        $msgId = (int) $this->postParam("msg_id");
-        $msg   = null;
-        if ($msgId !== 0) {
-            $msg = (new Messages())->get($msgId);
-            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
-                header("HTTP/1.1 404 Not Found");
-                exit();
-            }
-        }
-
-        $cor->setPinnedMessage($msgId);
-
-        header("Content-Type: application/json");
-        exit(json_encode(["pinned" => $msg ? $msg->simplify() : null]));
+        $this->returnJson(["success" => true]);
     }
 
-    public function renderApiReactMessage(int $sel, int $msgId): void
+    public function renderApiRemoveParticipant(int $peer, int $userId): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $correspondent = $this->getCorrespondent($sel);
-        $msg           = (new Messages())->get($msgId);
-        if (!$correspondent || !$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
-            header("HTTP/1.1 404 Not Found");
+        $chat = $this->getManagedChat($peer);
+
+        // админ не может выгнать создателя и других админов
+        if ($chat->isCreator($userId) || (!$chat->isCreator($this->user->id) && $chat->isAdmin($userId))) {
+            header("HTTP/1.1 403 Forbidden");
             exit();
         }
 
-        $reaction = (string) $this->postParam("reaction");
-        if (!in_array($reaction, Message::REACTIONS, true)) {
+        if (!$this->groupChats->removeParticipant($chat->getId(), $userId)) {
+            header("HTTP/1.1 400 Bad Request");
+            $this->returnJson(["success" => false, "error" => "User not in chat"]);
+        }
+
+        $this->groupChats->removeAdmin($chat->getId(), $userId);
+        $this->returnJson(["success" => true]);
+    }
+
+    public function renderApiLeave(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getChat($peer);
+        if ($chat->isCreator($this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
+            $this->returnJson(["error" => "Создатель не может покинуть беседу"]);
+        }
+
+        $this->groupChats->leaveChat($chat->getId(), $this->user->id);
+        $this->groupChats->removeAdmin($chat->getId(), $this->user->id);
+        $this->returnJson(["success" => true]);
+    }
+
+    public function renderApiMakeAdmin(int $peer, int $userId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getCreatedChat($peer);
+        if (!$chat->isParticipant($userId)) {
             header("HTTP/1.1 400 Bad Request");
             exit();
         }
 
-        $msg->toggleReaction($this->user->identity, $reaction);
-
-        header("Content-Type: application/json");
-        exit(json_encode(["reactions" => $msg->getReactions()]));
+        $this->groupChats->makeAdmin($chat->getId(), $userId);
+        $this->returnJson(["success" => true]);
     }
 
-    // карточка собеседника для меню вложений
-    public function renderApiPeerInfo(int $sel): void
+    public function renderApiRemoveAdmin(int $peer, int $userId): void
     {
         $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
 
-        $peer = $this->getCorrespondent($sel);
-        if (!$peer) {
-            $this->notFound();
+        $chat = $this->getCreatedChat($peer);
+        $this->groupChats->removeAdmin($chat->getId(), $userId);
+        $this->returnJson(["success" => true]);
+    }
+
+    public function renderApiSetAvatar(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getCreatedChat($peer);
+
+        $file = $_FILES["avatar"] ?? null;
+        if (!$file || $file["error"] !== UPLOAD_ERR_OK) {
+            header("HTTP/1.1 400 Bad Request");
+            $this->returnJson(["error" => "Upload error"]);
         }
 
-        $me     = $this->user->identity;
-        $isUser = $peer instanceof User;
-        $isSelf = $isUser && $peer->getId() === $me->getId();
-
-        $birthday = null;
-        if ($isUser && !$isSelf && $peer->getBirthday() && $peer->getBirthdayPrivacy() < 2 && $peer->getPrivacyPermission("page.info.read", $me)) {
-            $birthday = $peer->getBirthdayPrivacy() === 0
-            ? $peer->getBirthday()->format("%e %B %Y") . ", " . tr("years", $peer->getAge())
-            : $peer->getBirthday()->format("%e %B");
+        $photo = Photo::fastMake($this->user->id, $chat->getName(), $file);
+        if (!$photo) {
+            header("HTTP/1.1 500 Internal Server Error");
+            $this->returnJson(["error" => "Failed to create photo"]);
         }
 
-        // пустые разделы не показываем, как в телеграме
-        $counts = [];
-        foreach ((new Correspondence($me, $peer))->getAttachmentsCount() as $kind => $count) {
-            if ($count > 0) {
-                $counts[] = ["kind" => $kind, "label" => tr("groupchat_info_{$kind}s", $count), "title" => tr("groupchat_info_{$kind}s_title")];
-            }
-        }
+        $chat->getRecord()->update([
+            "avatar" => "/photo" . $photo->getPrettyId(),
+        ]);
 
         $this->returnJson([
-            "name"      => $isSelf ? tr("saved_messages") : $peer->getCanonicalName(),
-                          "avatar"    => $peer->getAvatarUrl("normal"),
-                          "link"      => $peer->getURL(),
-                          "self"      => $isSelf,
-                          "shortcode" => $isSelf ? null : $peer->getShortCode(),
-                          "birthday"  => $birthday ? trim($birthday) : null,
-                          "counts"    => $counts,
-                          "blocked"   => ($isUser && !$isSelf) ? $peer->isBlacklistedBy($me) : null,
-                          "peer_id"   => $isUser ? $peer->getId() : null,
+            "success"    => true,
+            "avatar_url" => $photo->getURLBySizeId("miniscule"),
         ]);
     }
 
-    public function renderApiPeerAttachments(int $sel): void
+    public function renderApiDeleteAvatar(int $peer): void
     {
         $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
 
-        $peer = $this->getCorrespondent($sel);
-        $kind = (string) $this->queryParam("type");
-        if (!$peer || !in_array($kind, Correspondence::ATTACHMENT_KINDS, true)) {
-            $this->notFound();
-        }
-
-        $perPage = 30;
-        $offset  = max(0, (int) $this->queryParam("offset"));
-        $found   = (new Correspondence($this->user->identity, $peer))->getAttachments($kind, $offset, $perPage + 1);
-
-        $items = [];
-        foreach (array_slice($found, 0, $perPage) as $item) {
-            $simple = $this->simplifyAttachment($item);
-            if ($simple) {
-                $items[] = $simple;
-            }
-        }
-
-        $this->returnJson([
-            "items" => $items,
-            "more"  => sizeof($found) > $perPage,
+        $chat = $this->getCreatedChat($peer);
+        $chat->getRecord()->update([
+            "avatar" => null,
         ]);
+
+        $this->returnJson(["success" => true]);
     }
 
-    // вложение для списков в меню вложений и в поиске по всем чатам
-    private function simplifyAttachment(object $item): ?array
-    {
-        if ($item instanceof Photo) {
-            return [
-                "id"    => $item->getPrettyId(),
-                "thumb" => $item->getURLBySizeId("normal"),
-                "url"   => $item->getURL(),
-            ];
-        } elseif ($item instanceof Video) {
-            return [
-                "id"     => $item->getOwner()->getId() . "_" . $item->getVirtualId(),
-                "name"   => $item->getName(),
-                "thumb"  => $item->getThumbnailURL(),
-                "length" => $item->getFormattedLength(),
-            ];
-        } elseif ($item instanceof Audio) {
-            // плеер темы, если она переопределяет шаблоны
-            $player = ($this->template->_templatePath ?? null) . "/Audio/player.latte";
-            if (!is_file($player)) {
-                $player = dirname(__FILE__) . "/templates/Audio/player.latte";
-            }
-
-            return [
-                "html" => $this->getTemplatingEngine()->renderToString($player, [
-                    "audio"       => $item,
-                    "thisUser"    => $this->user->identity,
-                    "hideButtons" => false,
-                    "club"        => null,
-                ]),
-            ];
-        } elseif ($item instanceof Document) {
-            return [
-                "link"    => "/doc" . $item->getPrettyId(),
-                "url"     => preg_replace("~^https?:~", "", $item->getURL()),
-                "name"    => $item->getName(),
-                "ext"     => $item->getFileExtension(),
-                "size"    => readable_filesize($item->getFilesize()),
-                "preview" => $item->hasPreview() ? $item->getPreview()->getURLBySizeId("medium") : null,
-            ];
-        }
-
-        return null;
-    }
-
-    // id собеседника как в /im?sel= (у клубов отрицательный)
-    private function getSel(object $peer): int
-    {
-        return $peer instanceof Club ? -$peer->getId() : $peer->getId();
-    }
-
-    private function isSelf(object $peer): bool
-    {
-        return $peer instanceof User && $peer->getId() === $this->user->id;
-    }
-
-    // собеседник в диалоге, которому принадлежит сообщение
-    private function getMessagePeer(Message $message): object
-    {
-        $sender = $message->getSender();
-
-        return $this->isSelf($sender) ? $message->getRecipient() : $sender;
-    }
-
-    // текст найденного сообщения без разметки, с подсвеченным запросом; длинный обрезается вокруг первого совпадения
-    private function searchPreview(Message $message, string $query): string
-    {
-        $text = html_entity_decode(strip_tags($message->getText()), ENT_QUOTES | ENT_HTML5, "UTF-8");
-        $text = trim(preg_replace("~\s+~u", " ", $text) ?? $text);
-
-        if (mb_strlen($text) > 200) {
-            $pos   = $query === "" ? false : mb_stripos($text, $query);
-            $start = $pos === false ? 0 : max(0, $pos - 60);
-            $text  = ($start > 0 ? "…" : "") . mb_substr($text, $start, 200) . ($start + 200 < mb_strlen($text) ? "…" : "");
-        }
-
-        $parts = $query === "" ? false : preg_split("~(" . preg_quote($query, "~") . ")~iu", $text, -1, PREG_SPLIT_DELIM_CAPTURE);
-        if ($parts === false) {
-            return htmlspecialchars($text);
-        }
-
-        $html = "";
-        foreach ($parts as $i => $part) {
-            $html .= $i % 2 ? "<mark class=\"im-search-hl\">" . htmlspecialchars($part) . "</mark>" : htmlspecialchars($part);
-        }
-
-        return $html;
-    }
-
-    // вкладки вложений в поиске по всем чатам, в порядке показа
-    private const SEARCH_MEDIA = ["photo", "video", "audio", "gif", "doc"];
-
-    public function renderSearch(): void
+    public function renderApiGetFriends(int $peer): void
     {
         $this->assertUserLoggedIn();
 
-        $this->prepareSearch();
-    }
-
-    // те же результаты без страницы вокруг: поиск обновляет их по мере ввода и догружает при прокрутке
-    public function renderApiSearch(): void
-    {
-        $this->assertUserLoggedIn();
-
-        $this->prepareSearch();
-    }
-
-    private function prepareSearch(): void
-    {
-        $me        = $this->user->identity;
-        $query     = trim((string) $this->queryParam("q"));
-        $page      = max(1, (int) ($this->queryParam("p") ?? 1));
-        $requested = (string) $this->queryParam("section");
-        $matchSelf = $query === "" || mb_stripos(tr("saved_messages"), $query) !== false;
-
-        $counts = [
-            "chats"    => $this->messages->searchCorrespondenciesCount($me, $query, $matchSelf),
-            "messages" => $query !== "" ? $this->messages->searchMessagesCount($me, $query) : 0,
-        ];
-
-        $attachments = $this->messages->getAttachmentsCount($me);
-        foreach (self::SEARCH_MEDIA as $kind) {
-            $counts[$kind] = $attachments[$kind];
-        }
-
-        $section = $requested;
-        if (!isset($counts[$section])) {
-            $section = ($query !== "" && $counts["chats"] === 0) ? "messages" : "chats";
-        }
-
-        $perPage = match ($section) {
-            "chats"        => OPENVK_DEFAULT_PER_PAGE,
-            "photo", "gif" => 30,
-            default        => 20,
-        };
-        $offset  = ($page - 1) * $perPage;
-
-        $results = [];
-        if ($section === "chats") {
-            $results = $this->messages->searchCorrespondencies($me, $query, $matchSelf, $page, $perPage);
-        } elseif ($section === "messages") {
-            if ($query !== "") {
-                foreach ($this->messages->searchMessages($me, $query, $offset, $perPage) as $message) {
-                    $results[] = $this->describeFoundMessage($message, $query);
-                }
-            }
-        } else {
-            foreach ($this->messages->getAttachments($me, $section, $offset, $perPage) as [$item, $message]) {
-                $peer = $this->getMessagePeer($message);
-                $att  = $this->simplifyAttachment($item);
-                if (!$att) {
-                    continue;
-                }
-
-                $results[] = (object) [
-                    "att"  => $att,
-                    "url"  => "/im?sel=" . $this->getSel($peer) . "&msg=" . $message->getId(),
-                    "chat" => $this->isSelf($peer) ? tr("saved_messages") : $peer->getCanonicalName(),
-                ];
-            }
-        }
-
-        $count = $counts[$section];
-
-        $this->template->query    = $query;
-        $this->template->section  = $section;
-        $this->template->counts   = $counts;
-        $this->template->results  = $results;
-        // следующая страница этого же раздела, её подгружает прокрутка
-        $this->template->nextPage = $page * $perPage < $count
-        ? "/im/api/search?" . http_build_query(["q" => $query !== "" ? $query : null, "section" => $section, "p" => $page + 1])
-        : null;
-    }
-
-    // найденное сообщение для поиска по всем чатам: в каком оно диалоге и куда ведёт
-    private function describeFoundMessage(Message $message, string $query): object
-    {
-        $peer = $this->getMessagePeer($message);
-
-        return (object) [
-            "message" => $message,
-            "peer"    => $peer,
-            "url"     => "/im?sel=" . $this->getSel($peer) . "&msg=" . $message->getId(),
-            "saved"   => $this->isSelf($peer),
-            "own"     => !$this->isSelf($peer) && $this->isSelf($message->getSender()),
-            "text"    => $this->searchPreview($message, $query),
-        ];
-    }
-
-    public function renderApiSearchMessages(int $sel): void
-    {
-        $this->assertUserLoggedIn();
-
-        $peer = $this->getCorrespondent($sel);
-        if (!$peer) {
-            $this->notFound();
-        }
-
-        $query   = trim((string) $this->queryParam("q"));
-        $perPage = 20;
-        $offset  = max(0, (int) $this->queryParam("offset"));
-        $cor     = new Correspondence($this->user->identity, $peer);
-        $found   = $query === "" ? [] : $cor->searchMessages($query, $offset, $perPage + 1);
-
-        $items = [];
-        foreach (array_slice($found, 0, $perPage) as $message) {
-            $sender  = $message->getSender();
-            $items[] = [
-                "uuid"   => $message->getId(),
-                "sender" => [
-                    "name"   => $sender->getCanonicalName(),
-                    "avatar" => $sender->getAvatarUrl("miniscule"),
-                ],
-                "ts"     => $message->getSendTime()->timestamp(),
-                "text"   => $this->searchPreview($message, $query),
-            ];
-        }
-
-        $this->returnJson([
-            "items" => $items,
-            "count" => ($query === "" || $offset > 0) ? null : $cor->searchMessagesCount($query),
-                          "more"  => sizeof($found) > $perPage,
-        ]);
-    }
-
-    // кусок истории для перехода к сообщению (msg) или дате (date) и догрузка более новых после такого перехода (after)
-    public function renderApiHistory(int $sel): void
-    {
-        $this->assertUserLoggedIn();
-
-        $peer = $this->getCorrespondent($sel);
-        if (!$peer) {
-            $this->notFound();
-        }
-
-        $perPage  = OPENVK_DEFAULT_PER_PAGE * 2;
-        $cor      = new Correspondence($this->user->identity, $peer);
-        $target   = null;
-        $olderEnd = null;
-
-        if (!is_null($this->queryParam("after"))) {
-            $messages = $cor->getMessages(Correspondence::CAP_BEHAVIOUR_START_MESSAGE_ID, (int) $this->queryParam("after"), $perPage + 1, 0, true);
-            $newerEnd = sizeof($messages) <= $perPage;
-            $messages = array_slice($messages, 0, $perPage);
-        } else {
-            if (!is_null($this->queryParam("date"))) {
-                $target = $cor->getNearestMessageId((int) $this->queryParam("date"));
-            } else {
-                $msg    = $this->messages->get((int) $this->queryParam("msg"));
-                $target = ($msg && !$msg->isDeleted() && $cor->hasMessage($msg)) ? $msg->getId() : null;
-            }
-
-            [$messages, $hasOlder, $hasNewer] = $target ? $cor->getMessagesAround($target, $perPage, $perPage) : [[], false, false];
-            $olderEnd = !$hasOlder;
-            $newerEnd = !$hasNewer;
-        }
+        $chat         = $this->getChat($peer);
+        $participants = $chat->getParticipantIds();
 
         $result = [];
-        foreach ($messages as $message) {
-            $simple = $message->simplify();
-            $this->enrichAttachmentsWithHTML($message, $simple);
-            $result[] = $simple;
-        }
-
-        $this->returnJson([
-            "target"    => $target,
-            "messages"  => $result,
-            "older_end" => $olderEnd,
-            "newer_end" => $newerEnd,
-        ]);
-    }
-
-    // дни с сообщениями для календаря; границы месяца и часовой пояс (в минутах) присылает браузер
-    public function renderApiCalendar(int $sel): void
-    {
-        $this->assertUserLoggedIn();
-
-        $peer = $this->getCorrespondent($sel);
-        if (!$peer) {
-            $this->notFound();
-        }
-
-        $from = (int) $this->queryParam("from");
-        $to   = min((int) $this->queryParam("to"), $from + 32 * 86400);
-        $tz   = max(-14 * 60, min(14 * 60, (int) $this->queryParam("tz")));
-
-        $cor = new Correspondence($this->user->identity, $peer);
-        [$first, $last] = $cor->getTimeBounds();
-
-        $this->returnJson([
-            "days"  => $to > $from ? $cor->getMessageDays($from, $to, $tz * 60) : [],
-                          "first" => $first,
-                          "last"  => $last,
-        ]);
-    }
-
-    public function renderApiGetDialogs(): void
-    {
-        $this->assertUserLoggedIn();
-
-        $perPage  = 30;
-        $page     = max(1, (int) ($this->queryParam("p") ?? 1));
-        $archived = (bool) $this->queryParam("archived");
-
-        $result = [];
-        foreach ($this->messages->getCorrespondencies($this->user->identity, $page, $perPage, null, $archived) as $cor) {
-            $recipient = $cor->getCorrespondents()[1];
+        foreach ($this->getFriendsSortedByMessages() as $friend) {
             $result[] = [
-                "id"     => $recipient instanceof User ? $recipient->getId() : -$recipient->getId(),
-                "name"   => $recipient->getCanonicalName(),
-                "avatar" => $recipient->getAvatarUrl('miniscule'),
+                "id"              => $friend->getId(),
+                "name"            => $friend->getCanonicalName(),
+                "avatar"          => $friend->getAvatarUrl("miniscule"),
+                "already_in_chat" => in_array($friend->getId(), $participants, true),
             ];
         }
 
-        header("Content-Type: application/json");
-        exit(json_encode([
-            "items" => $result,
-            "more"  => $page * $perPage < $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
-        ]));
+        $this->returnJson($result);
     }
 }

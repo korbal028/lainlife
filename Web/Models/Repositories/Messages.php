@@ -48,7 +48,7 @@ class Messages
         $query   = file_get_contents(__DIR__ . "/../sql/get-correspondencies.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
         $hiddenOwner = $correspondent instanceof User ? $id : 0;
-        $rows = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetchAll();
+        $rows = DatabaseConnection::i()->getConnection()->query($query, $id, $class, GroupChat::class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetchAll();
 
         // закреплённые — сверху в своём порядке, остальные — от новых к старым. Порядок берётся из тех же настроек диалогов,
         // по которым рисуется значок закрепа, чтобы чат с новым сообщением никогда не оказывался выше закреплённых
@@ -78,11 +78,8 @@ class Messages
         $coresps = array_slice(array_merge(array_column($pinned, 2), array_column($rest, 2)), $offset, $limit);
         foreach ($coresps as $c) {
             if ($c->class === GroupChat::class) {
-                yield (new GroupChats())->get((int) $c->id);
-                continue;
-            }
-
-            if ($c->class === 'openvk\Web\Models\Entities\User') {
+                $anotherCorrespondent = (new GroupChats())->get((int) $c->id);
+            } elseif ($c->class === 'openvk\Web\Models\Entities\User') {
                 $anotherCorrespondent = (new Users())->get($c->id);
             } elseif ($c->class === 'openvk\Web\Models\Entities\Club') {
                 $anotherCorrespondent = (new Clubs())->get($c->id);
@@ -99,7 +96,7 @@ class Messages
         $query = file_get_contents(__DIR__ . "/../sql/get-correspondencies-count.tsql");
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
         $hiddenOwner = $correspondent instanceof User ? $id : 0;
-        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetch()->cnt;
+        $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, GroupChat::class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetch()->cnt;
         if ($withGroupChats) {
             $count += sizeof($this->getGroupChatRows($correspondent, (new MessengerDialogs())->getAllFor($correspondent), $archived));
         }
@@ -117,9 +114,10 @@ class Messages
         $rows = $this->context->query(
             "SELECT c.`id`, COALESCE(MAX(m.`created`), c.`created`) AS `time`
              FROM `group_chats` c
-             LEFT JOIN `group_messages` m ON m.`chat_id` = c.`id` AND m.`deleted` = 0
+             LEFT JOIN `messages` m ON m.`recipient_type` = ? AND m.`recipient_id` = c.`id` AND m.`deleted` = 0
              WHERE c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
              GROUP BY c.`id`, c.`created`",
+            GroupChat::class,
             (string) $owner->getId()
         );
 
@@ -161,6 +159,8 @@ class Messages
             $peer = (new Users())->get((int) $row->id);
         } elseif ($row->class === Club::class) {
             $peer = (new Clubs())->get((int) $row->id);
+        } elseif ($row->class === GroupChat::class) {
+            $peer = (new GroupChats())->get((int) $row->id);
         }
 
         return isset($peer) ? new Correspondence($owner, $peer) : null;
@@ -175,8 +175,9 @@ class Messages
 
         return [
             file_get_contents(__DIR__ . "/../sql/search-correspondencies.tsql"),
-            $id, $class, $id, $class, $id, $class, User::class, Club::class, $owner instanceof User ? $id : 0,
-            $class, $id, (int) $matchSelf, $like, $like, $like,
+            $id, $class, GroupChat::class, $id, $class, GroupChat::class, (string) $id,
+            $id, $class, User::class, Club::class, GroupChat::class, $owner instanceof User ? $id : 0,
+            $class, $id, (int) $matchSelf, $like, $like, $like, $like,
         ];
     }
 
@@ -220,13 +221,21 @@ class Messages
             "SELECT m.* FROM messages m
             LEFT JOIN messenger_dialogs md
               ON md.owner_type = ? AND md.owner_id = ?
-              AND md.peer_type = IF(m.sender_type = ? AND m.sender_id = ?, m.recipient_type, m.sender_type)
-              AND md.peer_id = IF(m.sender_type = ? AND m.sender_id = ?, m.recipient_id, m.sender_id)
+              AND md.peer_type = IF(m.recipient_type = ? OR (m.sender_type = ? AND m.sender_id = ?), m.recipient_type, m.sender_type)
+              AND md.peer_id = IF(m.recipient_type = ? OR (m.sender_type = ? AND m.sender_id = ?), m.recipient_id, m.sender_id)
             WHERE m.deleted = 0
-              AND ((m.sender_type = ? AND m.sender_id = ?) OR (m.recipient_type = ? AND m.recipient_id = ?))
+              AND (
+                (m.recipient_type <> ? AND ((m.sender_type = ? AND m.sender_id = ?) OR (m.recipient_type = ? AND m.recipient_id = ?)))
+                OR (m.recipient_type = ? AND m.recipient_id IN (SELECT id FROM group_chats WHERE deleted = 0 AND FIND_IN_SET(?, participants) > 0))
+              )
               AND m.id > COALESCE(md.cleared_till, 0)
               AND m.id NOT IN (SELECT message_id FROM messages_hidden WHERE owner_id = ?)",
-            $class, $id, $class, $id, $class, $id, $class, $id, $class, $id, $owner instanceof User ? $id : 0,
+            $class, $id,
+            GroupChat::class, $class, $id,
+            GroupChat::class, $class, $id,
+            GroupChat::class, $class, $id, $class, $id,
+            GroupChat::class, $owner instanceof User ? (string) $id : "",
+            $owner instanceof User ? $id : 0,
         ];
     }
 

@@ -1,9 +1,9 @@
 {var $GroupChat = openvk\Web\Models\Entities\GroupChat::class}
 {foreach $corresps as $coresp}
-{var $isChat    = $coresp instanceof $GroupChat}
-{var $recipient = $isChat ? $coresp : $coresp->getCorrespondents()[1]}
-{var $lastMsg   = $isChat ? $coresp->getLastMessage() : $coresp->getPreviewMessage()}
-{var $sel       = $isChat ? $coresp->getPeerId() : $coresp->getID()}
+{var $recipient = $coresp->getCorrespondents()[1]}
+{var $isChat    = $recipient instanceof $GroupChat}
+{var $lastMsg   = $coresp->getPreviewMessage()}
+{var $sel       = $coresp->getID()}
 {var $isSaved   = !$isChat && $recipient->getId() === $thisUser->getId()}
 {var $settings  = $dialogSettings[$sel] ?? ["pinned" => 0, "muted" => 0]}
 <div n:class="scroll_node, crp-entry, $settings['pinned'] ? pinned, $settings['muted'] ? muted"
@@ -29,7 +29,7 @@
         {else}
             <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
         {/if}
-        <span>{$lastMsg ? $lastMsg->getSendTimeHumanized() : $coresp->getCreatedTime()->format("%d.%m.%y")}</span>
+        <span>{$lastMsg ? $lastMsg->getSendTimeHumanized() : $recipient->getCreatedTime()->format("%d.%m.%y")}</span>
     </div>
     <div n:class="crp-entry--message, !$isSaved && $lastMsg?->isUnread() ? unread">
         {var $_author = $lastMsg?->getSender()}
