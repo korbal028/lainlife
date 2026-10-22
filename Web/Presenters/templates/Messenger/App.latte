@@ -1582,8 +1582,14 @@
                 del:        {tr("messenger_delete_chat")},
                 delText:    {tr("messenger_delete_chat_confirm", "%NAME%")},
                 delForAll:  {tr("messenger_delete_chat_for_all", "%NAME%")},
+                delForEveryone: {tr("messenger_delete_chat_for_everyone")},
                 delBtn:     {tr("delete")},
                 cancel:     {tr("cancel")},
+                leave:      {tr("messenger_leave_chat")},
+                leaveText:  {tr("messenger_leave_chat_confirm", "%NAME%")},
+                leaveBtn:   {tr("messenger_leave_chat_button")},
+                owner:      {tr("messenger_chat_owner")},
+                admin:      {tr("messenger_chat_admin")},
                 blockText:  {tr("adding_to_bl_sure", "%NAME%")},
                 blockTitle: {tr("addition_to_bl")},
                 yes:        {tr("yes")},
@@ -1685,7 +1691,25 @@
                                         <img src="${ OXYGEN }actions/im-ban-user.png" alt="" />
                                         <span>${ escapeHtml(info.blocked ? PEER_STR.unblock : PEER_STR.block) }</span>
                                     </a>` : "" }
+                                ${ info.can_leave ? `
+                                    <a class="im-peer-row im-peer-danger" data-act="leave">
+                                        <img src="${ OXYGEN }actions/application-exit.png" alt="" />
+                                        <span>${ escapeHtml(PEER_STR.leave) }</span>
+                                    </a>` : "" }
                             </div>
+                            ${ info.chat ? `
+                                <div class="im-peer-section">
+                                    <div class="im-peer-row im-peer-members--head">
+                                        <img src="${ OXYGEN }apps/system-users.png" alt="" />
+                                        <span>${ escapeHtml(info.members_label) }</span>
+                                    </div>
+                                    ${ info.members.map(m => `
+                                        <a class="im-peer-member" href="${ escapeHtml(m.link) }">
+                                            <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
+                                            <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
+                                            ${ m.role ? `<span class="im-peer-member--role">${ escapeHtml(PEER_STR[m.role]) }</span>` : "" }
+                                        </a>`).join("") }
+                                </div>` : "" }
                         </div>
                         <div class="im-peer-page im-peer-list" data-page="list" hidden></div>
                         <div class="im-peer-page im-peer-search" data-page="search" hidden>
@@ -1851,8 +1875,9 @@
                     close();
                     const name = escapeHtml(info.name);
                     let text = PEER_STR.delText.replace("%NAME%", name);
-                    if(!info.self) {
-                        text += `<br><br><label><input type="checkbox" id="im_peer_delete_for_all"> ${ PEER_STR.delForAll.replace("%NAME%", name) }</label>`;
+                    if(info.chat ? info.can_delete_for_all : !info.self) {
+                        const forAll = info.chat ? PEER_STR.delForEveryone : PEER_STR.delForAll.replace("%NAME%", name);
+                        text += `<br><br><label><input type="checkbox" id="im_peer_delete_for_all"> ${ forAll }</label>`;
                     }
 
                     MessageBox(PEER_STR.del, text, [PEER_STR.delBtn, PEER_STR.cancel], [async () => {
@@ -1863,6 +1888,19 @@
                         fd.set("for_all", document.getElementById("im_peer_delete_for_all")?.checked ? "1" : "0");
 
                         const res = await fetch("/im/api/dialogs/action.json", { method: "POST", body: fd });
+                        if(!res.ok) return fastError(tr("messages_error_1"));
+
+                        window.router.navigate("/im");
+                    }, Function.noop]);
+                };
+
+                const askLeave = () => {
+                    close();
+                    MessageBox(PEER_STR.leave, PEER_STR.leaveText.replace("%NAME%", escapeHtml(info.name)), [PEER_STR.leaveBtn, PEER_STR.cancel], [async () => {
+                        const fd = new FormData();
+                        fd.set("hash", {$csrfToken});
+
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/leave.json`, { method: "POST", body: fd });
                         if(!res.ok) return fastError(tr("messages_error_1"));
 
                         window.router.navigate("/im");
@@ -1896,6 +1934,8 @@
                     const act = e.target.closest(".im-peer-row[data-act]");
                     if(act) {
                         if(act.dataset.act === "search") return showSearch();
+
+                        if(act.dataset.act === "leave") return askLeave();
 
                         return act.dataset.act === "delete" ? askDelete() : toggleBlock(act);
                     }

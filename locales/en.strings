@@ -1477,6 +1477,12 @@
 "messenger_info_birthday" = "Birthday";
 "messenger_info_empty" = "Nothing here yet";
 "messenger_block_user" = "Block user";
+"messenger_leave_chat" = "Leave group";
+"messenger_leave_chat_confirm" = "Are you sure you want to leave <b>$1</b>?";
+"messenger_leave_chat_button" = "Leave";
+"messenger_delete_chat_for_everyone" = "Also delete for everyone";
+"messenger_chat_owner" = "owner";
+"messenger_chat_admin" = "admin";
 "messenger_unblock_user" = "Unblock user";
 "messenger_info_photos_zero" = "No photos";
 "messenger_info_photos_one" = "1 photo";

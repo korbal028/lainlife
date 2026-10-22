@@ -114,9 +114,14 @@ class Messages
         $rows = $this->context->query(
             "SELECT c.`id`, COALESCE(MAX(m.`created`), c.`created`) AS `time`
              FROM `group_chats` c
-             LEFT JOIN `messages` m ON m.`recipient_type` = ? AND m.`recipient_id` = c.`id` AND m.`deleted` = 0
+             LEFT JOIN `messenger_dialogs` d ON d.`owner_type` = ? AND d.`owner_id` = ? AND d.`peer_type` = ? AND d.`peer_id` = c.`id`
+             LEFT JOIN `messages` m ON m.`recipient_type` = ? AND m.`recipient_id` = c.`id` AND m.`deleted` = 0 AND m.`id` > COALESCE(d.`cleared_till`, 0)
              WHERE c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
-             GROUP BY c.`id`, c.`created`",
+             GROUP BY c.`id`, c.`created`
+             HAVING MAX(COALESCE(d.`cleared_till`, 0)) = 0 OR COUNT(m.`id`) > 0",
+            get_class($owner),
+            $owner->getId(),
+            GroupChat::class,
             GroupChat::class,
             (string) $owner->getId()
         );

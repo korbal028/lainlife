@@ -1407,6 +1407,12 @@
 "messenger_info_birthday" = "День рождения";
 "messenger_info_empty" = "Здесь пока ничего нет";
 "messenger_block_user" = "Заблокировать";
+"messenger_leave_chat" = "Выйти из группы";
+"messenger_leave_chat_confirm" = "Вы уверены, что хотите выйти из <b>$1</b>?";
+"messenger_leave_chat_button" = "Выйти";
+"messenger_delete_chat_for_everyone" = "Также удалить для всех";
+"messenger_chat_owner" = "владелец";
+"messenger_chat_admin" = "админ";
 "messenger_unblock_user" = "Разблокировать";
 "messenger_info_photos_zero" = "Нет фотографий";
 "messenger_info_photos_one" = "$1 фотография";

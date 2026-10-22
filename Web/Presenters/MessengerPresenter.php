@@ -507,10 +507,15 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
-        // беседу из списка не удалить, только выйти из неё
-        if ($correspondent instanceof GroupChat && $this->postParam("act") === "delete") {
-            header("HTTP/1.1 400 Bad Request");
-            exit();
+        // удалить беседу для всех может только владелец
+        if ($correspondent instanceof GroupChat && $this->postParam("act") === "delete" && $this->postParam("for_all") === "1") {
+            if (!$correspondent->isCreator($me->getId())) {
+                header("HTTP/1.1 403 Forbidden");
+                exit();
+            }
+
+            $correspondent->getRecord()->update(["deleted" => 1]);
+            $this->returnJson(["success" => true]);
         }
 
         switch ($this->postParam("act")) {
@@ -679,12 +684,42 @@ final class MessengerPresenter extends OpenVKPresenter
             "link"      => $isChat ? "/im/sel" . $peer->getPeerId() . "/members" : $peer->getURL(),
             "self"      => $isSelf,
             "shortcode" => ($isSelf || $isChat) ? null : $peer->getShortCode(),
-            "members"   => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
+            "chat"      => $isChat,
+            "can_leave" => $isChat && !$peer->isCreator($me->getId()),
+            "can_delete_for_all" => $isChat && $peer->isCreator($me->getId()),
+            "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
+            "members"   => $isChat ? $this->getChatMembers($peer) : [],
             "birthday"  => $birthday ? trim($birthday) : null,
             "counts"    => $counts,
             "blocked"   => ($isUser && !$isSelf) ? $peer->isBlacklistedBy($me) : null,
             "peer_id"   => $isUser ? $peer->getId() : null,
         ]);
+    }
+
+    // участники беседы: владелец, админы, остальные
+    private function getChatMembers(GroupChat $chat): array
+    {
+        $users   = new Users();
+        $members = [];
+        foreach ($chat->getParticipantIds() as $id) {
+            $user = $users->get($id);
+            if (!$user) {
+                continue;
+            }
+
+            $role = $chat->isCreator($id) ? "owner" : ($chat->isAdmin($id) ? "admin" : null);
+            $members[] = [
+                "id"     => $id,
+                "name"   => $user->getCanonicalName(),
+                "avatar" => $user->getAvatarUrl("miniscule"),
+                "link"   => $user->getURL(),
+                "role"   => $role,
+                "order"  => $role === "owner" ? 0 : ($role === "admin" ? 1 : 2),
+            ];
+        }
+
+        usort($members, fn($a, $b) => $a["order"] <=> $b["order"]);
+        return array_map(fn($m) => array_diff_key($m, ["order" => 0]), $members);
     }
 
     public function renderApiPeerAttachments(int $sel): void

@@ -1876,6 +1876,54 @@ span.ok-smile.ok-smile {
     color: #c3423c;
 }
 
+.im-peer-members--head {
+    cursor: default;
+}
+
+.im-peer-members--head:hover {
+    background: none;
+}
+
+.im-peer-member {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 20px;
+    color: inherit;
+    text-decoration: none;
+}
+
+.im-peer-member:hover {
+    background: rgba(81, 129, 184, .08);
+    text-decoration: none;
+}
+
+.im-peer-member--ava {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.im-peer-member--ava.avatar-style-2 {
+    border-radius: 50%;
+}
+
+.im-peer-member--name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.im-peer-member--role {
+    flex: none;
+    color: #888;
+    font-size: 11px;
+}
+
 .im-peer-list {
     padding: 6px;
 }
