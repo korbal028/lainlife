@@ -1,11 +1,15 @@
+{var $GroupChat = openvk\Web\Models\Entities\GroupChat::class}
 {foreach $corresps as $coresp}
-{var $recipient = $coresp->getCorrespondents()[1]}
-{var $lastMsg   = $coresp->getPreviewMessage()}
-{var $isSaved   = $recipient->getId() === $thisUser->getId()}
-{var $settings  = $dialogSettings[$coresp->getID()] ?? ["pinned" => 0, "muted" => 0]}
+{var $isChat    = $coresp instanceof $GroupChat}
+{var $recipient = $isChat ? $coresp : $coresp->getCorrespondents()[1]}
+{var $lastMsg   = $isChat ? $coresp->getLastMessage() : $coresp->getPreviewMessage()}
+{var $sel       = $isChat ? $coresp->getPeerId() : $coresp->getID()}
+{var $isSaved   = !$isChat && $recipient->getId() === $thisUser->getId()}
+{var $settings  = $dialogSettings[$sel] ?? ["pinned" => 0, "muted" => 0]}
 <div n:class="scroll_node, crp-entry, $settings['pinned'] ? pinned, $settings['muted'] ? muted"
      data-im-url="{$coresp->getURL()}"
-     data-sel="{$coresp->getID()}"
+     data-sel="{$sel}"
+     data-chat="{(int) $isChat}"
      data-name="{$isSaved ? tr('saved_messages') : $recipient->getCanonicalName()}"
      data-self="{(int) $isSaved}"
      onmousedown="if(event.button === 0 && !this.classList.contains('pinned')) window.router.navigate({$coresp->getURL()});" >
@@ -25,17 +29,17 @@
         {else}
             <a href="{$recipient->getURL()}">{$recipient->getCanonicalName()}</a><br/>
         {/if}
-        <span>{$lastMsg->getSendTimeHumanized()}</span>
+        <span>{$lastMsg ? $lastMsg->getSendTimeHumanized() : $coresp->getCreatedTime()->format("%d.%m.%y")}</span>
     </div>
-    <div n:class="crp-entry--message, !$isSaved && $lastMsg->isUnread() ? unread">
-        {var $_author = $lastMsg->getSender()}
+    <div n:class="crp-entry--message, !$isSaved && $lastMsg?->isUnread() ? unread">
+        {var $_author = $lastMsg?->getSender()}
 
-        <div class="crp-entry--message---av" n:if="!$isSaved && $_author->getId() === $thisUser->getId()">
+        <div class="crp-entry--message---av" n:if="!$isSaved && $_author instanceof \openvk\Web\Models\Entities\User && $_author->getId() === $thisUser->getId()">
             <img src="{$_author->getAvatarURL('miniscule')}"
             alt="Фотография пользователя" />
         </div>
         <div class="crp-entry--message---text">
-            {$lastMsg->getPreviewText()|noescape}
+            {$lastMsg?->getPreviewText()|noescape}
         </div>
     </div>
     <div class="crp-entry--status">

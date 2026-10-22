@@ -87,7 +87,8 @@
                         ? [["unarchive", strings.unarchive]]
                         : [entry.classList.contains("pinned") ? ["unpin", strings.unpin] : ["pin", strings.pin], ["archive", strings.archive]]),
                     entry.classList.contains("muted") ? ["unmute", strings.unmute] : ["mute", strings.mute],
-                    ["delete", strings.deleteTitle],
+                    // беседу из списка не удалить
+                    ...(entry.dataset.chat === "1" ? [] : [["delete", strings.deleteTitle]]),
                 ];
 
                 const onAction = async (entry, act, tip) => {

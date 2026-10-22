@@ -10,6 +10,7 @@ use openvk\Web\Models\Entities\Club;
 use openvk\Web\Models\Entities\Document;
 use openvk\Web\Models\Entities\Message;
 use openvk\Web\Models\Entities\Correspondence;
+use openvk\Web\Models\Entities\GroupChat;
 use Chandler\Database\DatabaseConnection;
 use Nette\Database\Table\ActiveRow;
 
@@ -37,7 +38,8 @@ class Messages
         return self::$cache[$id] ??= $this->toMessage($this->messages->get($id));
     }
 
-    public function getCorrespondencies(RowModel $correspondent, int $page = 1, ?int $perPage = null, ?int $offset = null, bool $archived = false): \Traversable
+    // $withGroupChats — подмешать беседы пользователя (GroupChat) в общий список
+    public function getCorrespondencies(RowModel $correspondent, int $page = 1, ?int $perPage = null, ?int $offset = null, bool $archived = false, bool $withGroupChats = false): \Traversable
     {
         $id      = $correspondent->getId();
         $class   = get_class($correspondent);
@@ -51,10 +53,18 @@ class Messages
         // закреплённые — сверху в своём порядке, остальные — от новых к старым. Порядок берётся из тех же настроек диалогов,
         // по которым рисуется значок закрепа, чтобы чат с новым сообщением никогда не оказывался выше закреплённых
         $settings = (new MessengerDialogs())->getAllFor($correspondent);
+        if ($withGroupChats) {
+            $rows = array_merge($rows, $this->getGroupChatRows($correspondent, $settings, $archived));
+        }
+
         $pinned   = [];
         $rest     = [];
         foreach ($rows as $i => $row) {
-            $sel = $row->class === Club::class ? -(int) $row->id : (int) $row->id;
+            $sel = match ($row->class) {
+                Club::class      => -(int) $row->id,
+                GroupChat::class => GroupChat::PEER_OFFSET + (int) $row->id,
+                default          => (int) $row->id,
+            };
             $pos = (int) ($settings[$sel]["pinned"] ?? 0);
             if ($pos > 0) {
                 $pinned[] = [$pos, $i, $row];
@@ -67,6 +77,11 @@ class Messages
 
         $coresps = array_slice(array_merge(array_column($pinned, 2), array_column($rest, 2)), $offset, $limit);
         foreach ($coresps as $c) {
+            if ($c->class === GroupChat::class) {
+                yield (new GroupChats())->get((int) $c->id);
+                continue;
+            }
+
             if ($c->class === 'openvk\Web\Models\Entities\User') {
                 $anotherCorrespondent = (new Users())->get($c->id);
             } elseif ($c->class === 'openvk\Web\Models\Entities\Club') {
@@ -77,7 +92,7 @@ class Messages
         }
     }
 
-    public function getCorrespondenciesCount(RowModel $correspondent, bool $archived = false): ?int
+    public function getCorrespondenciesCount(RowModel $correspondent, bool $archived = false, bool $withGroupChats = false): ?int
     {
         $id    = $correspondent->getId();
         $class = get_class($correspondent);
@@ -85,7 +100,40 @@ class Messages
         DatabaseConnection::i()->getConnection()->query(file_get_contents(__DIR__ . "/../sql/mysql-msg-fix.tsql"));
         $hiddenOwner = $correspondent instanceof User ? $id : 0;
         $count = DatabaseConnection::i()->getConnection()->query($query, $id, $class, $id, $class, $id, $class, $hiddenOwner, (int) $archived)->fetch()->cnt;
+        if ($withGroupChats) {
+            $count += sizeof($this->getGroupChatRows($correspondent, (new MessengerDialogs())->getAllFor($correspondent), $archived));
+        }
+
         return $count;
+    }
+
+    // беседы пользователя в том же виде, что строки get-correspondencies.tsql; время — последнее сообщение или создание беседы
+    private function getGroupChatRows(RowModel $owner, array $settings, bool $archived): array
+    {
+        if (!($owner instanceof User)) {
+            return [];
+        }
+
+        $rows = $this->context->query(
+            "SELECT c.`id`, COALESCE(MAX(m.`created`), c.`created`) AS `time`
+             FROM `group_chats` c
+             LEFT JOIN `group_messages` m ON m.`chat_id` = c.`id` AND m.`deleted` = 0
+             WHERE c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
+             GROUP BY c.`id`, c.`created`",
+            (string) $owner->getId()
+        );
+
+        $result = [];
+        foreach ($rows as $row) {
+            $sel = GroupChat::PEER_OFFSET + (int) $row->id;
+            if ((bool) ($settings[$sel]["archived"] ?? 0) !== $archived) {
+                continue;
+            }
+
+            $result[] = (object) ["id" => (int) $row->id, "class" => GroupChat::class, "time" => (int) $row->time];
+        }
+
+        return $result;
     }
 
     // подстрока для LIKE, без подстановочных символов из самого запроса

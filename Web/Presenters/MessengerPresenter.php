@@ -8,9 +8,9 @@ use Chandler\Signaling\SignalManager;
 use openvk\Web\Events\NewMessageEvent;
 use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
-use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs};
+use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs, GroupChats};
 use openvk\Web\Models\Entities\Messages\Sticker;
-use openvk\Web\Models\Entities\{Message, Correspondence, User, Club, Photo, Video, Audio, Document};
+use openvk\Web\Models\Entities\{Message, Correspondence, User, Club, Photo, Video, Audio, Document, GroupChat};
 
 final class MessengerPresenter extends OpenVKPresenter
 {
@@ -31,6 +31,19 @@ final class MessengerPresenter extends OpenVKPresenter
         parent::onStartup();
 
         $this->template->hideFooter = true;
+    }
+
+    // собеседник или беседа (peer_id >= 2000000000) для настроек диалога в списке
+    private function getDialogPeer(int $sel): ?object
+    {
+        if ($sel <= GroupChat::PEER_OFFSET) {
+            return $this->getCorrespondent($sel);
+        }
+
+        $chats = new GroupChats();
+        $chat  = $chats->getByPeerId($sel);
+
+        return ($chat && !$chat->getRecord()->deleted && $chats->isParticipant($chat->getId(), $this->user->id)) ? $chat : null;
     }
 
     private function getCorrespondent(int $id): object
@@ -114,13 +127,13 @@ final class MessengerPresenter extends OpenVKPresenter
     private function renderList(bool $archived): void
     {
         $page = (int) ($_GET["p"] ?? 1);
-        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page, null, null, $archived));
+        $correspondences = iterator_to_array($this->messages->getCorrespondencies($this->user->identity, $page, null, null, $archived, true));
 
         $this->template->isArchive = $archived;
         $this->template->corresps = $correspondences;
         $this->template->dialogSettings = (new MessengerDialogs())->getAllFor($this->user->identity);
         $this->template->paginatorConf = (object) [
-            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity, $archived),
+            "count"   => $this->messages->getCorrespondenciesCount($this->user->identity, $archived, true),
             "page"    => (int) ($_GET["p"] ?? 1),
             "amount"  => sizeof($this->template->corresps),
             "perPage" => OPENVK_DEFAULT_PER_PAGE,
@@ -470,7 +483,7 @@ final class MessengerPresenter extends OpenVKPresenter
         if ($this->postParam("act") === "reorder") {
             $position = 1;
             foreach (explode(",", (string) $this->postParam("order")) as $sel) {
-                $peer = $this->getCorrespondent((int) $sel);
+                $peer = $this->getDialogPeer((int) $sel);
                 if ($peer && $dialogs->get($me, $peer)["pinned"] > 0) {
                     $dialogs->set($me, $peer, ["pinned" => $position++]);
                 }
@@ -480,9 +493,15 @@ final class MessengerPresenter extends OpenVKPresenter
             exit(json_encode(["success" => true]));
         }
 
-        $correspondent = $this->getCorrespondent((int) $this->postParam("sel"));
+        $correspondent = $this->getDialogPeer((int) $this->postParam("sel"));
         if (!$correspondent) {
             header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        // беседу из списка не удалить, только выйти из неё
+        if ($correspondent instanceof GroupChat && $this->postParam("act") === "delete") {
+            header("HTTP/1.1 400 Bad Request");
             exit();
         }
 

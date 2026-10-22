@@ -6,6 +6,7 @@ namespace openvk\Web\Models\Repositories;
 
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Entities\Club;
+use openvk\Web\Models\Entities\GroupChat;
 use Chandler\Database\DatabaseConnection;
 
 class MessengerDialogs
@@ -55,7 +56,11 @@ class MessengerDialogs
 
         $result = [];
         foreach ($rows as $row) {
-            $sel = $row->peer_type === Club::class ? -1 * (int) $row->peer_id : (int) $row->peer_id;
+            $sel = match ($row->peer_type) {
+                Club::class      => -1 * (int) $row->peer_id,
+                GroupChat::class => GroupChat::PEER_OFFSET + (int) $row->peer_id,
+                default          => (int) $row->peer_id,
+            };
             $result[$sel] = array_intersect_key((array) $row, self::DEFAULTS);
         }
 

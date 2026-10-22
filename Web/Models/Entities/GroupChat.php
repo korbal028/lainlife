@@ -127,6 +127,12 @@ function getAvatarUrl(string $size = 'normal'): string
         return "/im?sel=" . $this->getPeerId();
     }
 
+    // для шаблонов списка диалогов, где рядом лежат User и Club
+    function getCanonicalName(): string
+    {
+        return $this->getName();
+    }
+
     function getPeerId(): int
     {
         return self::PEER_OFFSET + $this->getId();
