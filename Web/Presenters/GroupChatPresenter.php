@@ -6,11 +6,12 @@ namespace openvk\Web\Presenters;
 
 use Chandler\Signaling\SignalManager;
 use openvk\Web\Events\NewMessageEvent;
+use openvk\Web\Events\NewGroupMessageEvent;
 use openvk\Web\Events\DeleteMessageEvent;
 use openvk\Web\Events\EditMessageEvent;
 use openvk\Web\Models\Repositories\{Users, Clubs, Messages, MessengerDialogs, GroupChats, GroupMessages};
 use openvk\Web\Models\Entities\Messages\Sticker;
-use openvk\Web\Models\Entities\{Message, Correspondence, User, Club, Photo, Video, Audio, Document, GroupChat};
+use openvk\Web\Models\Entities\{Message, Correspondence, User, Club, Photo, Video, Audio, Document, GroupChat, GroupMessage};
 
 final class GroupChatPresenter extends OpenVKPresenter
 {
@@ -47,6 +48,23 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         return $chat;
+    }
+
+    // живое сообщение именно из этой беседы
+    private function getChatMessage(GroupChat $chat, int $msgId): GroupMessage
+    {
+        $msg = $this->groupMessages->get($msgId);
+        if (!$msg || $msg->getRecord()->deleted || (int) $msg->getRecord()->chat_id !== $chat->getId()) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        return $msg;
+    }
+
+    private function getParticipantIds(GroupChat $chat): array
+    {
+        return array_map("intval", array_filter(explode(",", (string) $chat->getRecord()->participants)));
     }
 
     private function getCorrespondent(int $id): object
@@ -145,24 +163,31 @@ final class GroupChatPresenter extends OpenVKPresenter
         ];
     }
 
-    public function renderApp(int $sel): void
+    public function renderApp(int $peer): void
     {
         $this->assertUserLoggedIn();
 
-        $correspondent = $this->getCorrespondent($sel);
-        if (!$correspondent) {
-            $this->notFound();
-        }
+        $chat = $this->getChat($peer);
 
-        if (!$this->user->identity->getPrivacyPermission('messages.write', $correspondent)) {
-            $this->flash("err", tr("warning"), tr("user_may_not_reply"));
-        }
+        $this->template->disable_ajax = 1;
+        $this->template->chatId       = $chat->getId();
+        $this->template->chat         = $chat;
+    }
 
-        $this->template->disable_ajax  = 1;
-        $this->template->selId         = $sel;
-        $this->template->correspondent = $correspondent;
-        $this->template->reactions     = Message::REACTIONS;
-        $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
+    // long-poll для старого GroupChat/App.latte
+    public function renderEvents(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+
+        $this->getChat($peer);
+
+        header("Content-Type: application/json");
+        $this->signaler->listen(function ($event, $id) {
+            exit(json_encode([[
+                "UUID"  => $id,
+                "event" => $event->getLongPoolSummary(),
+            ]]));
+        }, $this->user->id);
     }
 
     public function renderVKEvents(int $id): void
@@ -207,18 +232,14 @@ final class GroupChatPresenter extends OpenVKPresenter
         }, $id, $time);
     }
 
-    public function renderApiGetMessages(int $sel, int $lastMsg): void
+    public function renderApiGetMessages(int $peer, int $lastMsg): void
     {
         $this->assertUserLoggedIn();
 
-        $correspondent = $this->getCorrespondent($sel);
-        if (!$correspondent) {
-            $this->notFound();
-        }
+        $chat = $this->getChat($peer);
 
-        $messages       = [];
-        $correspondence = new Correspondence($this->user->identity, $correspondent);
-        foreach ($correspondence->getMessages(1, $lastMsg === 0 ? null : $lastMsg, null, 0) as $message) {
+        $messages = [];
+        foreach ($this->groupMessages->getMessagesFromChat($chat->getId(), $lastMsg) as $message) {
             $simple = $message->simplify();
             $this->enrichAttachmentsWithHTML($message, $simple);
             $messages[] = $simple;
@@ -268,24 +289,17 @@ final class GroupChatPresenter extends OpenVKPresenter
         ]);
     }
 
-    public function renderApiWriteMessage(int $sel): void
+    public function renderApiWriteMessage(int $peer): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        if (empty($this->postParam("content")) && empty($this->postParam("attachments")) && empty($this->postParam("forward_messages"))) {
+        if (empty($this->postParam("content")) && empty($this->postParam("attachments"))) {
             header("HTTP/1.1 400 Bad Request");
             exit("<b>Argument error</b>: param 'content' expected to be string, undefined given.");
         }
 
-        $sel = $this->getCorrespondent($sel);
-        if ($sel->getId() !== $this->user->id && !$sel->getPrivacyPermission('messages.write', $this->user->identity)) {
-            header("HTTP/1.1 403 Forbidden");
-            exit();
-        }
-
-        $replyTo  = $this->getReplyTarget($sel);
-        $forwards = $this->getForwardTargets();
+        $chat = $this->getChat($peer);
 
         $attachments = [];
         if (!empty($this->postParam("attachments"))) {
@@ -295,19 +309,22 @@ final class GroupChatPresenter extends OpenVKPresenter
             }
         }
 
-        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity) || ($forwards && array_filter($attachments, fn($a) => $a instanceof Sticker))) {
+        if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity)) {
             header("HTTP/1.1 400 Bad Request");
             exit();
         }
 
-        $cor = new Correspondence($this->user->identity, $sel);
-        $msg = new Message();
-        $msg->setContent($this->postParam("content") ?? "");
-        if ($replyTo) {
-            $msg->setReply_To($replyTo->getId());
-        }
-        $cor->sendMessage($msg);
-        $msg->setForwardedMessages($forwards);
+        $row = \Chandler\Database\DatabaseConnection::i()->getContext()->table("group_messages")->insert([
+            "chat_id"        => $chat->getId(),
+            "sender_id"      => $this->user->identity->getId(),
+            "sender_type"    => get_class($this->user->identity),
+            "content"        => $this->postParam("content") ?? "",
+            "created"        => time(),
+            "unread"         => 0,
+            "deleted"        => 0,
+            "forwarded_from" => !empty($this->postParam("reply_to")) ? (int) $this->postParam("reply_to") : null,
+        ]);
+        $msg = $this->groupMessages->get((int) $row->id);
 
         foreach ($attachments as $attachment) {
             if (!$attachment || $attachment->isDeleted() || !$attachment->canBeViewedBy($this->user->identity)) {
@@ -317,6 +334,12 @@ final class GroupChatPresenter extends OpenVKPresenter
             $msg->attach($attachment);
         }
 
+        foreach ($this->getParticipantIds($chat) as $participantId) {
+            if ($participantId !== $this->user->id) {
+                $this->signaler->triggerEvent(new NewGroupMessageEvent($msg), $participantId);
+            }
+        }
+
         header("HTTP/1.1 202 Accepted");
         header("Content-Type: application/json");
         $simple = $msg->simplify();
@@ -324,7 +347,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         exit(json_encode($simple));
     }
 
-    private function enrichAttachmentsWithHTML(Message $messageObj, array &$simplifiedArray): void
+    private function enrichAttachmentsWithHTML(Message|GroupMessage $messageObj, array &$simplifiedArray): void
     {
         $children = iterator_to_array($messageObj->getChildren());
         foreach ($simplifiedArray['attachments'] as $index => &$attachmentData) {
@@ -379,7 +402,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         exit(json_encode($result));
     }
 
-    public function renderApiEditMessage(int $sel, int $msgId): void
+    public function renderApiEditMessage(int $peer, int $msgId): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
@@ -389,11 +412,8 @@ final class GroupChatPresenter extends OpenVKPresenter
             exit();
         }
 
-        $msg = (new Messages())->get($msgId);
-        if (!$msg) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
-        }
+        $chat = $this->getChat($peer);
+        $msg  = $this->getChatMessage($chat, $msgId);
 
         // текст к стикеру не добавить
         if (Sticker::isIn($msg->getChildren())) {
@@ -409,27 +429,22 @@ final class GroupChatPresenter extends OpenVKPresenter
         $msg->setEdited(time());
         $msg->save();
 
-        $recipient = $msg->getRecipient();
-        $sender = $msg->getSender();
-        $this->signaler->triggerEvent(new EditMessageEvent($msg), $recipient->getId());
-        $this->signaler->triggerEvent(new EditMessageEvent($msg), $sender->getId());
+        foreach ($this->getParticipantIds($chat) as $participantId) {
+            $this->signaler->triggerEvent(new EditMessageEvent($msg), $participantId);
+        }
 
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
-        $simple = $msg->simplify();
-        exit(json_encode($simple));
+        exit(json_encode($msg->simplify()));
     }
 
-    public function renderApiDeleteMessage(int $sel, int $msgId): void
+    public function renderApiDeleteMessage(int $peer, int $msgId): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $msg = (new Messages())->get($msgId);
-        if (!$msg) {
-            header("HTTP/1.1 404 Not Found");
-            exit();
-        }
+        $chat = $this->getChat($peer);
+        $msg  = $this->getChatMessage($chat, $msgId);
 
         if ($msg->getSender()->getId() !== $this->user->id) {
             header("HTTP/1.1 403 Forbidden");
@@ -437,13 +452,12 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $msg->setDeleted(1);
-        $msg->setEdited(time()); // используется как метка "изменено" для поллинга (apiSync)
+        $msg->setEdited(time()); // метка для поллинга (apiSync)
         $msg->save();
 
-        $recipient = $msg->getRecipient();
-        $sender = $msg->getSender();
-        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $recipient->getId());
-        $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $sender->getId());
+        foreach ($this->getParticipantIds($chat) as $participantId) {
+            $this->signaler->triggerEvent(new DeleteMessageEvent($msgId), $participantId);
+        }
 
         header("HTTP/1.1 200 OK");
         header("Content-Type: application/json");
