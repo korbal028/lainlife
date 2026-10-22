@@ -348,6 +348,12 @@ routes:
       handler: "GroupChat->apiLeave"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/invite.json"
+      handler: "GroupChat->apiInviteLink"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/join/{text}"
+      handler: "GroupChat->join"
     - url: "/im"
       handler: "Messenger->index"
     - url: "/im/archive"

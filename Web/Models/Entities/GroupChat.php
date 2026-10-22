@@ -141,6 +141,23 @@ function getAvatarUrl(string $size = 'normal'): string
         return $this->getName();
     }
 
+    // ссылка-приглашение; код создаётся при первом запросе, $reset выдаёт новый и старая ссылка перестаёт работать
+    function getInviteLink(bool $reset = false): string
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+        $hash  = $fresh->invite_hash ?? null;
+        if (!$hash || $reset) {
+            // только буквы: роутер превращает похожие на число параметры в int
+            $hash = "";
+            for ($i = 0; $i < 16; $i++) {
+                $hash .= chr(97 + random_int(0, 25));
+            }
+            $fresh->update(["invite_hash" => $hash]);
+        }
+
+        return ovk_scheme(true) . $_SERVER["HTTP_HOST"] . "/im/join/" . $hash;
+    }
+
     function getPeerId(): int
     {
         return self::PEER_OFFSET + $this->getId();

@@ -332,6 +332,41 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->returnJson(["success" => true]);
     }
 
+    // act=reset — новая ссылка вместо старой
+    public function renderApiInviteLink(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getManagedChat($peer);
+
+        $this->returnJson(["link" => $chat->getInviteLink($this->postParam("act") === "reset")]);
+    }
+
+    public function renderJoin(string $hash): void
+    {
+        $this->assertUserLoggedIn();
+
+        $chat = $this->groupChats->getByInviteHash($hash);
+        if (!$chat) {
+            $this->notFound();
+        }
+
+        if ($chat->isParticipant($this->user->id)) {
+            $this->redirect($chat->getURL());
+        }
+
+        if ($_SERVER["REQUEST_METHOD"] === "POST") {
+            $this->willExecuteWriteAction();
+
+            $this->groupChats->addParticipant($chat->getId(), $this->user->id);
+            (new Correspondence($this->user->identity, $chat))->markAsRead();
+            $this->redirect($chat->getURL());
+        }
+
+        $this->template->chat = $chat;
+    }
+
     public function renderApiGetFriends(int $peer): void
     {
         $this->assertUserLoggedIn();

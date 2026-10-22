@@ -686,6 +686,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "shortcode" => ($isSelf || $isChat) ? null : $peer->getShortCode(),
             "chat"      => $isChat,
             "can_leave" => $isChat && !$peer->isCreator($me->getId()),
+            "can_invite" => $isChat && $peer->canManageParticipants($me->getId()),
             "can_delete_for_all" => $isChat && $peer->isCreator($me->getId()),
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
             "members"   => $isChat ? $this->getChatMembers($peer) : [],

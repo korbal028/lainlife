@@ -1918,6 +1918,87 @@ span.ok-smile.ok-smile {
     text-overflow: ellipsis;
 }
 
+.im-join {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 30px 20px;
+}
+
+.im-join--avatar {
+    width: 100px;
+    height: 100px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.im-join--name {
+    font-size: 14px;
+}
+
+.im-join--members {
+    margin-bottom: 8px;
+    color: #888;
+}
+
+.im-invite--hint {
+    margin-bottom: 8px;
+    color: #888;
+}
+
+.im-invite--link {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.im-peer-members--add {
+    display: flex;
+    margin-left: auto;
+    color: #2B587A;
+    cursor: pointer;
+    opacity: .85;
+}
+
+.im-peer-members--add:hover {
+    opacity: 1;
+}
+
+.im-add-members {
+    max-height: 360px;
+    overflow-y: auto;
+}
+
+.im-add-member {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 5px 2px;
+    cursor: pointer;
+}
+
+.im-add-member img {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    object-fit: cover;
+    border-radius: 50%;
+}
+
+.im-add-member--name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.im-add-member--note,
+.im-add-member--empty {
+    color: #888;
+    font-size: 11px;
+}
+
 .im-peer-member--role {
     flex: none;
     color: #888;

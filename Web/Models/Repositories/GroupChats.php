@@ -29,6 +29,13 @@ class GroupChats
         return new GroupChat($chat);
     }
 
+    public function getByInviteHash(string $hash): ?GroupChat
+    {
+        $chat = $this->context->table("group_chats")->where(["invite_hash" => $hash, "deleted" => 0])->fetch();
+
+        return $chat ? new GroupChat($chat) : null;
+    }
+
     public function getByPeerId(int $peerId): ?GroupChat
     {
         if ($peerId <= GroupChat::PEER_OFFSET) {

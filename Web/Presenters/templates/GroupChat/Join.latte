@@ -1,0 +1,16 @@
+{extends "../@layout.latte"}
+{block title}{_messenger_join_chat_title}{/block}
+{block header}
+    <a href="/im">{_my_messages}</a> »
+    {_messenger_join_chat_title}
+{/block}
+
+{block content}
+    <form class="im-join" method="post">
+        <input type="hidden" name="hash" value="{$csrfToken}" />
+        <img class="im-join--avatar" src="{$chat->getAvatarUrl('normal')}" alt="" />
+        <b class="im-join--name">{$chat->getName()}</b>
+        <span class="im-join--members">{tr("participants", $chat->getParticipantsCount())}</span>
+        <button type="submit" class="button">{_messenger_join_chat}</button>
+    </form>
+{/block}

@@ -1483,6 +1483,17 @@
 "messenger_delete_chat_for_everyone" = "Also delete for everyone";
 "messenger_chat_owner" = "owner";
 "messenger_chat_admin" = "admin";
+"messenger_invite_link" = "Invite via link";
+"messenger_invite_link_hint" = "Anyone with this link can join the chat.";
+"messenger_invite_link_copy" = "Copy";
+"messenger_invite_link_reset" = "Reset link";
+"messenger_invite_link_copied" = "Link copied";
+"messenger_join_chat_title" = "Chat invitation";
+"messenger_join_chat" = "Join chat";
+"messenger_add_members" = "Add members";
+"messenger_add_members_button" = "Add";
+"messenger_already_in_chat" = "already in chat";
+"messenger_no_friends_to_add" = "No friends to add.";
 "messenger_unblock_user" = "Unblock user";
 "messenger_info_photos_zero" = "No photos";
 "messenger_info_photos_one" = "1 photo";
