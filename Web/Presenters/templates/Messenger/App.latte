@@ -1675,6 +1675,7 @@
                 mediaReactions: {tr("messenger_chat_rights_reactions")},
                 rightInvite: {tr("messenger_chat_rights_invite")},
                 rightPin:   {tr("messenger_chat_rights_pin")},
+                rightTags:  {tr("messenger_chat_rights_tags")},
                 rightInfo:  {tr("messenger_chat_rights_info")},
                 slowmode:   {tr("messenger_chat_rights_slowmode")},
                 slowOff:    {tr("messenger_chat_rights_slowmode_off")},
@@ -1793,13 +1794,14 @@
                         </div>
                         <div class="im-peer-rights--media" hidden>
                             ${ media.map(([key, label]) => `
-                                <label class="im-peer-rights--check">
-                                    <input type="checkbox" name="media_${ key }" checked />
+                                <label class="im-peer-toggle">
                                     <span>${ escapeHtml(label) }</span>
+                                    <input type="checkbox" name="media_${ key }" checked />
                                 </label>`).join("") }
                         </div>
                         ${ toggle("invite", PEER_STR.rightInvite, false) }
                         ${ toggle("pin", PEER_STR.rightPin, true) }
+                        ${ toggle("tags", PEER_STR.rightTags, false) }
                         ${ toggle("info", PEER_STR.rightInfo, false) }
                         <div class="im-peer-section">
                             <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.slowmode) }</div>

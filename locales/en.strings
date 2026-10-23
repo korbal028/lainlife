@@ -1507,6 +1507,7 @@
 "messenger_chat_rights_reactions" = "Reactions";
 "messenger_chat_rights_invite" = "Add members";
 "messenger_chat_rights_pin" = "Pin messages";
+"messenger_chat_rights_tags" = "Edit own tags";
 "messenger_chat_rights_info" = "Change chat info";
 "messenger_chat_rights_slowmode" = "Slow mode";
 "messenger_chat_rights_slowmode_off" = "Off";

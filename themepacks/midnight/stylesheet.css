@@ -900,8 +900,7 @@ ul {
     color: #a99ad8;
 }
 
-.im-peer-toggle:hover,
-.im-peer-rights--check:hover {
+.im-peer-toggle:hover {
     background: rgba(122, 156, 196, .1);
 }
 

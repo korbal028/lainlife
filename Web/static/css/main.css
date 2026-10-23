@@ -1903,8 +1903,7 @@ span.ok-smile.ok-smile {
     cursor: pointer;
 }
 
-.im-peer-toggle:hover,
-.im-peer-rights--check:hover {
+.im-peer-toggle:hover {
     background: rgba(81, 129, 184, .08);
 }
 
@@ -1935,15 +1934,7 @@ span.ok-smile.ok-smile {
     display: none;
 }
 
-.im-peer-rights--check {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    padding: 3px 20px 3px 32px;
-    cursor: pointer;
-}
-
-input[type=checkbox].im-peer-switch {
+.im-peer-toggle input[type=checkbox] {
     flex: none;
     margin: 0;
 }

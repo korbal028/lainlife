@@ -1437,6 +1437,7 @@
 "messenger_chat_rights_reactions" = "Реакции";
 "messenger_chat_rights_invite" = "Добавлять участников";
 "messenger_chat_rights_pin" = "Закреплять сообщения";
+"messenger_chat_rights_tags" = "Изменять свои теги";
 "messenger_chat_rights_info" = "Изменять информацию беседы";
 "messenger_chat_rights_slowmode" = "Медленный режим";
 "messenger_chat_rights_slowmode_off" = "Выкл";
