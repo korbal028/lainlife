@@ -2299,7 +2299,7 @@ span.ok-smile.ok-smile {
 }
 
 .im-peer-member--name {
-    flex: 0 1 auto;
+    flex: 1;
     min-width: 0;
     overflow: hidden;
     white-space: nowrap;
@@ -2398,7 +2398,6 @@ span.ok-smile.ok-smile {
 
 .im-peer-member--role {
     flex: none;
-    margin-left: auto;
     color: #888;
     font-size: 11px;
 }

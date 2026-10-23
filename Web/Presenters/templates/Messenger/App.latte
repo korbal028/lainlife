@@ -1727,6 +1727,7 @@
             ];
             const TAG_DEFAULT = TAG_COLORS[8][4];
             const renderTag = tag => tag ? `<span class="msg-tag" style="--tag: ${ escapeHtml(tag.color) }">${ escapeHtml(tag.text) }</span>` : "";
+            const renderMemberBadge = m => m.tag ? renderTag(m.tag) : m.role ? `<span class="im-peer-member--role">${ escapeHtml(PEER_STR[m.role]) }</span>` : "";
 
             const renderTagPage = (info, avatarStyle) => {
                 const tag = info.members.find(m => m.id === info.me.id)?.tag;
@@ -2059,8 +2060,7 @@
                                         <a class="im-peer-member" href="${ escapeHtml(m.link) }" data-id="${ Number(m.id) }">
                                             <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
                                             <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
-                                            ${ renderTag(m.tag) }
-                                            ${ m.role ? `<span class="im-peer-member--role">${ escapeHtml(PEER_STR[m.role]) }</span>` : "" }
+                                            ${ renderMemberBadge(m) }
                                         </a>`).join("") }
                                 </div>` : "" }
                         </div>
@@ -2409,8 +2409,9 @@
                     const me  = info.members.find(m => m.id === info.me.id);
                     if(me) me.tag = tag;
 
-                    main.querySelector(`.im-peer-member[data-id="${ info.me.id }"] .msg-tag`)?.remove();
-                    main.querySelector(`.im-peer-member[data-id="${ info.me.id }"] .im-peer-member--name`)?.insertAdjacentHTML("afterend", renderTag(tag));
+                    const row = main.querySelector(`.im-peer-member[data-id="${ info.me.id }"]`);
+                    row?.querySelector(".msg-tag, .im-peer-member--role")?.remove();
+                    row?.insertAdjacentHTML("beforeend", renderMemberBadge(me ?? { tag }));
                     window.Msg.setSenderTag(info.me.id, tag);
                 };
 
