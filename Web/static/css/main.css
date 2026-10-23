@@ -1452,7 +1452,7 @@ table.User {
 }
 
 /* короткая переписка прижимается к полю ввода */
-.messenger-app--messages>div:not(.im_floating_date_wrap) {
+.messenger-app--messages>.messenger-app--messages-array {
     margin-top: auto;
 }
 
