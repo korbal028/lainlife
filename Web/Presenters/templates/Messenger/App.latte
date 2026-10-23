@@ -1725,10 +1725,10 @@
                             <textarea name="description" rows="1" placeholder="${ escapeHtml(PEER_STR.chatDesc) }">${ escapeHtml(info.description ?? "") }</textarea>
                         </div>
                         <div class="im-peer-section">
-                            ${ row("history", "actions/view-conversation-balloon.png", PEER_STR.history, PEER_STR.historyHidden) }
+                            ${ row("history", "apps/kopete-offline.png", PEER_STR.history, PEER_STR.historyHidden) }
                         </div>
                         <div class="im-peer-section">
-                            ${ row("rights", "status/dialog-password.png", PEER_STR.rights, "3/3") }
+                            ${ row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") }
                             ${ row("admins", "apps/system-users.png", PEER_STR.admins, String(info.members.filter(m => m.role).length)) }
                             ${ row("log", "apps/utilities-log-viewer.png", PEER_STR.log) }
                         </div>
