@@ -1994,12 +1994,12 @@
                 const close = () => msg.close();
 
                 // «назад» слева от «закрыть», виден только в разделе вложений
-                const action  = root.querySelector(".ovk-diag-action");
+                const action   = root.querySelector(".ovk-diag-action");
+                const closeBtn = action.querySelector(".button");
                 const backBtn = u(`<button class="button im-peer-back" hidden>${ escapeHtml(PEER_STR.back) }</button>`).first();
                 action.prepend(backBtn);
 
                 // «управление» на месте «назад» на главной; в панели вместо них «отмена» и «сохранить»
-                const closeBtn  = action.querySelector(".button");
                 const manageBtn = u(`<button class="button im-peer-manage-btn">${ escapeHtml(PEER_STR.manage) }</button>`).first();
                 const cancelBtn = u(`<button class="button im-peer-cancel" hidden>${ escapeHtml(PEER_STR.cancel) }</button>`).first();
                 const saveBtn   = u(`<button class="button im-peer-save" hidden>${ escapeHtml(PEER_STR.save) }</button>`).first();

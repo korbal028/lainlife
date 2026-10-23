@@ -906,7 +906,8 @@ ul {
 }
 
 .im-peer-slow input[type=range] {
-    accent-color: #8a78c9;
+    --im-slow-thumb: #8a78c9;
+    --im-slow-track: #2c2640;
 }
 
 .im-peer-rights--hint {

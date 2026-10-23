@@ -1964,10 +1964,53 @@ input[type=checkbox].im-peer-switch {
     font-weight: bold;
 }
 
+/* ползунок: тонкая полоса и квадратный бегунок без тени */
 .im-peer-slow input[type=range] {
+    --im-slow-thumb: #5b7fa6;
+    --im-slow-track: #c0cad5;
+    display: block;
     width: 100%;
+    height: 12px;
     margin: 8px 0 0;
-    accent-color: #5b7fa6;
+    background: transparent;
+    -webkit-appearance: none;
+    appearance: none;
+    cursor: pointer;
+}
+
+.im-peer-slow input[type=range]::-webkit-slider-runnable-track {
+    height: 2px;
+    background: var(--im-slow-track);
+}
+
+.im-peer-slow input[type=range]::-moz-range-track {
+    height: 2px;
+    background: var(--im-slow-track);
+}
+
+.im-peer-slow input[type=range]::-webkit-slider-thumb {
+    width: 12px;
+    height: 12px;
+    margin-top: -5px;
+    border: 0;
+    border-radius: 0;
+    background: var(--im-slow-thumb);
+    box-shadow: none;
+    -webkit-appearance: none;
+    appearance: none;
+}
+
+.im-peer-slow input[type=range]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    border: 0;
+    border-radius: 0;
+    background: var(--im-slow-thumb);
+    box-shadow: none;
+}
+
+.im-peer-slow input[type=range]:focus {
+    outline: none;
 }
 
 .im-peer-rights--hint {
