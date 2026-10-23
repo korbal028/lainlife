@@ -890,8 +890,36 @@ ul {
     border-top-color: #2c2640;
 }
 
-.im-peer-manage .im-peer-section {
+.im-peer-manage .im-peer-section,
+.im-peer-rights .im-peer-section {
     border-top-color: #16131f;
+}
+
+.im-peer-rights--title,
+.im-peer-slow--labels .active {
+    color: #a99ad8;
+}
+
+.im-peer-toggle:hover,
+.im-peer-rights--check:hover {
+    background: rgba(122, 156, 196, .1);
+}
+
+input[type=checkbox].im-peer-switch {
+    background-color: #2c2640 !important;
+}
+
+input[type=checkbox].im-peer-switch:checked {
+    background-color: #8a78c9 !important;
+}
+
+.im-peer-slow input[type=range] {
+    accent-color: #8a78c9;
+}
+
+.im-peer-rights--hint {
+    background: #16131f;
+    color: #8b9ab5;
 }
 
 .im-peer-manage--name span,

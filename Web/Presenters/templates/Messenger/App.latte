@@ -1664,6 +1664,26 @@
                 admins:     {tr("messenger_chat_manage_admins")},
                 log:        {tr("messenger_chat_manage_log")},
                 delChat:    {tr("messenger_chat_manage_delete")},
+                rightsQuestion: {tr("messenger_chat_rights_question")},
+                rightSend:  {tr("messenger_chat_rights_send")},
+                rightMedia: {tr("messenger_chat_rights_media")},
+                mediaPhotos: {tr("messenger_chat_rights_photos")},
+                mediaVideos: {tr("messenger_chat_rights_videos")},
+                mediaAudios: {tr("messenger_chat_rights_audios")},
+                mediaDocs:  {tr("messenger_chat_rights_docs")},
+                mediaStickers: {tr("messenger_chat_rights_stickers")},
+                mediaReactions: {tr("messenger_chat_rights_reactions")},
+                rightInvite: {tr("messenger_chat_rights_invite")},
+                rightPin:   {tr("messenger_chat_rights_pin")},
+                rightInfo:  {tr("messenger_chat_rights_info")},
+                slowmode:   {tr("messenger_chat_rights_slowmode")},
+                slowOff:    {tr("messenger_chat_rights_slowmode_off")},
+                slowHint:   {tr("messenger_chat_rights_slowmode_hint")},
+                sec:        {tr("messenger_chat_rights_seconds", "%N%")},
+                min:        {tr("messenger_chat_rights_minutes", "%N%")},
+                hour:       {tr("messenger_chat_rights_hours", "%N%")},
+                exceptions: {tr("messenger_chat_rights_exceptions")},
+                removed:    {tr("messenger_chat_rights_removed")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
             const KIND_ICONS = {
@@ -1738,6 +1758,69 @@
                                     <span>${ escapeHtml(PEER_STR.delChat) }</span>
                                 </a>
                             </div>` : "" }
+                    </div>`;
+            };
+
+            // разрешения участников, пока только вёрстка: медиа раскрываются списком, медленный режим — ползунком
+            const SLOWMODE  = [0, 5, 10, 30, 60, 300, 900, 3600];
+            const slowLabel = sec => sec === 0 ? PEER_STR.slowOff
+                : sec < 60 ? PEER_STR.sec.replace("%N%", sec)
+                : sec < 3600 ? PEER_STR.min.replace("%N%", sec / 60)
+                : PEER_STR.hour.replace("%N%", sec / 3600);
+
+            const renderRights = () => {
+                const toggle = (name, label, on) => `
+                    <label class="im-peer-toggle">
+                        <span>${ escapeHtml(label) }</span>
+                        <input type="checkbox" class="im-peer-switch" name="${ name }"${ on ? " checked" : "" } />
+                    </label>`;
+                const media = [
+                    ["photos", PEER_STR.mediaPhotos], ["videos", PEER_STR.mediaVideos], ["audios", PEER_STR.mediaAudios],
+                    ["docs", PEER_STR.mediaDocs], ["stickers", PEER_STR.mediaStickers], ["reactions", PEER_STR.mediaReactions],
+                ];
+
+                return `
+                    <div class="im-peer-page im-peer-rights" data-page="rights" hidden>
+                        <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.rightsQuestion) }</div>
+                        ${ toggle("send", PEER_STR.rightSend, true) }
+                        <div class="im-peer-toggle">
+                            <a class="im-peer-rights--expand">
+                                <span>${ escapeHtml(PEER_STR.rightMedia) }</span>
+                                <b class="im-peer-rights--count"></b>
+                                <span class="im-peer-rights--chevron"></span>
+                            </a>
+                            <input type="checkbox" class="im-peer-switch" name="media" checked />
+                        </div>
+                        <div class="im-peer-rights--media" hidden>
+                            ${ media.map(([key, label]) => `
+                                <label class="im-peer-rights--check">
+                                    <input type="checkbox" name="media_${ key }" checked />
+                                    <span>${ escapeHtml(label) }</span>
+                                </label>`).join("") }
+                        </div>
+                        ${ toggle("invite", PEER_STR.rightInvite, false) }
+                        ${ toggle("pin", PEER_STR.rightPin, true) }
+                        ${ toggle("info", PEER_STR.rightInfo, false) }
+                        <div class="im-peer-section">
+                            <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.slowmode) }</div>
+                            <div class="im-peer-slow">
+                                <div class="im-peer-slow--labels">
+                                    ${ SLOWMODE.map((sec, i) => `<span${ i === 0 ? ' class="active"' : "" }>${ escapeHtml(slowLabel(sec)) }</span>`).join("") }
+                                </div>
+                                <input type="range" name="slowmode" min="0" max="${ SLOWMODE.length - 1 }" step="1" value="0" />
+                            </div>
+                            <div class="im-peer-rights--hint">${ escapeHtml(PEER_STR.slowHint) }</div>
+                        </div>
+                        <div class="im-peer-section">
+                            <a class="im-peer-row" data-manage="exceptions">
+                                <img src="${ OXYGEN }actions/im-user.png" alt="" />
+                                <span>${ escapeHtml(PEER_STR.exceptions) }</span>
+                            </a>
+                            <a class="im-peer-row" data-manage="removed">
+                                <img src="${ OXYGEN }actions/im-kick-user.png" alt="" />
+                                <span>${ escapeHtml(PEER_STR.removed) }</span>
+                            </a>
+                        </div>
                     </div>`;
             };
 
@@ -1891,7 +1974,7 @@
                             <div class="im-peer-search--summary" hidden></div>
                             <div class="im-peer-search--results"></div>
                         </div>
-                        ${ info.can_manage ? renderManage(info, avatarStyle) : "" }
+                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights() : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
                     callbacks: [Function.noop],
@@ -1907,6 +1990,7 @@
                 const list  = root.querySelector('[data-page="list"]');
                 const found = root.querySelector('[data-page="search"]');
                 const manage = root.querySelector('[data-page="manage"]');
+                const rights = root.querySelector('[data-page="rights"]');
                 const close = () => msg.close();
 
                 // «назад» слева от «закрыть», виден только в разделе вложений
@@ -1924,13 +2008,45 @@
                     action.append(cancelBtn, saveBtn);
                 }
 
+                let shown = main;
                 const setPage = page => {
-                    [main, list, found, manage].forEach(p => p && (p.hidden = p !== page));
-                    backBtn.hidden   = page === main || page === manage;
+                    shown = page;
+                    const editing = page === manage || page === rights;
+                    [main, list, found, manage, rights].forEach(p => p && (p.hidden = p !== page));
+                    backBtn.hidden   = page === main || editing;
                     manageBtn.hidden = page !== main;
-                    cancelBtn.hidden = saveBtn.hidden = page !== manage;
-                    closeBtn.hidden  = page === manage;
+                    cancelBtn.hidden = saveBtn.hidden = !editing;
+                    closeBtn.hidden  = editing;
                 };
+
+                // общий тумблер медиа включает и выключает все пункты, счётчики пересчитываются сразу
+                const updateRights = () => {
+                    const media = [...rights.querySelectorAll('[name^="media_"]')];
+                    const on    = media.filter(c => c.checked).length;
+                    const all   = [...rights.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')];
+
+                    rights.querySelector('[name="media"]').checked = on > 0;
+                    rights.querySelector(".im-peer-rights--count").textContent = `${ on }/${ media.length }`;
+                    manage.querySelector('[data-manage="rights"] .im-peer-row--value').textContent = `${ all.filter(c => c.checked).length }/${ all.length }`;
+                };
+
+                if(rights) {
+                    rights.addEventListener("change", e => {
+                        if(e.target.name === "media") rights.querySelectorAll('[name^="media_"]').forEach(c => c.checked = e.target.checked);
+                        updateRights();
+                    });
+                    rights.addEventListener("input", e => {
+                        if(e.target.name !== "slowmode") return;
+                        rights.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === Number(e.target.value)));
+                    });
+                    rights.querySelector(".im-peer-rights--expand").addEventListener("click", e => {
+                        e.preventDefault();
+                        const media = rights.querySelector(".im-peer-rights--media");
+                        media.hidden = !media.hidden;
+                        e.currentTarget.classList.toggle("open", !media.hidden);
+                    });
+                    updateRights();
+                }
 
                 // подгрузка вложений выбранного типа при прокрутке
                 let current = null;
@@ -2061,9 +2177,15 @@
                     body.scrollTop = 0;
                 };
 
+                const showRights = () => {
+                    head.textContent = PEER_STR.rights;
+                    setPage(rights);
+                    body.scrollTop = 0;
+                };
+
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
-                cancelBtn.addEventListener("click", showMain);
+                cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
 
                 const askDelete = () => {
                     close();
@@ -2122,6 +2244,8 @@
                 };
 
                 body.addEventListener("click", e => {
+                    if(e.target.closest('[data-manage="rights"]')) return showRights();
+
                     if(e.target.closest('[data-act="add-members"]')) {
                         close();
                         return openAddMembers();
