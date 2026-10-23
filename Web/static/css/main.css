@@ -1838,24 +1838,6 @@ span.ok-smile.ok-smile {
     object-position: top;
 }
 
-/* камера поверх аватарки при наведении */
-.im-peer-manage--ava-cam {
-    position: absolute;
-    inset: 0;
-    border-radius: inherit;
-    background: rgba(0, 0, 0, .45) url("/assets/packages/static/openvk/img/oxygen-icons/64x64/devices/camera-photo.png") no-repeat center / 32px;
-    opacity: 0;
-    transition: opacity .15s;
-}
-
-.im-peer-manage--ava:hover .im-peer-manage--ava-cam {
-    opacity: 1;
-}
-
-.im-peer-manage--ava .avatar-style-2 + .im-peer-manage--ava-cam {
-    border-radius: 50%;
-}
-
 .im-peer-manage--name {
     flex: 1;
     min-width: 0;
