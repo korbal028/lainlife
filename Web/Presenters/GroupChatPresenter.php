@@ -199,16 +199,6 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->template->participantsIds = array_map("strval", $chat->getParticipantIds());
     }
 
-    public function renderMembers(int $peer): void
-    {
-        $this->assertUserLoggedIn();
-
-        $chat = $this->getChat($peer);
-
-        $this->template->chat         = $chat;
-        $this->template->participants = $this->getParticipants($chat);
-    }
-
     public function renderApiAddParticipant(int $peer, int $userId): void
     {
         $this->assertUserLoggedIn();

@@ -1822,8 +1822,8 @@
                     body: `
                         <div class="im-peer-page" data-page="main">
                             <div class="im-peer-head">
-                                <a href="${ escapeHtml(info.link) }"><img class="im-peer-avatar avatar-style-${ avatarStyle }" src="${ escapeHtml(info.avatar) }" alt="" /></a>
-                                <a class="im-peer-name" href="${ escapeHtml(info.link) }">${ escapeHtml(info.name) }</a>
+                                <a${ info.link ? ` href="${ escapeHtml(info.link) }"` : "" }><img class="im-peer-avatar avatar-style-${ avatarStyle }" src="${ escapeHtml(info.avatar) }" alt="" /></a>
+                                <a class="im-peer-name"${ info.link ? ` href="${ escapeHtml(info.link) }"` : "" }>${ escapeHtml(info.name) }</a>
                             </div>
                             ${ info.shortcode || info.birthday ? `
                                 <div class="im-peer-section">

@@ -708,7 +708,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->returnJson([
             "name"      => $isSelf ? tr("saved_messages") : $peer->getCanonicalName(),
             "avatar"    => $peer->getAvatarUrl("normal"),
-            "link"      => $isChat ? "/im/sel" . $peer->getPeerId() . "/members" : $peer->getURL(),
+            "link"      => $isChat ? null : $peer->getURL(),
             "self"      => $isSelf,
             "shortcode" => ($isSelf || $isChat) ? null : $peer->getShortCode(),
             "chat"      => $isChat,

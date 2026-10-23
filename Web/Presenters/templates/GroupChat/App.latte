@@ -5,7 +5,7 @@
     <a href="/im/convs">Мои беседы</a> »
     <a href="{$chat->getURL()}">{$chat->getName()}</a>
     <div style="float: right;">
-    <a href="/im/sel{$chat->getPeerId()}/members" style="font-size: 11px; color: #999;">{$chat->getParticipantsCount()} участников</a>
+    <span style="font-size: 11px; color: #999;">{$chat->getParticipantsCount()} участников</span>
     {if $chat->isCreator($thisUser->getId())}
         | <a href="/im/sel{$chat->getPeerId()}/edit" style="font-size: 11px; color: #999;">⚙ Настройки</a>
     {/if}
