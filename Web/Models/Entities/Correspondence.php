@@ -117,7 +117,7 @@ class Correspondence
     public function hasMessage(Message $message): bool
     {
         if ($this->isGroup()) {
-            return $message->isInGroupChat() && (int) $message->getRecord()->recipient_id === $this->correspondents[1]->getId();
+            return $message->isInGroupChat() && $message->hasParticipant($this->correspondents[1]);
         }
 
         $sender    = $message->getSender();
