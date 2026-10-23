@@ -1784,12 +1784,8 @@
                     <div class="im-peer-page im-peer-rights" data-page="rights" hidden>
                         <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.rightsQuestion) }</div>
                         ${ toggle("send", PEER_STR.rightSend, true) }
-                        <div class="im-peer-toggle">
-                            <a class="im-peer-rights--expand">
-                                <span>${ escapeHtml(PEER_STR.rightMedia) }</span>
-                                <b class="im-peer-rights--count"></b>
-                                <span class="im-peer-rights--chevron"></span>
-                            </a>
+                        <div class="im-peer-toggle im-peer-rights--expand">
+                            <span>${ escapeHtml(PEER_STR.rightMedia) } <b class="im-peer-rights--count"></b></span>
                             <input type="checkbox" class="im-peer-switch" name="media" checked />
                         </div>
                         <div class="im-peer-rights--media" hidden>
@@ -2041,11 +2037,11 @@
                         if(e.target.name !== "slowmode") return;
                         rights.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === Number(e.target.value)));
                     });
+                    // список медиа раскрывается кликом по строке, галочка справа его не трогает
                     rights.querySelector(".im-peer-rights--expand").addEventListener("click", e => {
-                        e.preventDefault();
+                        if(e.target.matches("input")) return;
                         const media = rights.querySelector(".im-peer-rights--media");
                         media.hidden = !media.hidden;
-                        e.currentTarget.classList.toggle("open", !media.hidden);
                     });
                     updateRights();
                 }

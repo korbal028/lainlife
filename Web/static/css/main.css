@@ -1907,29 +1907,6 @@ span.ok-smile.ok-smile {
     background: rgba(81, 129, 184, .08);
 }
 
-.im-peer-rights--expand {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    color: inherit;
-    text-decoration: none !important;
-}
-
-.im-peer-rights--chevron {
-    width: 6px;
-    height: 6px;
-    margin: 0 0 -3px 2px;
-    border-top: 1.5px solid currentColor;
-    border-left: 1.5px solid currentColor;
-    transform: rotate(-135deg);
-    transition: transform .15s, margin .15s;
-}
-
-.im-peer-rights--expand.open .im-peer-rights--chevron {
-    margin-bottom: -7px;
-    transform: rotate(45deg);
-}
-
 .im-peer-rights--media[hidden] {
     display: none;
 }
