@@ -326,6 +326,7 @@
         // страница может прийти через ajax-переход, поэтому всё внутри своей области видимости
         (() => {
             const IS_GROUP_CHAT = {$isGroupChat};
+            const AVATAR_STYLE  = {$thisUser->getStyleAvatar()};
             const PEER_SEL = {$isGroupChat ? $correspondent->getPeerId() : ($correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId())};
             const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
 
@@ -1409,7 +1410,7 @@
             // кто прочитал сообщение в беседе: счётчик и аватарки как у реакций, грузится при открытии меню
             const buildReaders = (msg, tip) => {
                 const row = u(`
-                    <div class="msg-menu-readers avatar-style-{$thisUser->getStyleAvatar()|noescape}">
+                    <div class="msg-menu-readers avatar-style-${ AVATAR_STYLE }">
                         <span class="msg-menu-readers--count">${ window.MSG_STR.readBy.replace("%COUNT%", "…") }</span>
                         <span class="msg-menu-readers--users"></span>
                     </div>
