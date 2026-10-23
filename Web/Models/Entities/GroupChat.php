@@ -24,7 +24,10 @@ class GroupChat extends RowModel
         "reactions" => true,
         "invite"    => false,
         "pin"       => true,
+        "tags"      => false,
     ];
+
+    public const TAG_MAX_LENGTH = 16;
 
     protected $tableName = "group_chats";
 
@@ -207,6 +210,30 @@ function getAvatarUrl(string $size = 'normal'): string
             $attachment instanceof Document => $attachment->isGif() ? "stickers" : "docs",
             default                         => null,
         };
+    }
+
+    function getTags(): array
+    {
+        $rows = DatabaseConnection::i()->getConnection()->query("SELECT `user`, `tag`, `color` FROM `group_chat_tags` WHERE `chat` = ?", $this->getId());
+
+        $tags = [];
+        foreach ($rows as $row) {
+            $tags[(int) $row->user] = ["text" => $row->tag, "color" => $row->color];
+        }
+
+        return $tags;
+    }
+
+    function setTag(int $userId, string $text, string $color): void
+    {
+        $text = mb_substr(trim(preg_replace("%\\s+%u", " ", $text)), 0, self::TAG_MAX_LENGTH);
+        if ($text === "") {
+            DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_tags` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId);
+            return;
+        }
+
+        $row = ["chat" => $this->getId(), "user" => $userId, "tag" => $text, "color" => strtolower($color)];
+        DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_tags` ? ON DUPLICATE KEY UPDATE ?", $row, ["tag" => $text, "color" => $row["color"]]);
     }
 
     function getInviteLink(bool $reset = false): string

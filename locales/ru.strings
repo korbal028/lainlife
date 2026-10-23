@@ -1451,6 +1451,10 @@
 "messenger_chat_admins_owner" = "Владелец";
 "messenger_chat_admins_promoted_by" = "Назначил(а) $1";
 "messenger_chat_admins_add" = "Добавить администратора";
+"messenger_chat_tag_edit" = "Изменить тег";
+"messenger_chat_tag_placeholder" = "Тег";
+"messenger_chat_tag_hint" = "Укажите свою роль, звание или то, как вас знают в этой беседе. Тег видят все участники.";
+"messenger_chat_tag_color" = "Цвет тега";
 "messenger_invite_link_hint" = "Любой, у кого есть эта ссылка, сможет вступить в беседу.";
 "messenger_invite_link_reset" = "Сбросить ссылку";
 "messenger_join_chat_title" = "Приглашение в беседу";

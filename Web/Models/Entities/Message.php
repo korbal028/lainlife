@@ -283,6 +283,23 @@ class Message extends RowModel
     // отметки прочтения бесед в рамках запроса, chat_id => отметки участников
     private static array $readMarks = [];
 
+    private static array $chatTags = [];
+
+    private function getSenderTag(): ?array
+    {
+        $rec = $this->getRecord();
+        if (!$this->isInGroupChat() || $rec->sender_type !== User::class) {
+            return null;
+        }
+
+        $chat = (int) $rec->recipient_id;
+        if (!isset(self::$chatTags[$chat])) {
+            self::$chatTags[$chat] = (new GroupChats())->get($chat)?->getTags() ?? [];
+        }
+
+        return self::$chatTags[$chat][(int) $rec->sender_id] ?? null;
+    }
+
     public static function forgetReadMarks(): void
     {
         self::$readMarks = [];
@@ -439,6 +456,7 @@ class Message extends RowModel
                 "link"   => $_SERVER['REQUEST_SCHEME'] . "://" . $_SERVER['HTTP_HOST'] . $author->getURL(),
                 "avatar" => $author->getAvatarUrl(),
                 "name"   => $depth > 0 ? $author->getCanonicalName() : $author->getFirstName(),
+                "tag"    => $depth === 0 ? $this->getSenderTag() : null,
             ],
             "timing" => [
                 "sent"   => (string) $this->getSendTimeHumanized(),

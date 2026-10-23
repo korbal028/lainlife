@@ -1521,6 +1521,10 @@
 "messenger_chat_admins_owner" = "Owner";
 "messenger_chat_admins_promoted_by" = "Promoted by $1";
 "messenger_chat_admins_add" = "Add administrator";
+"messenger_chat_tag_edit" = "Edit tag";
+"messenger_chat_tag_placeholder" = "Tag";
+"messenger_chat_tag_hint" = "Share your role, title or how you're known in this chat. Your tag is visible to all members.";
+"messenger_chat_tag_color" = "Tag color";
 "messenger_invite_link_hint" = "Anyone with this link can join the chat.";
 "messenger_invite_link_reset" = "Reset link";
 "messenger_join_chat_title" = "Chat invitation";

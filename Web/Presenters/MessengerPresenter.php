@@ -742,6 +742,8 @@ final class MessengerPresenter extends OpenVKPresenter
             "chat"      => $isChat,
             "can_leave" => $isChat && !$peer->isCreator($me->getId()),
             "can_invite" => $isChat && $peer->can("invite", $me->getId()),
+            "can_tag"   => $isChat && $peer->can("tags", $me->getId()),
+            "me"        => ["id" => $me->getId(), "name" => $me->getFirstName(), "avatar" => $me->getAvatarUrl("miniscule")],
             "can_delete_for_all" => $isChat && $peer->isCreator($me->getId()),
             "can_manage" => $isChat && $peer->canManageParticipants($me->getId()),
             "description" => $isChat ? (string) $peer->getDescription() : null,
@@ -760,6 +762,7 @@ final class MessengerPresenter extends OpenVKPresenter
     private function getChatMembers(GroupChat $chat): array
     {
         $users   = new Users();
+        $tags    = $chat->getTags();
         $members = [];
         foreach ($chat->getParticipantIds() as $id) {
             $user = $users->get($id);
@@ -774,6 +777,7 @@ final class MessengerPresenter extends OpenVKPresenter
                 "avatar" => $user->getAvatarUrl("miniscule"),
                 "link"   => $user->getURL(),
                 "role"   => $role,
+                "tag"    => $tags[$id] ?? null,
                 "order"  => $role === "owner" ? 0 : ($role === "admin" ? 1 : 2),
             ];
         }

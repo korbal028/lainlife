@@ -380,6 +380,27 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->returnJson(["history_visible" => $chat->isHistoryVisible(), "permissions" => $chat->getPermissions()]);
     }
 
+    public function renderApiTag(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getChat($peer);
+        if (!$chat->can("tags", $this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $color = (string) $this->postParam("color");
+        if (!preg_match("%^#[0-9a-f]{6}$%i", $color)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
+
+        $chat->setTag($this->user->id, (string) $this->postParam("tag"), $color);
+        $this->returnJson(["tag" => $chat->getTags()[$this->user->id] ?? null]);
+    }
+
     public function renderJoin(string $hash): void
     {
         $this->assertUserLoggedIn();

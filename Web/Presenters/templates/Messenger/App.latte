@@ -73,6 +73,9 @@
                         <a href="#" data-bind="attr: { href: sender.link }">
                             <strong data-bind="text: sender.name"></strong>
                         </a>
+                        <!-- ko if: sender.tag -->
+                        <span class="msg-tag" data-bind="text: sender.tag.text, attr: { style: '--tag: ' + sender.tag.color }"></span>
+                        <!-- /ko -->
                         <!-- /ko -->
                         <!-- ko if: $data.reply -->
                         <div class="reply-msg-container" data-bind="click: (d, e) => window.Msg.onReplyClick(reply, e), clickBubble: false">
@@ -821,6 +824,14 @@
                         msg.read = true;
                         this.appEl.querySelector(`.messenger-app--messages---message[data-uuid="${ id }"]`)?.classList.remove("unread");
                     });
+                }
+
+                setSenderTag(userId, tag) {
+                    window.messages().forEach((msg, i) => {
+                        if(msg.sender.id !== userId) return;
+                        window.messages.splice(i, 1, Object.assign({}, msg, { sender: Object.assign({}, msg.sender, { tag }) }));
+                    });
+                    this.hydrateMedia();
                 }
 
                 setReactions(msgId, reactions) {
@@ -1686,12 +1697,57 @@
                 hour:       {tr("messenger_chat_rights_hours", "%N%")},
                 exceptions: {tr("messenger_chat_rights_exceptions")},
                 removed:    {tr("messenger_chat_rights_removed")},
+                editTag:    {tr("messenger_chat_tag_edit")},
+                tagHolder:  {tr("messenger_chat_tag_placeholder")},
+                tagHint:    {tr("messenger_chat_tag_hint")},
+                tagColor:   {tr("messenger_chat_tag_color")},
                 searchAny:  {tr("header_search")},
                 ownerRole:  {tr("messenger_chat_admins_owner")},
                 promotedBy: {tr("messenger_chat_admins_promoted_by", "%NAME%")},
                 addAdmin:   {tr("messenger_chat_admins_add")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
+
+            const hslHex = (h, s, l) => {
+                s /= 100;
+                l /= 100;
+                const a = s * Math.min(l, 1 - l);
+                const f = n => {
+                    const k = (n + h / 30) % 12;
+                    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1)))).toString(16).padStart(2, "0");
+                };
+
+                return "#" + f(0) + f(8) + f(4);
+            };
+            const TAG_COLORS = [
+                Array.from({ length: 11 }, (_, i) => hslHex(0, 0, i * 10)),
+                ...[0, 30, 60, 90, 120, 150, 180, 210, 240, 270, 300, 330].map(h => Array.from({ length: 11 }, (_, i) => hslHex(h, 100, 10 + i * 8))),
+            ];
+            const TAG_DEFAULT = TAG_COLORS[8][4];
+            const renderTag = tag => tag ? `<span class="msg-tag" style="--tag: ${ escapeHtml(tag.color) }">${ escapeHtml(tag.text) }</span>` : "";
+
+            const renderTagPage = (info, avatarStyle) => {
+                const tag = info.members.find(m => m.id === info.me.id)?.tag;
+
+                return `
+                    <div class="im-peer-page im-peer-tag" data-page="tag" hidden>
+                        <div class="im-peer-tag--preview">
+                            <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(info.me.avatar) }" alt="" />
+                            <span class="im-peer-tag--name">${ escapeHtml(info.me.name) }</span>
+                            <span class="msg-tag" style="--tag: ${ escapeHtml(tag?.color ?? TAG_DEFAULT) }">${ escapeHtml(tag?.text ?? "") }</span>
+                        </div>
+                        <div class="im-peer-tag--field">
+                            <input type="text" name="tag" maxlength="16" placeholder="${ escapeHtml(PEER_STR.tagHolder) }" value="${ escapeHtml(tag?.text ?? "") }" autocomplete="off" />
+                        </div>
+                        <div class="im-peer-rights--hint">${ escapeHtml(PEER_STR.tagHint) }</div>
+                        <div class="im-peer-section">
+                            <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.tagColor) }</div>
+                            <div class="im-peer-tag--palette">
+                                ${ TAG_COLORS.flat().map(color => `<a class="im-peer-tag--color${ color === (tag?.color ?? TAG_DEFAULT) ? " active" : "" }" data-color="${ color }" style="background: ${ color }"></a>`).join("") }
+                            </div>
+                        </div>
+                    </div>`;
+            };
             const KIND_ICONS = {
                 photo: "mimetypes/application-x-egon.png",
                 video: "mimetypes/application-vnd.rn-realmedia.png",
@@ -1806,7 +1862,7 @@
                         </div>
                         ${ toggle("invite", PEER_STR.rightInvite, info.permissions.invite) }
                         ${ toggle("pin", PEER_STR.rightPin, info.permissions.pin) }
-                        ${ toggle("tags", PEER_STR.rightTags, false) }
+                        ${ toggle("tags", PEER_STR.rightTags, info.permissions.tags) }
                         ${ toggle("info", PEER_STR.rightInfo, false) }
                         <div class="im-peer-section">
                             <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.slowmode) }</div>
@@ -1849,7 +1905,7 @@
                                         <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
                                         <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", owner?.name ?? "")) }</span>
                                     </span>
-                                    <span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(m.tag ?? PEER_STR[m.role]) }</span>
+                                    ${ m.tag ? renderTag(m.tag) : `<span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(PEER_STR[m.role]) }</span>` }
                                 </a>`).join("") }
                         </div>
                         <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.notFound) }</div>
@@ -1991,10 +2047,16 @@
                                             <img src="${ OXYGEN }actions/list-add-user.png" alt="" />
                                             <span>${ escapeHtml(PEER_STR.addMembers) }</span>
                                         </a>` : "" }
+                                    ${ info.can_tag ? `
+                                        <a class="im-peer-row" data-manage="tag">
+                                            <img src="${ OXYGEN }actions/bookmark-new.png" alt="" />
+                                            <span>${ escapeHtml(PEER_STR.editTag) }</span>
+                                        </a>` : "" }
                                     ${ info.members.map(m => `
-                                        <a class="im-peer-member" href="${ escapeHtml(m.link) }">
+                                        <a class="im-peer-member" href="${ escapeHtml(m.link) }" data-id="${ Number(m.id) }">
                                             <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
                                             <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
+                                            ${ renderTag(m.tag) }
                                             ${ m.role ? `<span class="im-peer-member--role">${ escapeHtml(PEER_STR[m.role]) }</span>` : "" }
                                         </a>`).join("") }
                                 </div>` : "" }
@@ -2008,6 +2070,7 @@
                             <div class="im-peer-search--results"></div>
                         </div>
                         ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights(info) + renderAdmins(info, avatarStyle) : "" }
+                        ${ info.can_tag ? renderTagPage(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
                     callbacks: [Function.noop],
@@ -2025,6 +2088,7 @@
                 const manage = root.querySelector('[data-page="manage"]');
                 const rights = root.querySelector('[data-page="rights"]');
                 const admins = root.querySelector('[data-page="admins"]');
+                const tagPage = root.querySelector('[data-page="tag"]');
                 const close = () => msg.close();
 
                 // «назад» слева от «закрыть», виден только в разделе вложений
@@ -2048,8 +2112,8 @@
                 let shown = main;
                 const setPage = page => {
                     shown = page;
-                    const editing = page === manage || page === rights;
-                    [main, list, found, manage, rights, admins].forEach(p => p && (p.hidden = p !== page));
+                    const editing = page === manage || page === rights || page === tagPage;
+                    [main, list, found, manage, rights, admins, tagPage].forEach(p => p && (p.hidden = p !== page));
                     backBtn.hidden   = page === main || editing || page === admins;
                     manageBtn.hidden = page !== main;
                     cancelBtn.hidden = saveBtn.hidden = !editing;
@@ -2264,12 +2328,57 @@
                         } else if(shown === rights) {
                             await saveSettings(rightsFields());
                             showManage();
+                        } else if(shown === tagPage) {
+                            await saveTag();
+                            showMain();
                         }
                     } catch(e) {
                         fastError(tr("messages_error_1"));
                     }
                 });
                 cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
+
+                const tagInput   = tagPage?.querySelector('[name="tag"]');
+                const tagPreview = tagPage?.querySelector(".im-peer-tag--preview .msg-tag");
+                const myTag      = () => info.members.find(m => m.id === info.me.id)?.tag ?? null;
+                const tagColor   = () => tagPage.querySelector(".im-peer-tag--color.active").dataset.color;
+                const setTagColor = color => {
+                    tagPage.querySelectorAll(".im-peer-tag--color").forEach(cell => cell.classList.toggle("active", cell.dataset.color === color));
+                    tagPreview.style.setProperty("--tag", color);
+                };
+
+                tagInput?.addEventListener("input", () => tagPreview.textContent = tagInput.value.trim());
+                tagPage?.querySelector(".im-peer-tag--palette").addEventListener("click", e => {
+                    const cell = e.target.closest("[data-color]");
+                    if(cell) setTagColor(cell.dataset.color);
+                });
+
+                const showTag = () => {
+                    tagInput.value = myTag()?.text ?? "";
+                    tagPreview.textContent = tagInput.value;
+                    setTagColor(myTag()?.color ?? TAG_DEFAULT);
+                    head.textContent = PEER_STR.editTag;
+                    setPage(tagPage);
+                    body.scrollTop = 0;
+                };
+
+                const saveTag = async () => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("tag", tagInput.value);
+                    fd.set("color", tagColor());
+
+                    const res = await fetch(`/im/api/chat${ PEER_SEL }/tag.json`, { method: "POST", body: fd });
+                    if(!res.ok) throw new Error(res.status);
+
+                    const tag = (await res.json()).tag;
+                    const me  = info.members.find(m => m.id === info.me.id);
+                    if(me) me.tag = tag;
+
+                    main.querySelector(`.im-peer-member[data-id="${ info.me.id }"] .msg-tag`)?.remove();
+                    main.querySelector(`.im-peer-member[data-id="${ info.me.id }"] .im-peer-member--name`)?.insertAdjacentHTML("afterend", renderTag(tag));
+                    window.Msg.setSenderTag(info.me.id, tag);
+                };
 
                 const askDelete = () => {
                     close();
@@ -2329,6 +2438,7 @@
 
                 body.addEventListener("click", e => {
                     if(e.target.closest('[data-manage="rights"]')) return showRights();
+                    if(e.target.closest('[data-manage="tag"]')) return showTag();
                     if(e.target.closest('[data-manage="admins"]')) return showAdmins();
 
                     if(e.target.closest('[data-act="add-members"]')) {

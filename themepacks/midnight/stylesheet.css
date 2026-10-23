@@ -927,6 +927,22 @@ ul {
     color: #b9a8ee;
 }
 
+.im-peer-tag--preview {
+    background: #16131f;
+}
+
+.im-peer-tag--name {
+    color: #8eb2d0;
+}
+
+.im-peer-tag--color {
+    border-color: rgba(255, 255, 255, .12);
+}
+
+.im-peer-tag--color.active {
+    outline-color: #8a78c9;
+}
+
 .im-peer-rights--hint {
     background: #16131f;
     color: #8b9ab5;
