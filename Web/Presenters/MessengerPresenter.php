@@ -173,9 +173,9 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->selId         = $sel;
         $this->template->isGroupChat   = $correspondent instanceof GroupChat;
         $this->template->canWrite      = $this->canWrite($correspondent);
-        $this->template->mediaRights   = $correspondent instanceof GroupChat
-            ? array_intersect_key($correspondent->getPermissionsFor($this->user->id), array_flip(GroupChat::MEDIA_PERMISSIONS))
-            : array_fill_keys(GroupChat::MEDIA_PERMISSIONS, true);
+        $this->template->chatRights    = $correspondent instanceof GroupChat
+            ? $correspondent->getPermissionsFor($this->user->id)
+            : array_fill_keys(array_keys(GroupChat::PERMISSIONS), true);
         $this->template->correspondent = $correspondent;
         $this->template->reactions     = Message::REACTIONS;
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
@@ -629,6 +629,11 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
+        if ($correspondent instanceof GroupChat && !$correspondent->can("pin", $this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
         $cor   = new Correspondence($this->user->identity, $correspondent);
         $msgId = (int) $this->postParam("msg_id");
         $msg   = null;
@@ -736,7 +741,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "shortcode" => ($isSelf || $isChat) ? null : $peer->getShortCode(),
             "chat"      => $isChat,
             "can_leave" => $isChat && !$peer->isCreator($me->getId()),
-            "can_invite" => $isChat && $peer->canManageParticipants($me->getId()),
+            "can_invite" => $isChat && $peer->can("invite", $me->getId()),
             "can_delete_for_all" => $isChat && $peer->isCreator($me->getId()),
             "can_manage" => $isChat && $peer->canManageParticipants($me->getId()),
             "description" => $isChat ? (string) $peer->getDescription() : null,

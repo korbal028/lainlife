@@ -43,6 +43,17 @@ final class GroupChatPresenter extends OpenVKPresenter
         return $chat;
     }
 
+    private function getInvitingChat(int $peer): GroupChat
+    {
+        $chat = $this->getChat($peer);
+        if (!$chat->can("invite", $this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        return $chat;
+    }
+
     private function getCreatedChat(int $peer): GroupChat
     {
         $chat = $this->getChat($peer);
@@ -209,8 +220,13 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getManagedChat($peer);
+        $chat = $this->getInvitingChat($peer);
         $user = (new Users())->get($userId);
+        if ($user && $this->user->identity->getSubscriptionStatus($user) !== User::SUBSCRIPTION_MUTUAL) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
         if (!$user || !$this->groupChats->addParticipant($chat->getId(), $userId)) {
             header("HTTP/1.1 400 Bad Request");
             $this->returnJson(["success" => false, "error" => "User already in chat"]);
@@ -333,9 +349,10 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getManagedChat($peer);
+        $reset = $this->postParam("act") === "reset";
+        $chat  = $reset ? $this->getManagedChat($peer) : $this->getInvitingChat($peer);
 
-        $this->returnJson(["link" => $chat->getInviteLink($this->postParam("act") === "reset")]);
+        $this->returnJson(["link" => $chat->getInviteLink($reset)]);
     }
 
     // настройки беседы из админ-панели

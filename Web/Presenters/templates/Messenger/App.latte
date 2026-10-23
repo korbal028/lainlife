@@ -42,7 +42,7 @@
         <div class="messenger-app--selection" style="display: none;" data-bind="visible: selectedMsgs().length > 0">
             <span data-bind="text: selectionLabel()"></span>
             <div class="messenger-app--selection---actions">
-                <a class="button" data-bind="visible: selectedMsgs().length === 1, text: pinnedMsg()?.uuid === selectedMsgs()[0] ? window.MSG_STR.unpin : window.MSG_STR.pin, click: () => { window.Msg.pinMessage(selectedMsgs()[0]); selectedMsgs.removeAll(); }"></a>
+                <a n:if="$chatRights['pin']" class="button" data-bind="visible: selectedMsgs().length === 1, text: pinnedMsg()?.uuid === selectedMsgs()[0] ? window.MSG_STR.unpin : window.MSG_STR.pin, click: () => { window.Msg.pinMessage(selectedMsgs()[0]); selectedMsgs.removeAll(); }"></a>
                 <a class="button" data-bind="click: () => window.Msg.forwardMessages(selectedMsgs())">{_messenger_forward}</a>
                 <a class="button" data-bind="click: () => window.Msg.deleteMessages(selectedMsgs())">{_messenger_delete}</a>
                 <a class="messenger-app--selection---cancel" data-bind="click: () => selectedMsgs.removeAll()">{_messenger_cancel_selection}</a>
@@ -56,7 +56,7 @@
                 <span class="messenger-app--pinned---sender" data-bind="text: sender.name"></span>
                 <div class="messenger-app--pinned---text" data-bind="html: text || '…'"></div>
             </div>
-            <a class="messenger-app--pinned---close" title="{_messenger_unpin_message}" data-bind="click: () => window.Msg.pinMessage(0), clickBubble: false">✕</a>
+            <a n:if="$chatRights['pin']" class="messenger-app--pinned---close" title="{_messenger_unpin_message}" data-bind="click: () => window.Msg.pinMessage(0), clickBubble: false">✕</a>
         </div>
         <!-- /ko -->
         <div class="messenger-app--messages" data-bind="event: { scroll: onMessagesScroll }">
@@ -135,7 +135,7 @@
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
                         <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
-                            <a class="js-emoji-picker emoji-btn" data-tabs="emoji{if $mediaRights['stickers']} stickers gifs{/if}" title="{_smiles}"></a>
+                            <a class="js-emoji-picker emoji-btn" data-tabs="emoji{if $chatRights['stickers']} stickers gifs{/if}" title="{_smiles}"></a>
                             <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea expanded-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress, input: onTextareaInput }"></textarea>
 
                             <!-- ko if: replyTo() -->
@@ -180,19 +180,19 @@
                                     </a>
                                     <div id="wallAttachmentMenu" class="wallAttachmentMenu hidden">
                                         <a class="header menu_toggler">{_attach}</a>
-                                        <a id="__photoAttachment" n:if="$mediaRights['photos']">
+                                        <a id="__photoAttachment" n:if="$chatRights['photos']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-egon.png" />
                                             {_photo}
                                         </a>
-                                        <a id="__videoAttachment" n:if="$mediaRights['videos']">
+                                        <a id="__videoAttachment" n:if="$chatRights['videos']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" />
                                             {_video}
                                         </a>
-                                        <a id="__audioAttachment" n:if="$mediaRights['audios']">
+                                        <a id="__audioAttachment" n:if="$chatRights['audios']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" />
                                             {_audio}
                                         </a>
-                                        <a id="__documentAttachment" n:if="$mediaRights['docs']">
+                                        <a id="__documentAttachment" n:if="$chatRights['docs']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" />
                                             {_document}
                                         </a>
@@ -326,7 +326,7 @@
         // страница может прийти через ajax-переход, поэтому всё внутри своей области видимости
         (() => {
             const IS_GROUP_CHAT = {$isGroupChat};
-            const MEDIA_RIGHTS  = {$mediaRights};
+            const CHAT_RIGHTS   = {$chatRights};
             const AVATAR_STYLE  = {$thisUser->getStyleAvatar()};
             const PEER_SEL = {$isGroupChat ? $correspondent->getPeerId() : ($correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId())};
             const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
@@ -1342,7 +1342,7 @@
                 const reaction = e.target.closest(".msg-reaction");
                 if(reaction) {
                     e.preventDefault();
-                    if(MEDIA_RIGHTS.reactions) window.Msg.reactMessage(ko.dataFor(reaction.closest(".messenger-app--messages---message")).uuid, ko.dataFor(reaction).emoji);
+                    if(CHAT_RIGHTS.reactions) window.Msg.reactMessage(ko.dataFor(reaction.closest(".messenger-app--messages---message")).uuid, ko.dataFor(reaction).emoji);
                     return;
                 }
 
@@ -1445,10 +1445,10 @@
                         </div>
                     </div>
                 `);
-                if(MEDIA_RIGHTS.reactions) menu.prepend(buildReactionBar(msg, tip, menu, context));
+                if(CHAT_RIGHTS.reactions) menu.prepend(buildReactionBar(msg, tip, menu, context));
                 if(IS_GROUP_CHAT) menu.find(".msg-menu-actions .like_tooltip_body").append(buildReaders(msg, tip));
 
-                [["pin", isPinned ? window.MSG_STR.unpin : window.MSG_STR.pin], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
+                [...(CHAT_RIGHTS.pin ? [["pin", isPinned ? window.MSG_STR.unpin : window.MSG_STR.pin]] : []), ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
                     const link = u(`<a></a>`).text(text);
                     if(act === "delete") link.addClass("crp-menu-danger");
                     link.on("click", e => {
@@ -1804,8 +1804,8 @@
                                     <input type="checkbox" name="media_${ key }"${ info.permissions[key] ? " checked" : "" } />
                                 </label>`).join("") }
                         </div>
-                        ${ toggle("invite", PEER_STR.rightInvite, false) }
-                        ${ toggle("pin", PEER_STR.rightPin, true) }
+                        ${ toggle("invite", PEER_STR.rightInvite, info.permissions.invite) }
+                        ${ toggle("pin", PEER_STR.rightPin, info.permissions.pin) }
                         ${ toggle("tags", PEER_STR.rightTags, false) }
                         ${ toggle("info", PEER_STR.rightInfo, false) }
                         <div class="im-peer-section">
@@ -1856,7 +1856,7 @@
                     </div>`;
             };
 
-            const openAddMembers = async () => {
+            const openAddMembers = async canReset => {
                 const postInvite = async act => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
@@ -1890,9 +1890,10 @@
                     <div class="im-invite">
                         <div class="im-invite--hint">${ escapeHtml(PEER_STR.inviteHint) }</div>
                         <input type="text" class="im-invite--link" readonly value="${ escapeHtml(link) }" onclick="this.select()" />
-                        <div class="im-invite--actions">
-                            <a class="button" data-act="reset">${ escapeHtml(PEER_STR.inviteReset) }</a>
-                        </div>
+                        ${ canReset ? `
+                            <div class="im-invite--actions">
+                                <a class="button" data-act="reset">${ escapeHtml(PEER_STR.inviteReset) }</a>
+                            </div>` : "" }
                     </div>
                     <div class="im-add-members">${ list }</div>
                 `, [PEER_STR.addBtn, PEER_STR.cancel], [async () => {
@@ -1908,7 +1909,7 @@
                 }, Function.noop], true).getNode().first();
 
                 const input = root.querySelector(".im-invite--link");
-                root.querySelector(".im-invite--actions").addEventListener("click", async e => {
+                root.querySelector(".im-invite--actions")?.addEventListener("click", async e => {
                     const act = e.target.closest("[data-act]")?.dataset.act;
                     if(act === "reset") {
                         try {
@@ -2225,11 +2226,10 @@
                     body.scrollTop = 0;
                 };
 
-                const sendBox = rights?.querySelector('[name="send"]');
-                const rightsFields = () => Object.fromEntries([sendBox, ...rights.querySelectorAll('[name^="media_"]')].map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"]));
+                const rightBoxes   = () => [...rights.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')].filter(box => box.name.replace(/^media_/, "") in info.permissions);
+                const rightsFields = () => Object.fromEntries(rightBoxes().map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"]));
                 const showRights = () => {
-                    sendBox.checked = info.permissions.send;
-                    rights.querySelectorAll('[name^="media_"]').forEach(box => box.checked = info.permissions[box.name.slice(6)]);
+                    rightBoxes().forEach(box => box.checked = info.permissions[box.name.replace(/^media_/, "")]);
                     updateRights();
                     head.textContent = PEER_STR.rights;
                     setPage(rights);
@@ -2333,7 +2333,7 @@
 
                     if(e.target.closest('[data-act="add-members"]')) {
                         close();
-                        return openAddMembers();
+                        return openAddMembers(info.can_manage);
                     }
 
                     const row = e.target.closest(".im-peer-row[data-kind]");

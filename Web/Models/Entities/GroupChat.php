@@ -22,9 +22,9 @@ class GroupChat extends RowModel
         "docs"      => true,
         "stickers"  => true,
         "reactions" => true,
+        "invite"    => false,
+        "pin"       => true,
     ];
-
-    public const MEDIA_PERMISSIONS = ["photos", "videos", "audios", "docs", "stickers", "reactions"];
 
     protected $tableName = "group_chats";
 
