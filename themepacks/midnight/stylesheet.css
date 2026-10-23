@@ -905,14 +905,6 @@ ul {
     background: rgba(122, 156, 196, .1);
 }
 
-input[type=checkbox].im-peer-switch {
-    background-color: #2c2640 !important;
-}
-
-input[type=checkbox].im-peer-switch:checked {
-    background-color: #8a78c9 !important;
-}
-
 .im-peer-slow input[type=range] {
     accent-color: #8a78c9;
 }
