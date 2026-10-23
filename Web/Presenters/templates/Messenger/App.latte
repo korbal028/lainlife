@@ -1653,6 +1653,22 @@
                 search:     {tr("messenger_search_in_chat")},
                 searchHint: {tr("messenger_search_in_chat_placeholder")},
                 notFound:   {tr("no_results_by_this_query")},
+                save:       {tr("save")},
+                manage:     {tr("messenger_chat_manage")},
+                manageTitle: {tr("messenger_chat_manage_title")},
+                photo:      {tr("messenger_chat_manage_photo")},
+                photoDel:   {tr("messenger_chat_manage_photo_delete")},
+                chatName:   {tr("messenger_chat_manage_name")},
+                chatDesc:   {tr("messenger_chat_manage_description")},
+                rights:     {tr("messenger_chat_manage_rights")},
+                rightInvite: {tr("messenger_chat_manage_right_invite")},
+                rightInfo:  {tr("messenger_chat_manage_right_info")},
+                rightPin:   {tr("messenger_chat_manage_right_pin")},
+                everyone:   {tr("messenger_chat_manage_everyone")},
+                adminsOnly: {tr("messenger_chat_manage_admins_only")},
+                admins:     {tr("messenger_chat_manage_admins")},
+                addAdmin:   {tr("messenger_chat_manage_add_admin")},
+                demote:     {tr("messenger_chat_manage_demote")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
             const KIND_ICONS = {
@@ -1688,6 +1704,65 @@
                     case "audio":
                         return `<div class="im-peer-att--audio">${ item.html }</div>`;
                 }
+            };
+
+            // админ-панель беседы, пока только вёрстка
+            const renderManage = (info, avatarStyle) => {
+                const right = (key, label, adminsOnly) => `
+                    <label class="im-peer-manage--right">
+                        <span>${ escapeHtml(label) }</span>
+                        <select name="${ key }">
+                            <option value="all"${ adminsOnly ? "" : " selected" }>${ escapeHtml(PEER_STR.everyone) }</option>
+                            <option value="admins"${ adminsOnly ? " selected" : "" }>${ escapeHtml(PEER_STR.adminsOnly) }</option>
+                        </select>
+                    </label>`;
+
+                return `
+                    <div class="im-peer-page im-peer-manage" data-page="manage" hidden>
+                        <div class="im-peer-head">
+                            <img class="im-peer-avatar avatar-style-${ avatarStyle }" src="${ escapeHtml(info.avatar) }" alt="" />
+                            <div class="im-peer-manage--photo">
+                                <a data-manage="photo">${ escapeHtml(PEER_STR.photo) }</a>
+                                <span>·</span>
+                                <a data-manage="photo-delete">${ escapeHtml(PEER_STR.photoDel) }</a>
+                            </div>
+                        </div>
+                        <div class="im-peer-section im-peer-manage--fields">
+                            <label class="im-peer-manage--field">
+                                <span class="im-peer-label">${ escapeHtml(PEER_STR.chatName) }</span>
+                                <input type="text" name="name" maxlength="64" value="${ escapeHtml(info.name) }" />
+                            </label>
+                            <label class="im-peer-manage--field">
+                                <span class="im-peer-label">${ escapeHtml(PEER_STR.chatDesc) }</span>
+                                <textarea name="description" rows="3">${ escapeHtml(info.description ?? "") }</textarea>
+                            </label>
+                        </div>
+                        <div class="im-peer-section">
+                            <div class="im-peer-row im-peer-members--head">
+                                <span>${ escapeHtml(PEER_STR.rights) }</span>
+                            </div>
+                            ${ right("invite", PEER_STR.rightInvite, true) }
+                            ${ right("info", PEER_STR.rightInfo, true) }
+                            ${ right("pin", PEER_STR.rightPin, false) }
+                        </div>
+                        <div class="im-peer-section">
+                            <div class="im-peer-row im-peer-members--head">
+                                <span>${ escapeHtml(PEER_STR.admins) }</span>
+                            </div>
+                            <a class="im-peer-row" data-manage="add-admin">
+                                <img src="${ OXYGEN }actions/list-add-user.png" alt="" />
+                                <span>${ escapeHtml(PEER_STR.addAdmin) }</span>
+                            </a>
+                            ${ info.members.filter(m => m.role).map(m => `
+                                <div class="im-peer-member">
+                                    <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
+                                    <a class="im-peer-member--name" href="${ escapeHtml(m.link) }">${ escapeHtml(m.name) }</a>
+                                    ${ m.role === "admin"
+                                        ? `<a class="im-peer-manage--demote" data-manage="demote" data-id="${ Number(m.id) }">${ escapeHtml(PEER_STR.demote) }</a>`
+                                        : `<span class="im-peer-member--role">${ escapeHtml(PEER_STR[m.role]) }</span>` }
+                                </div>`).join("") }
+                        </div>
+                    </div>`;
             };
 
             const openAddMembers = async () => {
@@ -1840,6 +1915,7 @@
                             <div class="im-peer-search--summary" hidden></div>
                             <div class="im-peer-search--results"></div>
                         </div>
+                        ${ info.can_manage ? renderManage(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
                     callbacks: [Function.noop],
@@ -1854,11 +1930,28 @@
                 const main  = root.querySelector('[data-page="main"]');
                 const list  = root.querySelector('[data-page="list"]');
                 const found = root.querySelector('[data-page="search"]');
+                const manage = root.querySelector('[data-page="manage"]');
                 const close = () => msg.close();
 
                 // «назад» слева от «закрыть», виден только в разделе вложений
+                const action  = root.querySelector(".ovk-diag-action");
                 const backBtn = u(`<button class="button im-peer-back" hidden>${ escapeHtml(PEER_STR.back) }</button>`).first();
-                root.querySelector(".ovk-diag-action").prepend(backBtn);
+                action.prepend(backBtn);
+
+                // «управление» на месте «назад» на главной, «сохранить» рядом с «закрыть» в панели
+                const manageBtn = u(`<button class="button im-peer-manage-btn">${ escapeHtml(PEER_STR.manage) }</button>`).first();
+                const saveBtn   = u(`<button class="button im-peer-save" hidden>${ escapeHtml(PEER_STR.save) }</button>`).first();
+                if(manage) {
+                    action.prepend(manageBtn);
+                    action.insertBefore(saveBtn, backBtn.nextSibling);
+                }
+
+                const setPage = page => {
+                    [main, list, found, manage].forEach(p => p && (p.hidden = p !== page));
+                    backBtn.hidden   = page === main;
+                    manageBtn.hidden = page !== main;
+                    saveBtn.hidden   = page !== manage;
+                };
 
                 // подгрузка вложений выбранного типа при прокрутке
                 let current = null;
@@ -1957,10 +2050,7 @@
                 const showMain = () => {
                     current = null;
                     head.textContent = PEER_STR.title;
-                    list.hidden = true;
-                    found.hidden = true;
-                    main.hidden = false;
-                    backBtn.hidden = true;
+                    setPage(main);
                     node.removeClass("im-peer-dialog-list");
                 };
 
@@ -1969,10 +2059,7 @@
                     head.textContent = title;
                     list.className = `im-peer-page im-peer-list im-peer-list-${ kind }`;
                     list.innerHTML = "";
-                    main.hidden = true;
-                    found.hidden = true;
-                    list.hidden = false;
-                    backBtn.hidden = false;
+                    setPage(list);
                     node.addClass("im-peer-dialog-list");
                     body.scrollTop = 0;
                     loadMore();
@@ -1981,16 +2068,22 @@
                 const showSearch = () => {
                     current = null;
                     head.textContent = PEER_STR.search;
-                    main.hidden = true;
-                    list.hidden = true;
-                    found.hidden = false;
-                    backBtn.hidden = false;
+                    setPage(found);
                     node.addClass("im-peer-dialog-list");
                     body.scrollTop = 0;
                     searchInput.focus();
                 };
 
+                const showManage = () => {
+                    current = null;
+                    head.textContent = PEER_STR.manageTitle;
+                    setPage(manage);
+                    node.removeClass("im-peer-dialog-list");
+                    body.scrollTop = 0;
+                };
+
                 backBtn.addEventListener("click", showMain);
+                manageBtn.addEventListener("click", showManage);
 
                 const askDelete = () => {
                     close();

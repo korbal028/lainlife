@@ -897,7 +897,8 @@ ul {
 
 .im-peer-label,
 .im-peer-att--meta,
-.im-peer-empty {
+.im-peer-empty,
+.im-peer-manage--photo {
     color: #8b9ab5;
 }
 

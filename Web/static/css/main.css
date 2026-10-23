@@ -1798,13 +1798,74 @@ span.ok-smile.ok-smile {
 }
 
 .im-peer-page[hidden],
-.im-peer-back[hidden] {
+.im-peer-back[hidden],
+.im-peer-manage-btn[hidden],
+.im-peer-save[hidden] {
     display: none;
 }
 
-.im-peer-dialog .ovk-diag-action .im-peer-back {
+.im-peer-dialog .ovk-diag-action .im-peer-back,
+.im-peer-dialog .ovk-diag-action .im-peer-manage-btn {
     float: left;
     margin-left: 0;
+}
+
+.im-peer-dialog .ovk-diag-action .im-peer-manage-btn {
+    font-weight: normal;
+}
+
+/* админ-панель беседы */
+.im-peer-manage--photo {
+    display: flex;
+    gap: 6px;
+    color: #888;
+    font-size: 11px;
+}
+
+.im-peer-manage--photo a {
+    cursor: pointer;
+}
+
+.im-peer-manage--fields {
+    padding: 8px 20px 10px;
+}
+
+.im-peer-manage--field {
+    display: block;
+}
+
+.im-peer-manage--field + .im-peer-manage--field {
+    margin-top: 8px;
+}
+
+.im-peer-manage--field .im-peer-label {
+    display: block;
+    margin-bottom: 3px;
+}
+
+.im-peer-manage--field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    resize: vertical;
+}
+
+.im-peer-manage--right {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 5px 20px;
+}
+
+.im-peer-manage--right select {
+    width: 140px;
+    flex: none;
+}
+
+.im-peer-manage--demote {
+    flex: none;
+    font-size: 11px;
+    cursor: pointer;
 }
 
 .im-peer-head {
