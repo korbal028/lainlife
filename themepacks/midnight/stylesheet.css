@@ -890,6 +890,29 @@ ul {
     border-top-color: #2c2640;
 }
 
+.im-peer-manage .im-peer-section {
+    border-top-color: #16131f;
+}
+
+.im-peer-manage--name span,
+.im-peer-row--value {
+    color: #a99ad8;
+}
+
+.im-peer-manage--name input[type="text"],
+.im-peer-manage--desc textarea:focus {
+    border-bottom-color: #8a78c9 !important;
+}
+
+.im-peer-manage--desc textarea {
+    border-bottom-color: #2c2640 !important;
+}
+
+.im-peer-manage--name input[type="text"],
+.im-peer-manage--desc textarea {
+    background: transparent !important;
+}
+
 .im-peer-row:hover,
 .im-peer-att--row:hover {
     background: rgba(122, 156, 196, .1);
@@ -897,8 +920,7 @@ ul {
 
 .im-peer-label,
 .im-peer-att--meta,
-.im-peer-empty,
-.im-peer-manage--photo {
+.im-peer-empty {
     color: #8b9ab5;
 }
 
