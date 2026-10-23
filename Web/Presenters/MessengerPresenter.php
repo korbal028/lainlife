@@ -743,6 +743,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "can_leave" => $isChat && !$peer->isCreator($me->getId()),
             "can_invite" => $isChat && $peer->can("invite", $me->getId()),
             "can_tag"   => $isChat && $peer->can("tags", $me->getId()),
+            "can_edit_info" => $isChat && $peer->can("info", $me->getId()),
             "me"        => ["id" => $me->getId(), "name" => $me->getFirstName(), "avatar" => $me->getAvatarUrl("miniscule")],
             "can_delete_for_all" => $isChat && $peer->isCreator($me->getId()),
             "can_manage" => $isChat && $peer->canManageParticipants($me->getId()),

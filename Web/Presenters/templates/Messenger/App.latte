@@ -7,7 +7,7 @@
 {if !$isGroupChat && $correspondent->getId() === $thisUser->getId()}
     {_saved_messages}
 {elseif $isGroupChat}
-    {$correspondent->getCanonicalName()}
+    <span class="im-header-name">{$correspondent->getCanonicalName()}</span>
 {else}
 <a href="{$correspondent->getURL()}">{$correspondent->getCanonicalName()}</a>    
 {/if}
@@ -1785,7 +1785,6 @@
                 }
             };
 
-            // админ-панель беседы, пока только вёрстка
             const renderManage = (info, avatarStyle) => {
                 const row = (act, icon, label, value = "") => `
                     <a class="im-peer-row" data-manage="${ act }">
@@ -1797,6 +1796,7 @@
                 return `
                     <div class="im-peer-page im-peer-manage" data-page="manage" hidden>
                         <div class="im-peer-manage--head">
+                            <input type="file" class="im-peer-manage--file" accept="image/*" hidden />
                             <a class="im-peer-manage--ava" data-manage="photo">
                                 <img class="im-peer-avatar avatar-style-${ avatarStyle }" src="${ escapeHtml(info.avatar) }" alt="" />
                             </a>
@@ -1808,18 +1808,19 @@
                         <div class="im-peer-manage--desc">
                             <textarea name="description" rows="1" placeholder="${ escapeHtml(PEER_STR.chatDesc) }">${ escapeHtml(info.description ?? "") }</textarea>
                         </div>
-                        <div class="im-peer-section">
-                            <label class="im-peer-row im-peer-manage--check">
-                                <img src="${ OXYGEN }apps/kopete-offline.png" alt="" />
-                                <span>${ escapeHtml(PEER_STR.history) }</span>
-                                <input type="checkbox" name="history_visible"${ info.history_visible ? " checked" : "" } />
-                            </label>
-                        </div>
-                        <div class="im-peer-section">
-                            ${ row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") }
-                            ${ row("admins", "apps/system-users.png", PEER_STR.admins, String(info.members.filter(m => m.role).length)) }
-                            ${ row("log", "apps/utilities-log-viewer.png", PEER_STR.log) }
-                        </div>
+                        ${ info.can_manage ? `
+                            <div class="im-peer-section">
+                                <label class="im-peer-row im-peer-manage--check">
+                                    <img src="${ OXYGEN }apps/kopete-offline.png" alt="" />
+                                    <span>${ escapeHtml(PEER_STR.history) }</span>
+                                    <input type="checkbox" name="history_visible"${ info.history_visible ? " checked" : "" } />
+                                </label>
+                            </div>
+                            <div class="im-peer-section">
+                                ${ row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") }
+                                ${ row("admins", "apps/system-users.png", PEER_STR.admins, String(info.members.filter(m => m.role).length)) }
+                                ${ row("log", "apps/utilities-log-viewer.png", PEER_STR.log) }
+                            </div>` : "" }
                         ${ info.can_delete_for_all ? `
                             <div class="im-peer-section">
                                 <a class="im-peer-row im-peer-danger" data-manage="delete">
@@ -1865,7 +1866,7 @@
                         ${ toggle("invite", PEER_STR.rightInvite, info.permissions.invite) }
                         ${ toggle("pin", PEER_STR.rightPin, info.permissions.pin) }
                         ${ toggle("tags", PEER_STR.rightTags, info.permissions.tags) }
-                        ${ toggle("info", PEER_STR.rightInfo, false) }
+                        ${ toggle("info", PEER_STR.rightInfo, info.permissions.info) }
                         <div class="im-peer-section">
                             <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.slowmode) }</div>
                             <div class="im-peer-slow">
@@ -2071,7 +2072,8 @@
                             <div class="im-peer-search--summary" hidden></div>
                             <div class="im-peer-search--results"></div>
                         </div>
-                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights(info) + renderAdmins(info, avatarStyle) : "" }
+                        ${ info.can_manage || info.can_edit_info ? renderManage(info, avatarStyle) : "" }
+                        ${ info.can_manage ? renderRights(info) + renderAdmins(info, avatarStyle) : "" }
                         ${ info.can_tag ? renderTagPage(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
@@ -2279,11 +2281,16 @@
                     searchInput.focus();
                 };
 
-                // настройки беседы сохраняются по «сохранить», «отмена» их сбрасывает
                 const historyBox = manage?.querySelector('[name="history_visible"]');
+                const nameInput  = manage?.querySelector('[name="name"]');
+                const descInput  = manage?.querySelector('[name="description"]');
                 const showManage = () => {
                     current = null;
-                    if(shown === main) historyBox.checked = info.history_visible;
+                    if(shown === main) {
+                        nameInput.value = info.name;
+                        descInput.value = info.description ?? "";
+                        if(historyBox) historyBox.checked = info.history_visible;
+                    }
                     head.textContent = PEER_STR.manageTitle;
                     setPage(manage);
                     node.removeClass("im-peer-dialog-list");
@@ -2323,7 +2330,13 @@
                 saveBtn.addEventListener("click", async () => {
                     try {
                         if(shown === manage) {
-                            await saveSettings({ history_visible: historyBox.checked ? "1" : "0" });
+                            const fields = {};
+                            if(info.can_edit_info) Object.assign(fields, { name: nameInput.value, description: descInput.value });
+                            if(info.can_manage) fields.history_visible = historyBox.checked ? "1" : "0";
+
+                            await saveSettings(fields);
+                            main.querySelector(".im-peer-name").textContent = info.name;
+                            document.querySelector(".im-header-name")?.replaceChildren(info.name);
                             showMain();
                         } else if(shown === rights) {
                             await saveSettings(rightsFields());
@@ -2337,6 +2350,27 @@
                     }
                 });
                 cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
+
+                const avatarFile = manage?.querySelector(".im-peer-manage--file");
+                avatarFile?.addEventListener("change", async () => {
+                    const file = avatarFile.files[0];
+                    avatarFile.value = "";
+                    if(!file) return;
+
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("avatar", file);
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/avatar/set.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        info.avatar = (await res.json()).avatar;
+                        root.querySelectorAll(".im-peer-head .im-peer-avatar, .im-peer-manage--ava .im-peer-avatar").forEach(img => img.src = info.avatar);
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
+                });
 
                 const tagInput   = tagPage?.querySelector('[name="tag"]');
                 const tagPreview = tagPage?.querySelector(".im-peer-tag--preview .msg-tag");
@@ -2437,6 +2471,7 @@
                 };
 
                 body.addEventListener("click", e => {
+                    if(e.target.closest('[data-manage="photo"]') && info.can_edit_info) return avatarFile.click();
                     if(e.target.closest('[data-manage="rights"]')) return showRights();
                     if(e.target.closest('[data-manage="tag"]')) return showTag();
                     if(e.target.closest('[data-manage="admins"]')) return showAdmins();

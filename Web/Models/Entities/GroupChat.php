@@ -25,9 +25,12 @@ class GroupChat extends RowModel
         "invite"    => false,
         "pin"       => true,
         "tags"      => false,
+        "info"      => false,
     ];
 
-    public const TAG_MAX_LENGTH = 16;
+    public const TAG_MAX_LENGTH         = 16;
+    public const NAME_MAX_LENGTH        = 64;
+    public const DESCRIPTION_MAX_LENGTH = 1000;
 
     protected $tableName = "group_chats";
 
@@ -67,11 +70,7 @@ class GroupChat extends RowModel
      */
     function getDescription(): ?string
     {
-        try {
-            return $this->getRecord()->description;
-        } catch (\Throwable $e) {
-            return null;
-        }
+        return DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId())?->description;
     }
 
     /**
@@ -210,6 +209,19 @@ function getAvatarUrl(string $size = 'normal'): string
             $attachment instanceof Document => $attachment->isGif() ? "stickers" : "docs",
             default                         => null,
         };
+    }
+
+    function setInfo(string $name, string $description): void
+    {
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update([
+            "name"        => mb_substr($name, 0, self::NAME_MAX_LENGTH),
+            "description" => mb_substr($description, 0, self::DESCRIPTION_MAX_LENGTH),
+        ]);
+    }
+
+    function setAvatar(?string $avatar): void
+    {
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["avatar" => $avatar]);
     }
 
     function getTags(): array

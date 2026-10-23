@@ -43,10 +43,10 @@ final class GroupChatPresenter extends OpenVKPresenter
         return $chat;
     }
 
-    private function getInvitingChat(int $peer): GroupChat
+    private function getChatWithRight(int $peer, string $permission): GroupChat
     {
         $chat = $this->getChat($peer);
-        if (!$chat->can("invite", $this->user->id)) {
+        if (!$chat->can($permission, $this->user->id)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -220,7 +220,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getInvitingChat($peer);
+        $chat = $this->getChatWithRight($peer, "invite");
         $user = (new Users())->get($userId);
         if ($user && $this->user->identity->getSubscriptionStatus($user) !== User::SUBSCRIPTION_MUTUAL) {
             header("HTTP/1.1 403 Forbidden");
@@ -306,7 +306,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getCreatedChat($peer);
+        $chat = $this->getChatWithRight($peer, "info");
 
         $file = $_FILES["avatar"] ?? null;
         if (!$file || $file["error"] !== UPLOAD_ERR_OK) {
@@ -320,14 +320,9 @@ final class GroupChatPresenter extends OpenVKPresenter
             $this->returnJson(["error" => "Failed to create photo"]);
         }
 
-        $chat->getRecord()->update([
-            "avatar" => "/photo" . $photo->getPrettyId(),
-        ]);
+        $chat->setAvatar("/photo" . $photo->getPrettyId());
 
-        $this->returnJson([
-            "success"    => true,
-            "avatar_url" => $photo->getURLBySizeId("miniscule"),
-        ]);
+        $this->returnJson(["avatar" => $chat->getAvatarUrl("normal")]);
     }
 
     public function renderApiDeleteAvatar(int $peer): void
@@ -335,22 +330,19 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getCreatedChat($peer);
-        $chat->getRecord()->update([
-            "avatar" => null,
-        ]);
+        $chat = $this->getChatWithRight($peer, "info");
+        $chat->setAvatar(null);
 
-        $this->returnJson(["success" => true]);
+        $this->returnJson(["avatar" => $chat->getAvatarUrl("normal")]);
     }
 
-    // act=reset — новая ссылка вместо старой
     public function renderApiInviteLink(int $peer): void
     {
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
         $reset = $this->postParam("act") === "reset";
-        $chat  = $reset ? $this->getManagedChat($peer) : $this->getInvitingChat($peer);
+        $chat  = $reset ? $this->getManagedChat($peer) : $this->getChatWithRight($peer, "invite");
 
         $this->returnJson(["link" => $chat->getInviteLink($reset)]);
     }
@@ -361,10 +353,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getManagedChat($peer);
-        if (!is_null($this->postParam("history_visible"))) {
-            $chat->setHistoryVisible($this->postParam("history_visible") === "1");
-        }
+        $chat = $this->getChat($peer);
 
         $permissions = [];
         foreach (array_keys(GroupChat::PERMISSIONS) as $key) {
@@ -373,11 +362,37 @@ final class GroupChatPresenter extends OpenVKPresenter
             }
         }
 
+        $changesInfo     = !is_null($this->postParam("name")) || !is_null($this->postParam("description"));
+        $changesSettings = !is_null($this->postParam("history_visible")) || sizeof($permissions) > 0;
+        if (($changesInfo && !$chat->can("info", $this->user->id)) || ($changesSettings && !$chat->canManageParticipants($this->user->id))) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        if ($changesInfo) {
+            $name = trim((string) ($this->postParam("name") ?? $chat->getName()));
+            if ($name === "") {
+                header("HTTP/1.1 400 Bad Request");
+                $this->returnJson(["error" => tr("messenger_create_chat_no_name")]);
+            }
+
+            $chat->setInfo($name, trim((string) ($this->postParam("description") ?? $chat->getDescription())));
+        }
+
+        if (!is_null($this->postParam("history_visible"))) {
+            $chat->setHistoryVisible($this->postParam("history_visible") === "1");
+        }
+
         if (sizeof($permissions) > 0) {
             $chat->setPermissions($permissions);
         }
 
-        $this->returnJson(["history_visible" => $chat->isHistoryVisible(), "permissions" => $chat->getPermissions()]);
+        $this->returnJson([
+            "name"            => $chat->getName(),
+            "description"     => (string) $chat->getDescription(),
+            "history_visible" => $chat->isHistoryVisible(),
+            "permissions"     => $chat->getPermissions(),
+        ]);
     }
 
     public function renderApiTag(int $peer): void
