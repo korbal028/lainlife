@@ -130,7 +130,7 @@
             <div class="post-vertical" style="margin-top: 8px; display: flex; flex-direction: column; gap: 8px;"></div>
         </div>
         <div class="messenger-app--input" data-bind="css: { 'with-reply': replyTo() || forwardMsgs().length }">
-            {if $isGroupChat || $correspondent->getId() === $thisUser->getId() || $correspondent->getPrivacyPermission('messages.write', $thisUser)}
+            {if $canWrite}
                 <img class="ava" src="{$thisUser->getAvatarUrl('miniscule')}" alt="{$thisUser->getCanonicalName()}" />
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
@@ -208,7 +208,7 @@
                 </div>
                 <img class="ava" src="{$correspondent->getAvatarUrl('miniscule')}" alt="{$correspondent->getCanonicalName()}" />
             {else}
-                <div class="blocked" data-localized-text="{_messages_blocked}"></div>
+                <div class="blocked" data-localized-text="{$isGroupChat ? tr('messenger_chat_send_restricted') : tr('messages_blocked')}"></div>
             {/if}
         </div>
     </div>
@@ -1776,7 +1776,7 @@
                 : sec < 3600 ? PEER_STR.min.replace("%N%", sec / 60)
                 : PEER_STR.hour.replace("%N%", sec / 3600);
 
-            const renderRights = () => {
+            const renderRights = info => {
                 const toggle = (name, label, on) => `
                     <label class="im-peer-toggle">
                         <span>${ escapeHtml(label) }</span>
@@ -1790,7 +1790,7 @@
                 return `
                     <div class="im-peer-page im-peer-rights" data-page="rights" hidden>
                         <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.rightsQuestion) }</div>
-                        ${ toggle("send", PEER_STR.rightSend, true) }
+                        ${ toggle("send", PEER_STR.rightSend, info.permissions.send) }
                         <div class="im-peer-toggle im-peer-rights--expand">
                             <span>${ escapeHtml(PEER_STR.rightMedia) } <b class="im-peer-rights--count"></b></span>
                             <input type="checkbox" class="im-peer-switch" name="media" checked />
@@ -2004,7 +2004,7 @@
                             <div class="im-peer-search--summary" hidden></div>
                             <div class="im-peer-search--results"></div>
                         </div>
-                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights() + renderAdmins(info, avatarStyle) : "" }
+                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights(info) + renderAdmins(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
                     callbacks: [Function.noop],
@@ -2223,7 +2223,10 @@
                     body.scrollTop = 0;
                 };
 
+                const sendBox = rights?.querySelector('[name="send"]');
                 const showRights = () => {
+                    sendBox.checked = info.permissions.send;
+                    updateRights();
                     head.textContent = PEER_STR.rights;
                     setPage(rights);
                     body.scrollTop = 0;
@@ -2238,19 +2241,26 @@
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
                 doneBtn.addEventListener("click", showManage);
-                saveBtn.addEventListener("click", async () => {
-                    if(shown !== manage) return;
-
+                const saveSettings = async fields => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
-                    fd.set("history_visible", historyBox.checked ? "1" : "0");
+                    Object.entries(fields).forEach(([key, value]) => fd.set(key, value));
 
+                    const res = await fetch(`/im/api/chat${ PEER_SEL }/settings.json`, { method: "POST", body: fd });
+                    if(!res.ok) throw new Error(res.status);
+
+                    Object.assign(info, await res.json());
+                };
+
+                saveBtn.addEventListener("click", async () => {
                     try {
-                        const res = await fetch(`/im/api/chat${ PEER_SEL }/settings.json`, { method: "POST", body: fd });
-                        if(!res.ok) throw new Error(res.status);
-
-                        info.history_visible = (await res.json()).history_visible;
-                        showMain();
+                        if(shown === manage) {
+                            await saveSettings({ history_visible: historyBox.checked ? "1" : "0" });
+                            showMain();
+                        } else if(shown === rights) {
+                            await saveSettings({ perm_send: sendBox.checked ? "1" : "0" });
+                            showManage();
+                        }
                     } catch(e) {
                         fastError(tr("messages_error_1"));
                     }

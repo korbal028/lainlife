@@ -52,8 +52,11 @@ final class MessengerPresenter extends OpenVKPresenter
     // писать можно себе, в свои беседы и тем, кто разрешил это настройками приватности
     private function canWrite(object $peer): bool
     {
-        return $peer instanceof GroupChat
-            || ($peer instanceof User && $peer->getId() === $this->user->id)
+        if ($peer instanceof GroupChat) {
+            return $peer->can("send", $this->user->id);
+        }
+
+        return ($peer instanceof User && $peer->getId() === $this->user->id)
             || $peer->getPrivacyPermission("messages.write", $this->user->identity);
     }
 
@@ -169,6 +172,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->disable_ajax  = 1;
         $this->template->selId         = $sel;
         $this->template->isGroupChat   = $correspondent instanceof GroupChat;
+        $this->template->canWrite      = $this->canWrite($correspondent);
         $this->template->correspondent = $correspondent;
         $this->template->reactions     = Message::REACTIONS;
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
@@ -718,6 +722,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "can_manage" => $isChat && $peer->canManageParticipants($me->getId()),
             "description" => $isChat ? (string) $peer->getDescription() : null,
             "history_visible" => $isChat ? $peer->isHistoryVisible() : null,
+            "permissions" => $isChat ? $peer->getPermissions() : null,
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
             "members"   => $isChat ? $this->getChatMembers($peer) : [],
             "birthday"  => $birthday ? trim($birthday) : null,

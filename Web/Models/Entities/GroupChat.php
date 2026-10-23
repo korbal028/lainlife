@@ -13,6 +13,10 @@ class GroupChat extends RowModel
     // peer_id беседы = PEER_OFFSET + id, как в VK/OpenVK
     public const PEER_OFFSET = 2000000000;
 
+    public const PERMISSIONS = [
+        "send" => true,
+    ];
+
     protected $tableName = "group_chats";
 
     public function getRecord(): ?\Nette\Database\Table\ActiveRow
@@ -153,6 +157,26 @@ function getAvatarUrl(string $size = 'normal'): string
     function setHistoryVisible(bool $visible): void
     {
         DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["history_visible" => (int) $visible]);
+    }
+
+    function getPermissions(): array
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+        $saved = json_decode((string) ($fresh->permissions ?? ""), true);
+
+        return array_merge(self::PERMISSIONS, array_intersect_key(is_array($saved) ? $saved : [], self::PERMISSIONS));
+    }
+
+    function setPermissions(array $permissions): void
+    {
+        $permissions = array_merge($this->getPermissions(), array_map("boolval", array_intersect_key($permissions, self::PERMISSIONS)));
+
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["permissions" => json_encode($permissions)]);
+    }
+
+    function can(string $permission, int $userId): bool
+    {
+        return $this->canManageParticipants($userId) || ($this->getPermissions()[$permission] ?? false);
     }
 
     function getInviteLink(bool $reset = false): string

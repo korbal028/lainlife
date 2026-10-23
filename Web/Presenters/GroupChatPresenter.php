@@ -349,7 +349,18 @@ final class GroupChatPresenter extends OpenVKPresenter
             $chat->setHistoryVisible($this->postParam("history_visible") === "1");
         }
 
-        $this->returnJson(["history_visible" => $chat->isHistoryVisible()]);
+        $permissions = [];
+        foreach (array_keys(GroupChat::PERMISSIONS) as $key) {
+            if (!is_null($this->postParam("perm_$key"))) {
+                $permissions[$key] = $this->postParam("perm_$key") === "1";
+            }
+        }
+
+        if (sizeof($permissions) > 0) {
+            $chat->setPermissions($permissions);
+        }
+
+        $this->returnJson(["history_visible" => $chat->isHistoryVisible(), "permissions" => $chat->getPermissions()]);
     }
 
     public function renderJoin(string $hash): void

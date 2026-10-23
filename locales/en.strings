@@ -1571,6 +1571,7 @@
 "go_to_dialog" = "Go to dialog";
 "message_sent" = "Message sent";
 "messages_blocked" = "Unfortunately, your message cannot be sent due to this user's privacy settings.";
+"messenger_chat_send_restricted" = "Only administrators can write to this chat.";
 "enter_message" = "Enter message";
 "message_user_typing" = "$1 is typing a message...";
 
