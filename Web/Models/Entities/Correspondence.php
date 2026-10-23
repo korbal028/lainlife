@@ -87,11 +87,22 @@ class Correspondence
         if ($last > $this->getReadTill()) {
             (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], ["read_till" => $last]);
             $this->readTill = $last;
+            Message::forgetReadMarks();
         }
     }
 
     /**
-     * Не прочитано ли сообщение: в беседе — чужое после отметки прочтения первого корреспондента.
+     * Вступление в беседу: история до него прочитана, но в прочитавших участник не числится.
+     */
+    public function markAsJoined(): void
+    {
+        $this->markAsRead();
+        (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], ["joined_till" => $this->getReadTill()]);
+        Message::forgetReadMarks();
+    }
+
+    /**
+     * Не прочитано ли сообщение: в беседе своё — никем из участников, чужое — после отметки прочтения первого корреспондента.
      */
     public function isUnread(Message $message): bool
     {
@@ -99,7 +110,39 @@ class Correspondence
             return $message->isUnread();
         }
 
-        return $message->getId() > $this->getReadTill() && !$message->hasParticipant($this->correspondents[0]);
+        // своё — пока его не прочитал никто из участников, как в личке
+        if ($message->hasParticipant($this->correspondents[0])) {
+            return $message->isUnread();
+        }
+
+        return $message->getId() > $this->getReadTill();
+    }
+
+    /**
+     * Какие из переданных сообщений переписки уже прочитаны, для снятия подсветки без перезагрузки.
+     *
+     * @returns int[]
+     */
+    public function getReadMessageIds(array $ids): array
+    {
+        $ids = array_slice(array_values(array_unique(array_filter(array_map("intval", $ids), fn($id) => $id > 0))), 0, 200);
+        if (sizeof($ids) === 0) {
+            return [];
+        }
+
+        $pair = $this->getPairCondition();
+        $cond = array_shift($pair);
+        $msgs = DatabaseConnection::i()->getConnection()->query("SELECT * FROM `messages` WHERE `id` IN (?) AND (`deleted` = 0) AND $cond", $ids, ...$pair);
+
+        $read = [];
+        foreach ($msgs as $row) {
+            $message = new Message(new ActiveRow((array) $row, $this->messages));
+            if (!$message->isUnread()) {
+                $read[] = $message->getId();
+            }
+        }
+
+        return $read;
     }
 
     private function getHiddenCondition(): string
@@ -572,7 +615,7 @@ class Correspondence
      */
     public function sendMessage(Message $message, bool $dontReverse = false)
     {
-        // в беседе отправитель всегда первый корреспондент, непрочитанность не ведётся
+        // в беседе отправитель всегда первый корреспондент, прочтение считается по read_till участников
         if ($this->isGroup()) {
             [$sender, $chat] = $this->correspondents;
 

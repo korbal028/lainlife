@@ -222,7 +222,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         // история до вступления не считается непрочитанной
-        (new Correspondence($user, $chat))->markAsRead();
+        (new Correspondence($user, $chat))->markAsJoined();
 
         $this->returnJson(["success" => true]);
     }
@@ -360,7 +360,7 @@ final class GroupChatPresenter extends OpenVKPresenter
             $this->willExecuteWriteAction();
 
             $this->groupChats->addParticipant($chat->getId(), $this->user->id);
-            (new Correspondence($this->user->identity, $chat))->markAsRead();
+            (new Correspondence($this->user->identity, $chat))->markAsJoined();
             $this->redirect($chat->getURL());
         }
 

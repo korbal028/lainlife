@@ -4,6 +4,7 @@ use Chandler\Database\DatabaseConnection;
 use openvk\Web\Models\Repositories\Clubs;
 use openvk\Web\Models\Repositories\Users;
 use openvk\Web\Models\Repositories\GroupChats;
+use openvk\Web\Models\Repositories\MessengerDialogs;
 use openvk\Web\Models\Entities\{Photo, Video, Audio, Note, Document};
 use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\RowModel;
@@ -269,9 +270,55 @@ class Message extends RowModel
         return false;
     }
     
+    // в беседе сообщение прочитано, если его прочитал хоть кто-то кроме отправителя
     function isUnread(): bool
     {
+        if ($this->isInGroupChat()) {
+            return sizeof($this->getReaderIds()) === 0;
+        }
+
         return (bool) $this->getRecord()->unread;
+    }
+
+    // отметки прочтения бесед в рамках запроса, chat_id => отметки участников
+    private static array $readMarks = [];
+
+    public static function forgetReadMarks(): void
+    {
+        self::$readMarks = [];
+    }
+
+    /**
+     * Участники беседы, кроме отправителя, дочитавшие до сообщения после вступления.
+     *
+     * @returns int[]
+     */
+    function getReaderIds(): array
+    {
+        if (!$this->isInGroupChat()) {
+            return [];
+        }
+
+        $rec   = $this->getRecord();
+        $chat  = (int) $rec->recipient_id;
+        $marks = self::$readMarks[$chat] ??= (new MessengerDialogs())->getChatReadMarks($chat);
+
+        $readers = [];
+        foreach ($marks as $user => [$readTill, $joinedTill]) {
+            if ($readTill >= $this->getId() && $joinedTill < $this->getId() && !($rec->sender_type === User::class && (int) $rec->sender_id === $user)) {
+                $readers[] = $user;
+            }
+        }
+
+        return $readers;
+    }
+
+    /**
+     * @returns User[]
+     */
+    function getReaders(): array
+    {
+        return array_values(array_filter(array_map(fn($id) => (new Users())->get($id), $this->getReaderIds())));
     }
     
     /**

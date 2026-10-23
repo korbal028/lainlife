@@ -2678,6 +2678,36 @@ span.ok-smile.ok-smile {
     border-radius: 50%;
 }
 
+/* прочитавшие сообщение в беседе, аватарки как у реакций */
+.msg-menu-readers {
+    --msg-reaction-bg: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 10px 5px;
+    margin-bottom: 2px;
+    border-bottom: 1px solid #e1e7ed;
+    font-size: 11px;
+    line-height: 16px;
+    color: #828a99;
+    white-space: nowrap;
+}
+
+.msg-menu-readers--users {
+    display: flex;
+}
+
+/* перебиваем размер картинок в like_tooltip_body */
+.like_tooltip_body .msg-menu-readers img.msg-reaction--ava {
+    width: 16px;
+    height: 16px;
+}
+
+.msg-menu-readers.avatar-style-2 .msg-reaction--ava {
+    border-radius: 50%;
+}
+
 /* меню сообщения: строка реакций и действия отдельными блоками */
 .tippy-box[data-theme]:has(.msg-menu),
 .tippy-box[data-theme]:has(.msg-menu) > .tippy-content {

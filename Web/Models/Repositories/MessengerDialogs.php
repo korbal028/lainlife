@@ -7,6 +7,7 @@ namespace openvk\Web\Models\Repositories;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Entities\Club;
 use openvk\Web\Models\Entities\GroupChat;
+use openvk\Web\Models\Entities\User;
 use Chandler\Database\DatabaseConnection;
 
 class MessengerDialogs
@@ -17,6 +18,7 @@ class MessengerDialogs
         "muted"        => 0,
         "cleared_till"   => 0,
         "read_till"      => 0,
+        "joined_till"    => 0,
         "pinned_message" => 0,
     ];
 
@@ -66,6 +68,26 @@ class MessengerDialogs
         }
 
         return $result;
+    }
+
+    /**
+     * Отметки прочтения участников беседы: id участника => [read_till, joined_till].
+     */
+    public function getChatReadMarks(int $chatId): array
+    {
+        $rows = $this->connection->query(
+            "SELECT `owner_id`, `read_till`, `joined_till` FROM `messenger_dialogs` WHERE `peer_type` = ? AND `peer_id` = ? AND `owner_type` = ? AND `read_till` > 0",
+            GroupChat::class,
+            $chatId,
+            User::class
+        );
+
+        $marks = [];
+        foreach ($rows as $row) {
+            $marks[(int) $row->owner_id] = [(int) $row->read_till, (int) $row->joined_till];
+        }
+
+        return $marks;
     }
 
     public function pinToTop(RowModel $owner, RowModel $peer): void

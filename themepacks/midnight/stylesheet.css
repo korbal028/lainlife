@@ -725,6 +725,11 @@ ul {
     background: #272138;
 }
 
+.msg-menu-readers {
+    --msg-reaction-bg: #1e1a2b;
+    border-color: #2c2640;
+}
+
 .crp-list.crp-dragging .crp-entry.dragging {
     background-color: #272138 !important;
     box-shadow: 0 2px 8px rgba(0, 0, 0, .5);

@@ -1460,6 +1460,8 @@
 "messenger_delete" = "Delete";
 "messenger_more" = "More";
 "messenger_reactions_all" = "All reactions";
+"messenger_read_by" = "Read by: $1";
+"messenger_read_nobody" = "Not read yet";
 "messenger_pinned_message" = "Pinned message";
 "messenger_selected_count" = "Messages selected: $1";
 "messenger_cancel_selection" = "Cancel";

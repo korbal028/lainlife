@@ -287,12 +287,16 @@ final class MessengerPresenter extends OpenVKPresenter
             $pinned = $pinned->simplify();
         }
 
+        // клиент присылает свои непрочитанные, в ответ — какие из них уже прочитали
+        $read = $correspondence->getReadMessageIds(explode(",", (string) ($this->queryParam("unread") ?? "")));
+
         header("Content-Type: application/json");
         exit(json_encode([
             "ts"       => $now,
             "messages" => $messages,
             "edited"   => $edited,
             "deleted"  => $deleted,
+            "read"     => $read,
             "typing"   => $typing,
             "typing_names" => $typingNames,
             "pinned"   => $pinned,
@@ -646,6 +650,29 @@ final class MessengerPresenter extends OpenVKPresenter
 
         header("Content-Type: application/json");
         exit(json_encode(["reactions" => $msg->getReactions()]));
+    }
+
+    // кто из участников беседы прочитал сообщение
+    public function renderApiMessageReaders(int $sel, int $msgId): void
+    {
+        $this->assertUserLoggedIn();
+
+        $correspondent = $this->getCorrespondent($sel);
+        $msg           = (new Messages())->get($msgId);
+        if (!$correspondent || !$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
+            header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        $readers = array_map(fn($u) => [
+            "id"     => $u->getId(),
+            "name"   => $u->getCanonicalName(),
+            "avatar" => $u->getAvatarUrl(),
+            "link"   => $u->getURL(),
+        ], $msg->getReaders());
+
+        header("Content-Type: application/json");
+        exit(json_encode(["count" => sizeof($readers), "users" => $readers]));
     }
 
     // карточка собеседника для меню вложений
