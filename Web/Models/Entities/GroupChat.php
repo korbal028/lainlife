@@ -142,6 +142,19 @@ function getAvatarUrl(string $size = 'normal'): string
     }
 
     // ссылка-приглашение; код создаётся при первом запросе, $reset выдаёт новый и старая ссылка перестаёт работать
+    // видят ли новые участники сообщения, отправленные до их вступления
+    function isHistoryVisible(): bool
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+
+        return (bool) ($fresh->history_visible ?? 1);
+    }
+
+    function setHistoryVisible(bool $visible): void
+    {
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["history_visible" => (int) $visible]);
+    }
+
     function getInviteLink(bool $reset = false): string
     {
         $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());

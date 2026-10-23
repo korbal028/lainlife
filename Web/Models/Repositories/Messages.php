@@ -118,7 +118,7 @@ class Messages
              LEFT JOIN `messages` m ON m.`recipient_type` = ? AND m.`recipient_id` = c.`id` AND m.`deleted` = 0 AND m.`id` > COALESCE(d.`cleared_till`, 0)
              WHERE c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
              GROUP BY c.`id`, c.`created`
-             HAVING MAX(COALESCE(d.`cleared_till`, 0)) = 0 OR COUNT(m.`id`) > 0",
+             HAVING MAX(COALESCE(d.`cleared_till`, 0)) <= MAX(COALESCE(d.`joined_till`, 0)) OR COUNT(m.`id`) > 0",
             get_class($owner),
             $owner->getId(),
             GroupChat::class,

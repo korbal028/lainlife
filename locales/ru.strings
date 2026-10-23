@@ -1420,8 +1420,6 @@
 "messenger_chat_manage_name" = "Название беседы";
 "messenger_chat_manage_description" = "Описание (необязательно)";
 "messenger_chat_manage_history" = "История чата для новых участников";
-"messenger_chat_manage_history_hidden" = "Скрыта";
-"messenger_chat_manage_history_visible" = "Видна";
 "messenger_chat_manage_rights" = "Разрешения";
 "messenger_chat_manage_admins" = "Администраторы";
 "messenger_chat_manage_log" = "Недавние действия";

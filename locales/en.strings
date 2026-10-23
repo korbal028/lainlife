@@ -1490,8 +1490,6 @@
 "messenger_chat_manage_name" = "Chat name";
 "messenger_chat_manage_description" = "Description (optional)";
 "messenger_chat_manage_history" = "Chat history for new members";
-"messenger_chat_manage_history_hidden" = "Hidden";
-"messenger_chat_manage_history_visible" = "Visible";
 "messenger_chat_manage_rights" = "Permissions";
 "messenger_chat_manage_admins" = "Administrators";
 "messenger_chat_manage_log" = "Recent actions";

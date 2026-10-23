@@ -1659,7 +1659,6 @@
                 chatName:   {tr("messenger_chat_manage_name")},
                 chatDesc:   {tr("messenger_chat_manage_description")},
                 history:    {tr("messenger_chat_manage_history")},
-                historyHidden: {tr("messenger_chat_manage_history_hidden")},
                 rights:     {tr("messenger_chat_manage_rights")},
                 admins:     {tr("messenger_chat_manage_admins")},
                 log:        {tr("messenger_chat_manage_log")},
@@ -1750,7 +1749,11 @@
                             <textarea name="description" rows="1" placeholder="${ escapeHtml(PEER_STR.chatDesc) }">${ escapeHtml(info.description ?? "") }</textarea>
                         </div>
                         <div class="im-peer-section">
-                            ${ row("history", "apps/kopete-offline.png", PEER_STR.history, PEER_STR.historyHidden) }
+                            <label class="im-peer-row im-peer-manage--check">
+                                <img src="${ OXYGEN }apps/kopete-offline.png" alt="" />
+                                <span>${ escapeHtml(PEER_STR.history) }</span>
+                                <input type="checkbox" name="history_visible"${ info.history_visible ? " checked" : "" } />
+                            </label>
                         </div>
                         <div class="im-peer-section">
                             ${ row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") }
@@ -2209,8 +2212,11 @@
                     searchInput.focus();
                 };
 
+                // настройки беседы сохраняются по «сохранить», «отмена» их сбрасывает
+                const historyBox = manage?.querySelector('[name="history_visible"]');
                 const showManage = () => {
                     current = null;
+                    if(shown === main) historyBox.checked = info.history_visible;
                     head.textContent = PEER_STR.manageTitle;
                     setPage(manage);
                     node.removeClass("im-peer-dialog-list");
@@ -2232,6 +2238,23 @@
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
                 doneBtn.addEventListener("click", showManage);
+                saveBtn.addEventListener("click", async () => {
+                    if(shown !== manage) return;
+
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("history_visible", historyBox.checked ? "1" : "0");
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/settings.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        info.history_visible = (await res.json()).history_visible;
+                        showMain();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
+                });
                 cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
 
                 const askDelete = () => {

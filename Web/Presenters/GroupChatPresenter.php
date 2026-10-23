@@ -333,6 +333,20 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->returnJson(["link" => $chat->getInviteLink($this->postParam("act") === "reset")]);
     }
 
+    // настройки беседы из админ-панели
+    public function renderApiSettings(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getManagedChat($peer);
+        if (!is_null($this->postParam("history_visible"))) {
+            $chat->setHistoryVisible($this->postParam("history_visible") === "1");
+        }
+
+        $this->returnJson(["history_visible" => $chat->isHistoryVisible()]);
+    }
+
     public function renderJoin(string $hash): void
     {
         $this->assertUserLoggedIn();

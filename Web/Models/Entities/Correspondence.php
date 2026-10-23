@@ -93,11 +93,18 @@ class Correspondence
 
     /**
      * Вступление в беседу: история до него прочитана, но в прочитавших участник не числится.
+     * Если история скрыта от новых участников, она скрывается так же, как при очистке переписки.
      */
     public function markAsJoined(): void
     {
         $this->markAsRead();
-        (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], ["joined_till" => $this->getReadTill()]);
+
+        $fields = ["joined_till" => $this->getReadTill()];
+        if (!$this->correspondents[1]->isHistoryVisible()) {
+            $fields["cleared_till"] = $this->clearedTill = max($this->getClearedTill(), $this->getReadTill());
+        }
+
+        (new MessengerDialogs())->set($this->correspondents[0], $this->correspondents[1], $fields);
         Message::forgetReadMarks();
     }
 

@@ -2049,6 +2049,11 @@ span.ok-smile.ok-smile {
     color: #7a5bb5;
 }
 
+.im-peer-manage--check input[type=checkbox] {
+    flex: none;
+    margin: 0 0 0 auto;
+}
+
 .im-peer-row--value {
     margin-left: auto;
     color: #2b587a;
