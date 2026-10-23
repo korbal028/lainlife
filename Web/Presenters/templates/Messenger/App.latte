@@ -135,7 +135,7 @@
                 <div class="messenger-app--input---messagebox">
                     <div id="write" class='model_content_textarea' data-id="{$thisUser->getId()}">
                         <form action="/" method="post" enctype="multipart/form-data" style="margin:0;">
-                            <a class="js-emoji-picker emoji-btn" data-tabs="emoji stickers gifs" title="{_smiles}"></a>
+                            <a class="js-emoji-picker emoji-btn" data-tabs="emoji{if $mediaRights['stickers']} stickers gifs{/if}" title="{_smiles}"></a>
                             <textarea id="wall-post-input-messenger" placeholder="{_enter_message}" name="message" style="width: 100%;resize: none;" class="small-textarea expanded-textarea" autocomplete="off" data-bind="value: messageContent, event: { keydown: onTextareaKeyPress, input: onTextareaInput }"></textarea>
 
                             <!-- ko if: replyTo() -->
@@ -180,19 +180,19 @@
                                     </a>
                                     <div id="wallAttachmentMenu" class="wallAttachmentMenu hidden">
                                         <a class="header menu_toggler">{_attach}</a>
-                                        <a id="__photoAttachment">
+                                        <a id="__photoAttachment" n:if="$mediaRights['photos']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-x-egon.png" />
                                             {_photo}
                                         </a>
-                                        <a id="__videoAttachment">
+                                        <a id="__videoAttachment" n:if="$mediaRights['videos']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-vnd.rn-realmedia.png" />
                                             {_video}
                                         </a>
-                                        <a id="__audioAttachment">
+                                        <a id="__audioAttachment" n:if="$mediaRights['audios']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/audio-ac3.png" />
                                             {_audio}
                                         </a>
-                                        <a id="__documentAttachment">
+                                        <a id="__documentAttachment" n:if="$mediaRights['docs']">
                                             <img src="/assets/packages/static/openvk/img/oxygen-icons/16x16/mimetypes/application-octet-stream.png" />
                                             {_document}
                                         </a>
@@ -326,6 +326,7 @@
         // страница может прийти через ajax-переход, поэтому всё внутри своей области видимости
         (() => {
             const IS_GROUP_CHAT = {$isGroupChat};
+            const MEDIA_RIGHTS  = {$mediaRights};
             const AVATAR_STYLE  = {$thisUser->getStyleAvatar()};
             const PEER_SEL = {$isGroupChat ? $correspondent->getPeerId() : ($correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId())};
             const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
@@ -1341,7 +1342,8 @@
                 const reaction = e.target.closest(".msg-reaction");
                 if(reaction) {
                     e.preventDefault();
-                    return window.Msg.reactMessage(ko.dataFor(reaction.closest(".messenger-app--messages---message")).uuid, ko.dataFor(reaction).emoji);
+                    if(MEDIA_RIGHTS.reactions) window.Msg.reactMessage(ko.dataFor(reaction.closest(".messenger-app--messages---message")).uuid, ko.dataFor(reaction).emoji);
+                    return;
                 }
 
                 const el = e.target.closest(".messenger-app--messages---message");
@@ -1443,7 +1445,7 @@
                         </div>
                     </div>
                 `);
-                menu.prepend(buildReactionBar(msg, tip, menu, context));
+                if(MEDIA_RIGHTS.reactions) menu.prepend(buildReactionBar(msg, tip, menu, context));
                 if(IS_GROUP_CHAT) menu.find(".msg-menu-actions .like_tooltip_body").append(buildReaders(msg, tip));
 
                 [["pin", isPinned ? window.MSG_STR.unpin : window.MSG_STR.pin], ["forward", window.MSG_STR.forward], ["delete", window.MSG_STR.delete]].forEach(([act, text]) => {
@@ -1799,7 +1801,7 @@
                             ${ media.map(([key, label]) => `
                                 <label class="im-peer-toggle">
                                     <span>${ escapeHtml(label) }</span>
-                                    <input type="checkbox" name="media_${ key }" checked />
+                                    <input type="checkbox" name="media_${ key }"${ info.permissions[key] ? " checked" : "" } />
                                 </label>`).join("") }
                         </div>
                         ${ toggle("invite", PEER_STR.rightInvite, false) }
@@ -2224,8 +2226,10 @@
                 };
 
                 const sendBox = rights?.querySelector('[name="send"]');
+                const rightsFields = () => Object.fromEntries([sendBox, ...rights.querySelectorAll('[name^="media_"]')].map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"]));
                 const showRights = () => {
                     sendBox.checked = info.permissions.send;
+                    rights.querySelectorAll('[name^="media_"]').forEach(box => box.checked = info.permissions[box.name.slice(6)]);
                     updateRights();
                     head.textContent = PEER_STR.rights;
                     setPage(rights);
@@ -2258,7 +2262,7 @@
                             await saveSettings({ history_visible: historyBox.checked ? "1" : "0" });
                             showMain();
                         } else if(shown === rights) {
-                            await saveSettings({ perm_send: sendBox.checked ? "1" : "0" });
+                            await saveSettings(rightsFields());
                             showManage();
                         }
                     } catch(e) {

@@ -2,6 +2,7 @@
 namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection;
 use openvk\Web\Models\Repositories\{Users, Messages};
+use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Util\DateTime;
 
@@ -14,8 +15,16 @@ class GroupChat extends RowModel
     public const PEER_OFFSET = 2000000000;
 
     public const PERMISSIONS = [
-        "send" => true,
+        "send"      => true,
+        "photos"    => true,
+        "videos"    => true,
+        "audios"    => true,
+        "docs"      => true,
+        "stickers"  => true,
+        "reactions" => true,
     ];
+
+    public const MEDIA_PERMISSIONS = ["photos", "videos", "audios", "docs", "stickers", "reactions"];
 
     protected $tableName = "group_chats";
 
@@ -174,9 +183,30 @@ function getAvatarUrl(string $size = 'normal'): string
         DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["permissions" => json_encode($permissions)]);
     }
 
+    function getPermissionsFor(int $userId): array
+    {
+        if ($this->canManageParticipants($userId)) {
+            return array_fill_keys(array_keys(self::PERMISSIONS), true);
+        }
+
+        return $this->getPermissions();
+    }
+
     function can(string $permission, int $userId): bool
     {
-        return $this->canManageParticipants($userId) || ($this->getPermissions()[$permission] ?? false);
+        return $this->getPermissionsFor($userId)[$permission] ?? false;
+    }
+
+    static function getAttachmentPermission(object $attachment): ?string
+    {
+        return match (true) {
+            $attachment instanceof Photo    => "photos",
+            $attachment instanceof Video    => "videos",
+            $attachment instanceof Audio    => "audios",
+            $attachment instanceof Sticker  => "stickers",
+            $attachment instanceof Document => $attachment->isGif() ? "stickers" : "docs",
+            default                         => null,
+        };
     }
 
     function getInviteLink(bool $reset = false): string

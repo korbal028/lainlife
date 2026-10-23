@@ -173,6 +173,9 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->selId         = $sel;
         $this->template->isGroupChat   = $correspondent instanceof GroupChat;
         $this->template->canWrite      = $this->canWrite($correspondent);
+        $this->template->mediaRights   = $correspondent instanceof GroupChat
+            ? array_intersect_key($correspondent->getPermissionsFor($this->user->id), array_flip(GroupChat::MEDIA_PERMISSIONS))
+            : array_fill_keys(GroupChat::MEDIA_PERMISSIONS, true);
         $this->template->correspondent = $correspondent;
         $this->template->reactions     = Message::REACTIONS;
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
@@ -337,6 +340,17 @@ final class MessengerPresenter extends OpenVKPresenter
         if (!Sticker::checkMessage($attachments, $this->postParam("content"), $this->user->identity) || ($forwards && array_filter($attachments, fn($a) => $a instanceof Sticker))) {
             header("HTTP/1.1 400 Bad Request");
             exit();
+        }
+
+        if ($sel instanceof GroupChat) {
+            $rights = $sel->getPermissionsFor($this->user->id);
+            foreach ($attachments as $attachment) {
+                $permission = $attachment ? GroupChat::getAttachmentPermission($attachment) : null;
+                if ($permission && !$rights[$permission]) {
+                    header("HTTP/1.1 403 Forbidden");
+                    exit();
+                }
+            }
         }
 
         $cor = new Correspondence($this->user->identity, $sel);
@@ -641,6 +655,11 @@ final class MessengerPresenter extends OpenVKPresenter
         $msg           = (new Messages())->get($msgId);
         if (!$correspondent || !$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
             header("HTTP/1.1 404 Not Found");
+            exit();
+        }
+
+        if ($correspondent instanceof GroupChat && !$correspondent->can("reactions", $this->user->id)) {
+            header("HTTP/1.1 403 Forbidden");
             exit();
         }
 
