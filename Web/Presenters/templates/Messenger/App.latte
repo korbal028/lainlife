@@ -70,12 +70,14 @@
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
                     <div class="_content">
                         <!-- ko ifnot: window.isMsgGrouped($index()) -->
-                        <a href="#" data-bind="attr: { href: sender.link }">
-                            <strong data-bind="text: sender.name"></strong>
-                        </a>
-                        <!-- ko if: sender.tag -->
-                        <span class="msg-tag" data-bind="text: sender.tag.text, attr: { style: '--tag: ' + sender.tag.color }"></span>
-                        <!-- /ko -->
+                        <div class="msg-author">
+                            <a href="#" data-bind="attr: { href: sender.link }">
+                                <strong data-bind="text: sender.name"></strong>
+                            </a>
+                            <!-- ko if: sender.tag -->
+                            <span class="msg-tag" data-bind="text: sender.tag.text, attr: { style: '--tag: ' + sender.tag.color }"></span>
+                            <!-- /ko -->
+                        </div>
                         <!-- /ko -->
                         <!-- ko if: $data.reply -->
                         <div class="reply-msg-container" data-bind="click: (d, e) => window.Msg.onReplyClick(reply, e), clickBubble: false">
@@ -2104,10 +2106,8 @@
                 // в администраторах: «добавить» слева, «закрыть» возвращает в управление
                 const addAdminBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addAdmin) }</button>`).first();
                 const doneBtn     = u(`<button class="button im-peer-done" hidden>${ escapeHtml(PEER_STR.close) }</button>`).first();
-                if(manage) {
-                    action.prepend(manageBtn, addAdminBtn);
-                    action.append(cancelBtn, saveBtn, doneBtn);
-                }
+                if(manage) action.prepend(manageBtn, addAdminBtn);
+                if(manage || tagPage) action.append(cancelBtn, saveBtn, doneBtn);
 
                 let shown = main;
                 const setPage = page => {

@@ -2128,6 +2128,18 @@ span.ok-smile.ok-smile {
     display: none;
 }
 
+.msg-author {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+}
+
+.messenger-app--messages---message ._content .msg-tag {
+    display: inline-block;
+    width: auto;
+    height: auto;
+}
+
 .im-peer-admin .msg-tag {
     margin-left: 0;
 }
