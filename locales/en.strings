@@ -1517,6 +1517,9 @@
 "messenger_chat_rights_hours" = "$1h";
 "messenger_chat_rights_exceptions" = "Exceptions";
 "messenger_chat_rights_removed" = "Removed users";
+"messenger_chat_admins_owner" = "Owner";
+"messenger_chat_admins_promoted_by" = "Promoted by $1";
+"messenger_chat_admins_add" = "Add administrator";
 "messenger_invite_link_hint" = "Anyone with this link can join the chat.";
 "messenger_invite_link_reset" = "Reset link";
 "messenger_join_chat_title" = "Chat invitation";

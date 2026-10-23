@@ -1685,6 +1685,10 @@
                 hour:       {tr("messenger_chat_rights_hours", "%N%")},
                 exceptions: {tr("messenger_chat_rights_exceptions")},
                 removed:    {tr("messenger_chat_rights_removed")},
+                searchAny:  {tr("header_search")},
+                ownerRole:  {tr("messenger_chat_admins_owner")},
+                promotedBy: {tr("messenger_chat_admins_promoted_by", "%NAME%")},
+                addAdmin:   {tr("messenger_chat_admins_add")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
             const KIND_ICONS = {
@@ -1819,6 +1823,31 @@
                                 <span>${ escapeHtml(PEER_STR.removed) }</span>
                             </a>
                         </div>
+                    </div>`;
+            };
+
+            // администраторы беседы, пока только вёрстка; назначает админов только владелец
+            const renderAdmins = (info, avatarStyle) => {
+                const owner  = info.members.find(m => m.role === "owner");
+                const admins = [...info.members.filter(m => m.role === "admin"), ...(owner ? [owner] : [])];
+
+                return `
+                    <div class="im-peer-page im-peer-admins" data-page="admins" hidden>
+                        <div class="im-peer-search--bar">
+                            <input type="search" placeholder="${ escapeHtml(PEER_STR.searchAny) }" autocomplete="off" />
+                        </div>
+                        <div class="im-peer-admins--list">
+                            ${ admins.map(m => `
+                                <a class="im-peer-member im-peer-admin" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
+                                    <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
+                                    <span class="im-peer-admin--info">
+                                        <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
+                                        <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", owner?.name ?? "")) }</span>
+                                    </span>
+                                    <span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(m.tag ?? PEER_STR[m.role]) }</span>
+                                </a>`).join("") }
+                        </div>
+                        <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.notFound) }</div>
                     </div>`;
             };
 
@@ -1972,7 +2001,7 @@
                             <div class="im-peer-search--summary" hidden></div>
                             <div class="im-peer-search--results"></div>
                         </div>
-                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights() : "" }
+                        ${ info.can_manage ? renderManage(info, avatarStyle) + renderRights() + renderAdmins(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
                     callbacks: [Function.noop],
@@ -1989,6 +2018,7 @@
                 const found = root.querySelector('[data-page="search"]');
                 const manage = root.querySelector('[data-page="manage"]');
                 const rights = root.querySelector('[data-page="rights"]');
+                const admins = root.querySelector('[data-page="admins"]');
                 const close = () => msg.close();
 
                 // «назад» слева от «закрыть», виден только в разделе вложений
@@ -2001,20 +2031,24 @@
                 const manageBtn = u(`<button class="button im-peer-manage-btn">${ escapeHtml(PEER_STR.manage) }</button>`).first();
                 const cancelBtn = u(`<button class="button im-peer-cancel" hidden>${ escapeHtml(PEER_STR.cancel) }</button>`).first();
                 const saveBtn   = u(`<button class="button im-peer-save" hidden>${ escapeHtml(PEER_STR.save) }</button>`).first();
+                // в администраторах: «добавить» слева, «закрыть» возвращает в управление
+                const addAdminBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addAdmin) }</button>`).first();
+                const doneBtn     = u(`<button class="button im-peer-done" hidden>${ escapeHtml(PEER_STR.close) }</button>`).first();
                 if(manage) {
-                    action.prepend(manageBtn);
-                    action.append(cancelBtn, saveBtn);
+                    action.prepend(manageBtn, addAdminBtn);
+                    action.append(cancelBtn, saveBtn, doneBtn);
                 }
 
                 let shown = main;
                 const setPage = page => {
                     shown = page;
                     const editing = page === manage || page === rights;
-                    [main, list, found, manage, rights].forEach(p => p && (p.hidden = p !== page));
-                    backBtn.hidden   = page === main || editing;
+                    [main, list, found, manage, rights, admins].forEach(p => p && (p.hidden = p !== page));
+                    backBtn.hidden   = page === main || editing || page === admins;
                     manageBtn.hidden = page !== main;
                     cancelBtn.hidden = saveBtn.hidden = !editing;
-                    closeBtn.hidden  = editing;
+                    addAdminBtn.hidden = doneBtn.hidden = page !== admins;
+                    closeBtn.hidden  = editing || page === admins;
                 };
 
                 // общий тумблер медиа включает и выключает все пункты, счётчики пересчитываются сразу
@@ -2045,6 +2079,14 @@
                     });
                     updateRights();
                 }
+
+                // поиск по администраторам прямо в списке
+                admins?.querySelector("input").addEventListener("input", e => {
+                    const q    = e.target.value.trim().toLowerCase();
+                    const rows = [...admins.querySelectorAll(".im-peer-admin")];
+                    rows.forEach(row => row.hidden = !row.dataset.name.includes(q));
+                    admins.querySelector(".im-peer-empty").hidden = rows.some(row => !row.hidden);
+                });
 
                 // подгрузка вложений выбранного типа при прокрутке
                 let current = null;
@@ -2181,8 +2223,15 @@
                     body.scrollTop = 0;
                 };
 
+                const showAdmins = () => {
+                    head.textContent = PEER_STR.admins;
+                    setPage(admins);
+                    body.scrollTop = 0;
+                };
+
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
+                doneBtn.addEventListener("click", showManage);
                 cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
 
                 const askDelete = () => {
@@ -2243,6 +2292,7 @@
 
                 body.addEventListener("click", e => {
                     if(e.target.closest('[data-manage="rights"]')) return showRights();
+                    if(e.target.closest('[data-manage="admins"]')) return showAdmins();
 
                     if(e.target.closest('[data-act="add-members"]')) {
                         close();

@@ -1447,6 +1447,9 @@
 "messenger_chat_rights_hours" = "$1ч";
 "messenger_chat_rights_exceptions" = "Исключения";
 "messenger_chat_rights_removed" = "Удалённые пользователи";
+"messenger_chat_admins_owner" = "Владелец";
+"messenger_chat_admins_promoted_by" = "Назначил(а) $1";
+"messenger_chat_admins_add" = "Добавить администратора";
 "messenger_invite_link_hint" = "Любой, у кого есть эта ссылка, сможет вступить в беседу.";
 "messenger_invite_link_reset" = "Сбросить ссылку";
 "messenger_join_chat_title" = "Приглашение в беседу";

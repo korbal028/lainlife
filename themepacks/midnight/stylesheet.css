@@ -909,6 +909,16 @@ ul {
     --im-slow-track: #2c2640;
 }
 
+.im-peer-admin--tag_admin {
+    background: rgba(76, 175, 80, .12);
+    color: #6fcf73;
+}
+
+.im-peer-admin--tag_owner {
+    background: rgba(138, 120, 201, .18);
+    color: #b9a8ee;
+}
+
 .im-peer-rights--hint {
     background: #16131f;
     color: #8b9ab5;

@@ -1988,6 +1988,67 @@ span.ok-smile.ok-smile {
     font-size: 11px;
 }
 
+/* администраторы беседы: роль или тег справа плашкой */
+.im-peer-admins {
+    min-height: 300px;
+}
+
+.im-peer-admins--list {
+    padding: 4px 0;
+}
+
+.im-peer-admin {
+    cursor: pointer;
+}
+
+.im-peer-admin[hidden],
+.im-peer-admins .im-peer-empty[hidden] {
+    display: none;
+}
+
+.im-peer-admin .im-peer-member--ava {
+    width: 40px;
+    height: 40px;
+}
+
+.im-peer-admin--info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.im-peer-admin--info > span {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.im-peer-admin--info .im-peer-member--name {
+    font-weight: bold;
+}
+
+.im-peer-admin--tag {
+    flex: none;
+    max-width: 140px;
+    padding: 1px 6px;
+    overflow: hidden;
+    border-radius: 2px;
+    font-size: 11px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.im-peer-admin--tag_admin {
+    background: #e3f1e3;
+    color: #3c8a3c;
+}
+
+.im-peer-admin--tag_owner {
+    background: #ece6f6;
+    color: #7a5bb5;
+}
+
 .im-peer-row--value {
     margin-left: auto;
     color: #2b587a;
