@@ -890,6 +890,14 @@ ul {
     border-top-color: #2c2640;
 }
 
+.im-create--friends {
+    border-color: #2c2640;
+}
+
+.im-create--friend:hover {
+    background: rgba(122, 156, 196, .1);
+}
+
 .im-peer-manage .im-peer-section,
 .im-peer-rights .im-peer-section {
     border-top-color: #16131f;

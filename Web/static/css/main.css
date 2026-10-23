@@ -1788,6 +1788,57 @@ span.ok-smile.ok-smile {
     font-size: 0;
 }
 
+.im-create table {
+    width: 80%;
+}
+
+.im-create--search {
+    margin-bottom: 6px;
+}
+
+.im-create--friends {
+    max-height: 320px;
+    overflow-y: auto;
+    border: 1px solid #c0cad5;
+}
+
+.im-create--friend {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    cursor: pointer;
+}
+
+.im-create--friend[hidden] {
+    display: none;
+}
+
+.im-create--friend:hover {
+    background: rgba(81, 129, 184, .08);
+}
+
+.im-create--friend input[type=checkbox] {
+    flex: none;
+    margin: 0;
+}
+
+.im-create--friend img {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    object-fit: cover;
+    border-radius: 2px;
+}
+
+.im-create--friend img.avatar-style-2 {
+    border-radius: 50%;
+}
+
+.im-create--empty {
+    color: #888;
+}
+
 /* меню вложений и информация о собеседнике */
 .im-peer-dialog .ovk-diag-body {
     padding: 0;

@@ -1,27 +1,64 @@
 {extends "../@layout.latte"}
-{block title}Создать беседу{/block}
-{block header}Создать беседу{/block}
+{block title}{_messenger_create_chat}{/block}
 
-{block wrap}
-    <div style="padding: 10px;">
-        <form method="post" action="/im/convs/create" enctype="multipart/form-data">
-            <input type="hidden" name="hash" value="{$csrfToken}" />
-            <div style="margin-bottom: 10px;">
-                <label>Название беседы:</label><br/>
-                <input type="text" name="name" placeholder="Введите название" style="width: 300px;" required />
-            </div>
-            <div style="margin-bottom: 15px;">
-                <label>Добавить участников из друзей:</label><br/>
-                {foreach $friends as $friend}
-                    <label style="display: flex; align-items: center; gap: 8px; padding: 5px; cursor: pointer;">
-                        <input type="checkbox" name="members[]" value="{$friend->getId()}" />
-                        <img src="{$friend->getAvatarUrl('miniscule')}" style="width: 28px; height: 28px; border-radius: 50%;" />
-                        <span>{$friend->getCanonicalName()}</span>
-                    </label>
-                {/foreach}
-            </div>
-            <button type="submit" class="button">Создать</button>
-            <a href="/im/convs" style="margin-left: 10px;">Отмена</a>
-        </form>
+{block header}{_my_messages}
+    <div style="float: right;">
+        <a href="/im?sel={$thisUser->getId()}" style="font-size: 11px; color: #999;">{_saved_messages}</a>
     </div>
+{/block}
+
+{block content}
+    <div class="tabs">
+        <div class="tab">
+            <a href="/im">{_all_messages}</a>
+        </div>
+        <div class="tab">
+            <a href="/im/archive">{_messenger_archive}</a>
+        </div>
+        <div id="activetabs" class="tab">
+            <a id="act_tab_a" href="/im/create">{_messenger_create_chat}</a>
+        </div>
+    </div>
+
+    <form class="im-create" method="post" action="/im/create">
+        <input type="hidden" name="hash" value="{$csrfToken}" />
+        <table cellspacing="7" cellpadding="0" border="0" align="center">
+            <tr>
+                <td width="120" valign="top"><span class="nobold">{_messenger_chat_manage_name}:</span></td>
+                <td><input type="text" name="name" maxlength="64" required autofocus /></td>
+            </tr>
+            <tr>
+                <td valign="top"><span class="nobold">{_description}:</span></td>
+                <td><textarea name="description" rows="3"></textarea></td>
+            </tr>
+            <tr>
+                <td valign="top"><span class="nobold">{_messenger_create_chat_members}:</span></td>
+                <td>
+                    {if sizeof($friends) > 0}
+                        <input type="search" class="im-create--search" placeholder="{_header_search}" autocomplete="off" />
+                        <div class="im-create--friends">
+                            <label n:foreach="$friends as $friend" class="im-create--friend" data-name="{$friend->getCanonicalName()|lower}">
+                                <input type="checkbox" name="members[]" value="{$friend->getId()}" />
+                                <img class="avatar-style-{$thisUser->getStyleAvatar()}" src="{$friend->getAvatarUrl('miniscule')}" alt="" loading="lazy" />
+                                <span>{$friend->getCanonicalName()}</span>
+                            </label>
+                        </div>
+                    {else}
+                        <div class="im-create--empty">{_messenger_no_friends_to_add}</div>
+                    {/if}
+                </td>
+            </tr>
+            <tr>
+                <td></td>
+                <td><input type="submit" class="button" value="{_create}" /></td>
+            </tr>
+        </table>
+    </form>
+
+    <script>
+        document.querySelector(".im-create--search")?.addEventListener("input", e => {
+            const q = e.target.value.trim().toLowerCase();
+            document.querySelectorAll(".im-create--friend").forEach(row => row.hidden = !row.dataset.name.includes(q));
+        });
+    </script>
 {/block}

@@ -352,6 +352,8 @@ routes:
       handler: "GroupChat->apiSettings"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/create"
+      handler: "GroupChat->create"
     - url: "/im/join/{text}"
       handler: "GroupChat->join"
     - url: "/im"

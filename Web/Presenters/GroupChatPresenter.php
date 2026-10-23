@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace openvk\Web\Presenters;
 
 use openvk\Web\Models\Repositories\{Users, GroupChats};
-use openvk\Web\Models\Entities\{GroupChat, Photo, Correspondence};
+use openvk\Web\Models\Entities\{GroupChat, Photo, Correspondence, User};
 
 // управление беседами; сами сообщения бесед обслуживает MessengerPresenter
 final class GroupChatPresenter extends OpenVKPresenter
@@ -93,9 +93,14 @@ final class GroupChatPresenter extends OpenVKPresenter
 
     private function createChat(string $name, array $members): GroupChat
     {
-        $users     = new Users();
-        $members[] = $this->user->id;
-        $members   = array_values(array_unique(array_filter(array_map("intval", $members), fn($id) => $id > 0 && $users->get($id))));
+        $users   = new Users();
+        $me      = $this->user->identity;
+        $members = array_filter(array_map("intval", $members), function ($id) use ($users, $me) {
+            $user = $id > 0 ? $users->get($id) : null;
+
+            return $user && $me->getSubscriptionStatus($user) === User::SUBSCRIPTION_MUTUAL;
+        });
+        $members = array_values(array_unique([$me->getId(), ...$members]));
 
         return $this->groupChats->createChat([
             "name"               => $name,
@@ -138,7 +143,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $name = trim((string) $this->postParam("name"));
         if ($name === "") {
-            $this->flashFail("err", tr("error"), "Введите название беседы.");
+            $this->flashFail("err", tr("error"), tr("messenger_create_chat_no_name"));
         }
 
         $chat = $this->createChat($name, $_POST["members"] ?? []);

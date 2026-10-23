@@ -1380,6 +1380,9 @@
 "messenger_chat_muted" = "Уведомления отключены";
 "messenger_chat_action_error" = "Не удалось выполнить действие с чатом.";
 "messenger_archive" = "Архив";
+"messenger_create_chat" = "Создать беседу";
+"messenger_create_chat_members" = "Участники";
+"messenger_create_chat_no_name" = "Введите название беседы.";
 "messenger_unarchive_chat" = "Разархивировать чат";
 "messenger_archive_empty" = "В архиве нет чатов.";
 "messenger_pin_message" = "Закрепить";

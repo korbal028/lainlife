@@ -21,6 +21,9 @@
         <div n:attr="id => $isArchive ? 'activetabs'" class="tab">
             <a n:attr="id => $isArchive ? 'act_tab_a'" href="/im/archive">{_messenger_archive}</a>
         </div>
+        <div class="tab">
+            <a href="/im/create">{_messenger_create_chat}</a>
+        </div>
     </div>
 
     {if sizeof($corresps) > 0}
