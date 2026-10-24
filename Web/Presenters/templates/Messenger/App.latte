@@ -1729,7 +1729,6 @@
                 inviteReset: {tr("messenger_invite_link_reset")},
                 addMembers: {tr("messenger_add_members")},
                 addBtn:     {tr("messenger_add_members_button")},
-                inChat:     {tr("messenger_already_in_chat")},
                 noFriends:  {tr("messenger_no_friends_to_add")},
                 blockText:  {tr("adding_to_bl_sure", "%NAME%")},
                 blockTitle: {tr("addition_to_bl")},
@@ -2123,12 +2122,13 @@
                     return fastError(tr("messages_error_1"));
                 }
 
+                friends = friends.filter(f => !f.already_in_chat);
                 const list = friends.length ? friends.map(f => `
                     <label class="im-add-member">
-                        <input type="checkbox" value="${ Number(f.id) }" ${ f.already_in_chat ? "checked disabled" : f.banned ? "disabled" : "" } />
+                        <input type="checkbox" value="${ Number(f.id) }"${ f.banned ? " disabled" : "" } />
                         <img class="avatar-style-${ Number(window.openvk?.avatar_style ?? 0) }" src="${ escapeHtml(f.avatar) }" alt="" loading="lazy" />
                         <span class="im-add-member--name">${ escapeHtml(f.name) }</span>
-                        ${ f.already_in_chat ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.inChat) }</span>` : f.banned ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.cantInvite) }</span>` : "" }
+                        ${ f.banned ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.cantInvite) }</span>` : "" }
                     </label>`).join("") : `<div class="im-add-member--empty">${ escapeHtml(PEER_STR.noFriends) }</div>`;
 
                 const root = MessageBox(PEER_STR.addMembers, `
