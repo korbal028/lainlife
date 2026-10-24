@@ -2881,7 +2881,7 @@
                     if(e.target.closest('[data-manage="exception-delete"]')) return deleteException();
 
                     if(e.target.closest('[data-manage="removed"]')) return showRemoved();
-                    if(e.target.closest('[data-manage="log"]')) return location.assign(`/im/chat${ PEER_SEL }/audit`);
+                    if(e.target.closest('[data-manage="log"]')) return window.router ? window.router.route(`/im/chat${ PEER_SEL }/audit`) : location.assign(`/im/chat${ PEER_SEL }/audit`);
                     if(e.target.closest('[data-manage="admin-dismiss"]')) return dismissAdmin();
 
                     const adminRow = e.target.closest('[data-manage="admin"]');
