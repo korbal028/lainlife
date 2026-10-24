@@ -952,6 +952,10 @@ ul {
     color: #8b9ab5;
 }
 
+.msg-role_admin {
+    background-color: #a99ad8;
+}
+
 .im-peer-admins_dragging .im-peer-admin.im-peer-admin_dragging {
     background-color: #231e33;
 }

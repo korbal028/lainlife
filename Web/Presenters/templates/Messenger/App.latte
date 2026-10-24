@@ -82,7 +82,7 @@
                                 <strong data-bind="text: sender.name"></strong>
                             </a>
                             <!-- ko if: sender.role -->
-                            <span class="msg-role" data-bind="html: emoji_span(sender.role === 'owner' ? '👑' : '🎩'), attr: { title: sender.role === 'owner' ? window.MSG_STR.roleOwner : window.MSG_STR.roleAdmin }"></span>
+                            <span data-bind="css: 'msg-role msg-role_' + sender.role, attr: { title: sender.role === 'owner' ? window.MSG_STR.roleOwner : window.MSG_STR.roleAdmin }"></span>
                             <!-- /ko -->
                             <!-- ko if: sender.tag -->
                             <span class="msg-tag" data-bind="text: sender.tag.text, attr: { style: '--tag: ' + sender.tag.color }"></span>

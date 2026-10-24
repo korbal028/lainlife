@@ -2379,13 +2379,31 @@ span.ok-smile.ok-smile {
 
 .msg-role {
     display: inline-block;
+    flex: none;
+    width: 14px;
+    height: 14px;
     margin-left: 4px;
-    vertical-align: middle;
+    vertical-align: -2px;
+    -webkit-mask: center / contain no-repeat;
+    mask: center / contain no-repeat;
 }
 
-.msg-role .emoji {
-    cursor: default;
+.msg-role_owner {
+    background-color: #f5b400;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 7.5l5.2 4.3L12 4.5l4.8 7.3L22 7.5 19.8 18H4.2L2 7.5zM4.2 19.5h15.6V21H4.2z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M2 7.5l5.2 4.3L12 4.5l4.8 7.3L22 7.5 19.8 18H4.2L2 7.5zM4.2 19.5h15.6V21H4.2z'/%3E%3C/svg%3E");
 }
+
+.msg-role_admin {
+    background-color: #8a97a8;
+    -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3.5h10v8H7zM7 13.2h10V16H7zM2 17.6c0-1 4.5-1.8 10-1.8s10 .8 10 1.8-4.5 2.4-10 2.4S2 18.6 2 17.6z'/%3E%3C/svg%3E");
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M7 3.5h10v8H7zM7 13.2h10V16H7zM2 17.6c0-1 4.5-1.8 10-1.8s10 .8 10 1.8-4.5 2.4-10 2.4S2 18.6 2 17.6z'/%3E%3C/svg%3E");
+}
+
+.msg-author > a {
+    white-space: nowrap;
+}
+
 
 .messenger-app--service {
     padding: 8px 20px;
