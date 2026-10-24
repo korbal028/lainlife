@@ -637,15 +637,7 @@ function getAvatarUrl(string $size = 'normal'): string
             return false;
         }
 
-        if ($this->isCreator($editorId)) {
-            return true;
-        }
-
-        $promoter = $this->getPromoter($adminId);
-
-        return $this->hasAdminRight("add_admins", $editorId)
-            && $this->outranks($editorId, $adminId)
-            && ($promoter === $editorId || $promoter !== (int) $this->getRecord()->creator_id);
+        return $this->isCreator($editorId) || ($this->hasAdminRight("add_admins", $editorId) && $this->outranks($editorId, $adminId));
     }
 
     function getRosterSignature(): string
