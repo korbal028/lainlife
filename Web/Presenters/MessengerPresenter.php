@@ -468,7 +468,7 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
-        $oldContent = (string) $msg->getRecord()->content;
+        $oldContent = (string) $msg->unwrap()->content;
         if ($msg->isInGroupChat() && $oldContent !== $this->postParam("content")) {
             $msg->getRecipient()->logAction("edited", $this->user->id, null, ["id" => $msg->getId(), "old" => $oldContent, "new" => $this->postParam("content")]);
         }
@@ -502,7 +502,7 @@ final class MessengerPresenter extends OpenVKPresenter
         }
 
         if ($msg->isInGroupChat() && !$msg->isDeleted()) {
-            $msg->getRecipient()->logAction("deleted", $this->user->id, $this->user->id, ["id" => $msg->getId(), "text" => (string) $msg->getRecord()->content]);
+            $msg->getRecipient()->logAction("deleted", $this->user->id, $this->user->id, ["id" => $msg->getId(), "text" => (string) $msg->unwrap()->content]);
         }
 
         $msg->setDeleted(1);
@@ -622,7 +622,7 @@ final class MessengerPresenter extends OpenVKPresenter
             $sender = $msg->getSender();
             if ($forAll && $sender instanceof User && ($deleteAny || $sender->getId() === $this->user->id)) {
                 if ($correspondent instanceof GroupChat) {
-                    $correspondent->logAction("deleted", $this->user->id, $sender->getId(), ["id" => $id, "text" => (string) $msg->getRecord()->content]);
+                    $correspondent->logAction("deleted", $this->user->id, $sender->getId(), ["id" => $id, "text" => (string) $msg->unwrap()->content]);
                 }
 
                 $msg->setDeleted(1);
