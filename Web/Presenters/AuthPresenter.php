@@ -193,7 +193,7 @@ final class AuthPresenter extends OpenVKPresenter
             $this->template->disable_ajax  = 1;
         }
 
-        if (!$this->hasPermission("user", "login", -1)) {
+        if (!$adding && !$this->hasPermission("user", "login", -1)) {
             exit("Вас забанили");
         }
 
