@@ -256,8 +256,8 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $chat = $this->getChatWithAdminRight($peer, "ban");
 
-        // админ не может выгнать создателя и других админов
-        if ($chat->isCreator($userId) || (!$chat->isCreator($this->user->id) && $chat->isAdmin($userId))) {
+        // админ может выгнать только обычных участников и назначенных им админов
+        if ($chat->isCreator($userId) || ($chat->isAdmin($userId) && !$chat->canEditAdmin($this->user->id, $userId))) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }

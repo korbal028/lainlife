@@ -2551,7 +2551,7 @@
                     pickFor = mode;
                     const members = mode === "exception" ? info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id))
                         : mode === "admin" ? info.members.filter(m => !m.role)
-                        : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (info.can_delete_for_all || !m.role));
+                        : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (!m.role || canEditAdmin(info, m)));
                     fillMembers(memberPick, members.map(m => renderMemberRow(m, "pick", "", avatarStyle)).join(""));
                     head.textContent = mode === "admin" ? PEER_STR.addAdmin : PEER_STR.pickMember;
                     setPage(memberPick);
@@ -2968,12 +2968,11 @@
                 const memberMenuItems = member => {
                     if(!info.chat || !info.can_manage || member.id === info.me.id || member.role === "owner") return [];
 
-                    const isOwner = info.members.some(o => o.role === "owner" && o.id === info.me.id);
                     return [
                         ...(member.role === "admin" ? [[PEER_STR.editAdmin, () => showAdminEdit(member.id)]] : []),
                         ...(!member.role && info.admin_rights.add_admins ? [[PEER_STR.promoteMember, () => showAdminEdit(member.id)]] : []),
                         ...(!member.role && info.admin_rights.ban ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
-                        ...(info.admin_rights.ban && (!member.role || isOwner) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
+                        ...(info.admin_rights.ban && (!member.role || canEditAdmin(info, member)) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
                     ];
                 };
 
