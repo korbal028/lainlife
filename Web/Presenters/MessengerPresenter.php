@@ -311,6 +311,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "typing"   => $typing,
             "typing_names" => $typingNames,
             "pinned"   => $pinned,
+            "members_label" => $correspondent instanceof GroupChat ? tr("participants", $correspondent->getParticipantsCount()) : null,
         ]));
     }
 

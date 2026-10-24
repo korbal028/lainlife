@@ -13,7 +13,7 @@
 {/if}
     <div class="im-header-right">
         <div n:if="$isGroupChat" class="im-header-online">
-            <span>{tr("participants", $correspondent->getParticipantsCount())}</span>
+            <span class="im-header-members">{tr("participants", $correspondent->getParticipantsCount())}</span>
         </div>
         <div n:if="!$isGroupChat && $correspondent->getId() !== $thisUser->getId() && ($online = $correspondent->getOnline()->timestamp()) + 2505600 > time()" class="im-header-online">
             {var $diff = date_diff(date_create(), date_create('@' . $online))}
@@ -620,6 +620,9 @@
 
                                     this.removeMessages(data.deleted || []);
                                     this.markRead(data.read || []);
+
+                                    const members = document.querySelector(".im-header-members");
+                                    if(members && data.members_label && members.textContent !== data.members_label) members.textContent = data.members_label;
 
                                     if(typeof data.pinned !== "undefined") {
                                         this.setPinned(data.pinned);
