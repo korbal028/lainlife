@@ -2001,7 +2001,7 @@
                 const admins = [...info.members.filter(m => m.role === "admin"), ...(owner ? [owner] : [])];
 
                 return admins.map(m => `
-                    <a class="im-peer-member im-peer-admin${ canEditAdmin(info, m) ? "" : " im-peer-admin_static" }" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
+                    <a class="im-peer-member im-peer-admin${ m.role === "admin" ? "" : " im-peer-admin_static" }" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
                         <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
                         <span class="im-peer-admin--info">
                             <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
@@ -2296,10 +2296,12 @@
                 if(manage || tagPage) action.append(cancelBtn, saveBtn, doneBtn);
 
                 let shown = main;
+                let adminReadOnly = false;
                 const setPage = page => {
                     shown = page;
-                    const editing = [manage, rights, userRights, adminEdit, tagPage].includes(page);
-                    const listing = [admins, exceptions, removed, memberPick].includes(page);
+                    const viewing = page === adminEdit && adminReadOnly;
+                    const editing = [manage, rights, userRights, adminEdit, tagPage].includes(page) && !viewing;
+                    const listing = [admins, exceptions, removed, memberPick].includes(page) || viewing;
                     [main, list, found, manage, rights, userRights, admins, adminEdit, exceptions, removed, memberPick, tagPage].forEach(p => p && (p.hidden = p !== page));
                     backBtn.hidden   = page === main || editing || listing;
                     manageBtn.hidden = page !== main;
@@ -2648,16 +2650,18 @@
 
                 const showAdminEdit = id => {
                     const member = info.members.find(m => m.id === id);
-                    if(!member || (member.role === "admin" ? !canEditAdmin(info, member) : member.role)) return;
+                    if(!member || (member.role !== "admin" && (member.role || !info.admin_rights.add_admins))) return;
 
                     editedAdmin = member;
-                    const isNew  = member.role !== "admin";
-                    const rights = member.rights ?? ADMIN_DEFAULTS;
+                    const isNew    = member.role !== "admin";
+                    const editable = isNew || canEditAdmin(info, member);
+                    const rights   = member.rights ?? ADMIN_DEFAULTS;
                     adminEdit.querySelectorAll('[name^="right_"]').forEach(box => {
                         const key = box.name.replace(/^right_/, "");
-                        box.disabled = !info.admin_rights[key];
-                        box.checked  = rights[key] && info.admin_rights[key];
+                        box.disabled = !editable || !info.admin_rights[key];
+                        box.checked  = editable ? rights[key] && info.admin_rights[key] : rights[key];
                     });
+                    adminReadOnly = !editable;
 
                     const headEl = adminEdit.querySelector(".im-peer-admin-edit--head");
                     headEl.querySelector("img").src = member.avatar;
@@ -2669,8 +2673,9 @@
                         adminEdit.querySelector(".im-peer-admin-edit--tag-hint").textContent = PEER_STR.adminTagHint.replace("%NAME%", member.name);
                         adminTagPreview.style.setProperty("--tag", member.tag?.color ?? TAG_DEFAULT);
                         adminTagInput.value = member.tag?.text ?? "";
+                        adminTagInput.readOnly = !editable;
                     }
-                    adminEdit.querySelector(".im-peer-admin-edit--dismiss").hidden = isNew;
+                    adminEdit.querySelector(".im-peer-admin-edit--dismiss").hidden = isNew || !editable;
                     updateAdminEdit();
 
                     head.textContent = isNew ? PEER_STR.addAdmin : PEER_STR.editAdmin;
@@ -2721,6 +2726,7 @@
                 doneBtn.addEventListener("click", () => {
                     if(shown === exceptions || shown === removed) return showRights(false);
                     if(shown === memberPick) return pickFor === "exception" ? showExceptions() : pickFor === "admin" ? showAdmins() : showRemoved();
+                    if(shown === adminEdit) return showAdmins();
                     showManage();
                 });
                 const saveSettings = async fields => {
