@@ -2351,6 +2351,23 @@ span.ok-smile.ok-smile {
     text-overflow: ellipsis;
 }
 
+.messenger-app--service {
+    padding: 8px 20px;
+    text-align: center;
+    color: #888;
+    font-size: 11px;
+    overflow-wrap: anywhere;
+}
+
+.messenger-app--service a {
+    font-weight: bold;
+}
+
+.messenger-app--service---time {
+    margin-left: 4px;
+    opacity: .7;
+}
+
 .im-audit {
     padding: 0 0 12px;
 }

@@ -136,7 +136,7 @@ function getAvatarUrl(string $size = 'normal'): string
     function getLastMessage(): ?Message
     {
         $row = DatabaseConnection::i()->getContext()->table("messages")
-            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "deleted" => 0])
+            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "deleted" => 0, "visible_to" => null])
             ->order("id DESC")
             ->fetch();
 
@@ -289,7 +289,7 @@ function getAvatarUrl(string $size = 'normal'): string
         }
 
         $last = DatabaseConnection::i()->getContext()->table("messages")
-            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "sender_type" => User::class, "sender_id" => $userId])
+            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "sender_type" => User::class, "sender_id" => $userId, "action" => null])
             ->order("created DESC")
             ->fetch();
 

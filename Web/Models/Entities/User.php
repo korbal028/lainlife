@@ -772,6 +772,7 @@ class User extends RowModel
              WHERE m.`recipient_type` = ? AND m.`deleted` = 0
                AND c.`deleted` = 0 AND FIND_IN_SET(?, c.`participants`) > 0
                AND NOT (m.`sender_type` = ? AND m.`sender_id` = ?)
+               AND (m.`visible_to` IS NULL OR m.`visible_to` = ?)
                AND m.`id` > GREATEST(COALESCE(d.`read_till`, 0), COALESCE(d.`cleared_till`, 0))",
             self::class,
             $this->getId(),
@@ -779,6 +780,7 @@ class User extends RowModel
             GroupChat::class,
             (string) $this->getId(),
             self::class,
+            $this->getId(),
             $this->getId()
         )->fetch()->cnt;
 

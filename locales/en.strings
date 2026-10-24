@@ -1553,6 +1553,14 @@
 "messenger_chat_audit_before" = "Before";
 "messenger_chat_audit_after" = "After";
 "messenger_chat_audit_go_to" = "Go to message";
+"messenger_service_pin" = "%ACTOR% pinned the message «%TEXT%»";
+"messenger_service_unpin" = "%ACTOR% unpinned the message «%TEXT%»";
+"messenger_service_invite" = "%ACTOR% invited %TARGET%";
+"messenger_service_join" = "%ACTOR% joined the chat via invite link";
+"messenger_service_admin_add" = "%ACTOR% made you an admin";
+"messenger_service_admin_remove" = "%ACTOR% removed you from admins";
+"messenger_service_in_chat" = "in the chat";
+"notif_9701_9_18" = "Messages event";
 "messenger_chat_exceptions_add" = "Add exception";
 "messenger_chat_exceptions_delete" = "Remove exception";
 "messenger_chat_exceptions_empty" = "No users found.";

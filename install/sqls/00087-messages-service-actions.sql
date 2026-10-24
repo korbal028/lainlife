@@ -1,0 +1,2 @@
+ALTER TABLE `messages` ADD COLUMN IF NOT EXISTS `action` text COLLATE utf8mb4_unicode_520_ci DEFAULT NULL;
+ALTER TABLE `messages` ADD COLUMN IF NOT EXISTS `visible_to` bigint(20) UNSIGNED DEFAULT NULL;

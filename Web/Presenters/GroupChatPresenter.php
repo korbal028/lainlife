@@ -244,6 +244,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         // история до вступления не считается непрочитанной
         (new Correspondence($user, $chat))->markAsJoined();
         $chat->logAction("added", $this->user->id, $userId);
+        (new Correspondence($this->user->identity, $chat))->announce(["type" => "invite", "target" => $userId]);
 
         $this->returnJson(["success" => true]);
     }
@@ -313,7 +314,9 @@ final class GroupChatPresenter extends OpenVKPresenter
             exit();
         }
 
-        $this->groupChats->makeAdmin($chat->getId(), $userId);
+        if ($this->groupChats->makeAdmin($chat->getId(), $userId)) {
+            (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_add", "target" => $userId], $userId);
+        }
         $this->returnJson(["success" => true]);
     }
 
@@ -323,7 +326,10 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
 
         $chat = $this->getCreatedChat($peer);
-        $this->groupChats->removeAdmin($chat->getId(), $userId);
+        if ($chat->isAdmin($userId)) {
+            $this->groupChats->removeAdmin($chat->getId(), $userId);
+            (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_remove", "target" => $userId], $userId);
+        }
         $this->returnJson(["success" => true]);
     }
 
@@ -350,6 +356,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         if ($this->postParam("act") === "dismiss") {
             if ($isAdmin) {
                 $this->groupChats->removeAdmin($chat->getId(), $userId);
+                (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_remove", "target" => $userId], $userId);
             }
 
             $this->returnJson(["members" => $chat->getMembersInfo(true)]);
@@ -363,6 +370,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         if (!$isAdmin) {
             $this->groupChats->makeAdmin($chat->getId(), $userId);
             $chat->removeException($userId);
+            (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_add", "target" => $userId], $userId);
         }
         $chat->setAdminRights($userId, $rights, $isAdmin ? $chat->getPromoter($userId) : $me);
 
@@ -606,6 +614,7 @@ final class GroupChatPresenter extends OpenVKPresenter
             $this->groupChats->addParticipant($chat->getId(), $this->user->id);
             (new Correspondence($this->user->identity, $chat))->markAsJoined();
             $chat->logAction("joined", $this->user->id);
+            (new Correspondence($this->user->identity, $chat))->announce(["type" => "join"]);
             $this->redirect($chat->getURL());
         }
 

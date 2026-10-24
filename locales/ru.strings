@@ -1483,6 +1483,14 @@
 "messenger_chat_audit_before" = "Было";
 "messenger_chat_audit_after" = "Стало";
 "messenger_chat_audit_go_to" = "Перейти к сообщению";
+"messenger_service_pin" = "%ACTOR% закрепил(а) сообщение «%TEXT%»";
+"messenger_service_unpin" = "%ACTOR% открепил(а) сообщение «%TEXT%»";
+"messenger_service_invite" = "%ACTOR% пригласил(а) %TARGET%";
+"messenger_service_join" = "%ACTOR% вступил(а) в беседу по ссылке-приглашению";
+"messenger_service_admin_add" = "%ACTOR% назначил(а) вас администратором";
+"messenger_service_admin_remove" = "%ACTOR% снял(а) вас с поста администратора";
+"messenger_service_in_chat" = "в беседе";
+"notif_9701_9_18" = "Событие в сообщениях";
 "messenger_chat_exceptions_add" = "Добавить исключение";
 "messenger_chat_exceptions_delete" = "Удалить исключение";
 "messenger_chat_exceptions_empty" = "Пользователи не найдены.";

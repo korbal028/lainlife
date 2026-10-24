@@ -1,0 +1,8 @@
+{var $message = $notification->getModel(0)}
+{var $chat    = $message->isInGroupChat() ? $message->getRecipient() : null}
+{var $url     = $chat ? $chat->getURL() : "/im?sel=" . $notification->getModel(1)->getId()}
+
+{$message->getServiceText()|noescape}{if $chat} {_messenger_service_in_chat} <a href="{$url}"><b>{$chat->getName()}</b></a>{/if}.
+<div class="nobold">
+    <a href="{$url}">{$notification->getDateTime()}</a>
+</div>

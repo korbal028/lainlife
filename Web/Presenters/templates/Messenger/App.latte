@@ -65,6 +65,13 @@
                 <!-- ko if: window.isMsgNewDay($index()) -->
                 <div class="messenger-app--messages-day-time"><b data-bind="text: window.msgDay(timing.ts)"></b></div>
                 <!-- /ko -->
+                <!-- ko if: $data.action -->
+                <div class="messenger-app--service" data-bind="attr: { 'data-uuid': $data.uuid }">
+                    <span data-bind="html: text"></span>
+                    <span class="messenger-app--service---time" data-bind="text: timing.sent"></span>
+                </div>
+                <!-- /ko -->
+                <!-- ko ifnot: $data.action -->
                 <div class="messenger-app--messages---message" data-bind="attr: { 'data-uuid': $data.uuid }, css: { unread: !read, grouped: window.isMsgGrouped($index()), selected: $root.selectedMsgs.indexOf($data.uuid) !== -1, 'msg-replying-to': $root.replyTo() && $root.replyTo().uuid === $data.uuid }">
                     <div class="msg-check" data-bind="visible: $data.uuid > 0"></div>
                     <img class="ava" data-bind="attr: { src: sender.avatar, alt: sender.name }" />
@@ -124,6 +131,7 @@
                         <span data-bind="html: window.msgTime($data)"></span>
                     </div>
                 </div>
+                <!-- /ko -->
             </div>
             <div class="messenger-app--typing-status" style="display:none;opacity:0;">
                 {tr('message_user_typing', $isGroupChat ? '' : $correspondent->getFirstName())}
@@ -400,6 +408,7 @@
                 if(index < 1 || index >= msgs.length) return false;
 
                 let prev = msgs[index - 1], cur = msgs[index];
+                if(prev.action || cur.action) return false;
                 if(prev.sender.id !== cur.sender.id) return false;
                 if(typeof prev.timing.ts !== "number" || typeof cur.timing.ts !== "number") return false;
                 if(window.isMsgNewDay(index)) return false;

@@ -10,6 +10,7 @@ use Chandler\Security\Authenticator;
 use openvk\Web\Events\{NewMessageEvent, TypingEvent};
 use openvk\Web\Models\Entities\Message;
 use openvk\Web\Models\Entities\User;
+use openvk\Web\Models\Entities\Notifications\ChatActionNotification;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Models\Repositories\{Users, Messages, MessengerDialogs};
 use openvk\Web\Util\NotificationBroker;
@@ -152,7 +153,10 @@ class Correspondence
             return "";
         }
 
-        return "\n  AND (`id` NOT IN (SELECT `message_id` FROM `messages_hidden` WHERE `owner_id` = " . (int) $this->correspondents[0]->getId() . "))";
+        $me = (int) $this->correspondents[0]->getId();
+
+        return "\n  AND (`id` NOT IN (SELECT `message_id` FROM `messages_hidden` WHERE `owner_id` = $me))"
+            . "\n  AND (`visible_to` IS NULL OR `visible_to` = $me)";
     }
 
     /**
@@ -663,6 +667,65 @@ class Correspondence
             (SignalManager::i())->triggerEvent($event, $ids[1]);
 
             $this->pushMessageNotification($message, $ids[0], $ids[1], $classes[0]);
+        }
+
+        return $message;
+    }
+
+    public function sendServiceMessage(array $action, ?int $visibleTo = null): Message
+    {
+        [$sender, $peer] = $this->correspondents;
+
+        $message = new Message();
+        $message->setContent("");
+        $message->setAction(json_encode($action, JSON_UNESCAPED_UNICODE));
+        if (!is_null($visibleTo)) {
+            $message->setVisible_To($visibleTo);
+        }
+        $message->setSender_Id($sender->getId());
+        $message->setSender_Type(get_class($sender));
+        $message->setRecipient_Id($peer->getId());
+        $message->setRecipient_Type(get_class($peer));
+        $message->setCreated(time());
+        $message->setUnread($this->isGroup() ? 0 : 1);
+        $message->save();
+
+        return $message;
+    }
+
+    public function announce(array $action, ?int $onlyFor = null): Message
+    {
+        $message = $this->sendServiceMessage($action, $onlyFor);
+        [$actor, $peer] = $this->correspondents;
+        if (!($actor instanceof User)) {
+            return $message;
+        }
+
+        $users = new Users();
+        if (!is_null($onlyFor)) {
+            $recipients = [$users->get($onlyFor)];
+        } elseif ($this->isGroup()) {
+            $recipients = array_map(fn($id) => $users->get($id), $peer->getParticipantIds());
+        } else {
+            $recipients = [$peer instanceof User ? $peer : null];
+        }
+
+        $dialogs = new MessengerDialogs();
+        foreach ($recipients as $recipient) {
+            if (!$recipient || $recipient->getId() === $actor->getId()) {
+                continue;
+            }
+
+            $conversation = $this->isGroup() ? $peer : $actor;
+            if (is_null($onlyFor) && $dialogs->get($recipient, $conversation)["muted"]) {
+                continue;
+            }
+
+            try {
+                (new ChatActionNotification($recipient, $message, $actor))->emit();
+            } catch (\Throwable $e) {
+                error_log("Chat action notification error: " . $e->getMessage());
+            }
         }
 
         return $message;

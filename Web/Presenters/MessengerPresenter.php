@@ -80,7 +80,7 @@ final class MessengerPresenter extends OpenVKPresenter
         }
 
         $msg = $this->messages->get($id);
-        if (!$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
+        if (!$msg || $msg->isDeleted() || $msg->isService() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -100,7 +100,7 @@ final class MessengerPresenter extends OpenVKPresenter
         $messages = [];
         foreach ($ids as $id) {
             $msg = $this->messages->get($id);
-            if (!$msg || $msg->isDeleted() || !$msg->isVisibleTo($this->user->identity)) {
+            if (!$msg || $msg->isDeleted() || $msg->isService() || !$msg->isVisibleTo($this->user->identity)) {
                 header("HTTP/1.1 403 Forbidden");
                 exit();
             }
@@ -459,7 +459,7 @@ final class MessengerPresenter extends OpenVKPresenter
         }
 
         // текст к стикеру не добавить
-        if (Sticker::isIn($msg->getChildren())) {
+        if ($msg->isService() || Sticker::isIn($msg->getChildren())) {
             header("HTTP/1.1 400 Bad Request");
             exit();
         }
@@ -663,13 +663,24 @@ final class MessengerPresenter extends OpenVKPresenter
         $msg   = null;
         if ($msgId !== 0) {
             $msg = (new Messages())->get($msgId);
-            if (!$msg || $msg->isDeleted() || !$cor->hasMessage($msg)) {
+            if (!$msg || $msg->isDeleted() || $msg->isService() || !$cor->hasMessage($msg)) {
                 header("HTTP/1.1 404 Not Found");
                 exit();
             }
         }
 
+        $previous = $cor->getPinnedMessage();
         $cor->setPinnedMessage($msgId);
+
+        $subject = $msg ?? $previous;
+        if ($subject && $msg?->getId() !== $previous?->getId()) {
+            $text = trim(html_entity_decode(strip_tags($subject->getPreviewText()), ENT_QUOTES | ENT_HTML5, "UTF-8"));
+            $cor->announce([
+                "type" => $msg ? "pin" : "unpin",
+                "msg"  => $subject->getId(),
+                "text" => iconv_strlen($text) > 50 ? iconv_substr($text, 0, 50) . "…" : $text,
+            ]);
+        }
 
         header("Content-Type: application/json");
         exit(json_encode(["pinned" => $msg ? $msg->simplify() : null]));
@@ -682,7 +693,7 @@ final class MessengerPresenter extends OpenVKPresenter
 
         $correspondent = $this->getCorrespondent($sel);
         $msg           = (new Messages())->get($msgId);
-        if (!$correspondent || !$msg || $msg->isDeleted() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
+        if (!$correspondent || !$msg || $msg->isDeleted() || $msg->isService() || !(new Correspondence($this->user->identity, $correspondent))->hasMessage($msg)) {
             header("HTTP/1.1 404 Not Found");
             exit();
         }

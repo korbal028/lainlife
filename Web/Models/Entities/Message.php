@@ -111,6 +111,48 @@ class Message extends RowModel
         return (bool) $this->getRecord()->deleted;
     }
 
+    function getAction(): ?array
+    {
+        $action = json_decode((string) ($this->getRecord()->action ?? ""), true);
+
+        return is_array($action) ? $action : null;
+    }
+
+    function isService(): bool
+    {
+        return !is_null($this->getAction());
+    }
+
+    function getServiceText(bool $links = true): string
+    {
+        $action = $this->getAction();
+        if (!$action) {
+            return "";
+        }
+
+        $users = new Users();
+        $name  = function ($id) use ($users, $links): string {
+            $user = $id ? $users->get((int) $id) : null;
+            if (!$user) {
+                return htmlspecialchars(tr("messenger_chat_audit_unknown"));
+            }
+
+            $html = htmlspecialchars($user->getCanonicalName());
+            return $links ? '<a href="' . htmlspecialchars($user->getURL()) . '">' . $html . '</a>' : $html;
+        };
+
+        return str_replace(
+            ["%ACTOR%", "%TARGET%", "%TEXT%"],
+            [$name($this->getRecord()->sender_id), $name($action["target"] ?? null), htmlspecialchars((string) ($action["text"] ?? ""))],
+            tr("messenger_service_" . ($action["type"] ?? ""))
+        );
+    }
+
+    function getPreviewText(): string
+    {
+        return $this->isService() ? $this->getServiceText(false) : $this->getContentPreviewText();
+    }
+
 
     public const MAX_FORWARDS      = 100;
     public const MAX_FORWARD_DEPTH = 10;
@@ -463,7 +505,8 @@ class Message extends RowModel
                 "ts"     => $this->getSendTime()->timestamp(),
                 "edited" => is_null($this->getEditTime()) ? NULL : (string) $this->getEditTime(),
             ],
-            "text"        => $this->getText(),
+            "text"        => $this->isService() ? $this->getServiceText() : $this->getText(),
+            "action"      => $this->getAction()["type"] ?? null,
             "reply"       => $depth === 0 ? $this->simplifyReply() : null,
             "fwd"         => $depth < self::MAX_FORWARD_DEPTH ? array_map(fn($m) => $m->simplify($depth + 1), $this->getForwardedMessages()) : [],
             "read"        => !$this->isUnread(),
@@ -474,5 +517,7 @@ class Message extends RowModel
     
     use Traits\TRichText;
     use Traits\TAttachmentHost;
-    use Traits\TMessagePreview;
+    use Traits\TMessagePreview {
+        getPreviewText as private getContentPreviewText;
+    }
 }
