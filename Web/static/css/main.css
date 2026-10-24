@@ -2085,6 +2085,30 @@ span.ok-smile.ok-smile {
     font-weight: bold;
 }
 
+.im-peer-admin--move {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    border-radius: 2px;
+    color: #828a99;
+    font-size: 10px;
+    line-height: 18px;
+    text-align: center;
+    cursor: pointer;
+}
+
+.im-peer-admin--move_up::before {
+    content: "▲";
+}
+
+.im-peer-admin--move_down::before {
+    content: "▼";
+}
+
+.im-peer-admin--move:hover {
+    background: rgba(122, 156, 196, .2);
+}
+
 .im-peer-admin_static {
     cursor: default;
 }

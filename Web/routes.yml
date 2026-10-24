@@ -336,6 +336,10 @@ routes:
       handler: "GroupChat->audit"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/admin-order.json"
+      handler: "GroupChat->apiAdminOrder"
+      placeholders:
+          chat: "2\\d{9}"
     - url: "/im/api/chat{?chat}/admin.json"
       handler: "GroupChat->apiAdmin"
       placeholders:

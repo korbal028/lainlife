@@ -1782,6 +1782,8 @@
                 editAdmin:  {tr("messenger_chat_admins_edit")},
                 more:       {tr("messenger_more")},
                 promoteMember: {tr("messenger_chat_member_promote")},
+                moveUp:     {tr("messenger_chat_admins_move_up")},
+                moveDown:   {tr("messenger_chat_admins_move_down")},
                 restrictMember: {tr("messenger_chat_member_restrict")},
                 removeMember: {tr("messenger_chat_member_remove")},
                 adminQuestion: {tr("messenger_chat_admins_question")},
@@ -2001,12 +2003,30 @@
 
             // администраторы беседы, пока только вёрстка; назначает админов только владелец
             // владелец правит любого админа, админ с правом назначать — только назначенных им
-            const canEditAdmin = (info, m) => m.role === "admin" && m.id !== info.me.id
-                && (info.members.some(o => o.role === "owner" && o.id === info.me.id) || (info.admin_rights.add_admins && m.promoter === info.me.id));
+            const adminRank = (info, id) => {
+                if(info.members.some(m => m.role === "owner" && m.id === id)) return 0;
+                const index = info.members.filter(m => m.role === "admin").findIndex(m => m.id === id);
+                return index === -1 ? Infinity : index + 1;
+            };
+            const outranks = (info, m) => m.id !== info.me.id && m.role !== "owner" && adminRank(info, info.me.id) !== Infinity
+                && (!m.role || adminRank(info, info.me.id) < adminRank(info, m.id));
+            const canEditAdmin = (info, m) => m.role === "admin" && outranks(info, m)
+                && (adminRank(info, info.me.id) === 0 || (info.admin_rights.add_admins && m.promoter === info.me.id));
+            const adminWeight  = m => Object.values(m.rights ?? ADMIN_DEFAULTS).filter(Boolean).length;
+            const canMoveAdmin = (info, m, up) => {
+                const admins = info.members.filter(a => a.role === "admin");
+                const index  = admins.indexOf(m);
+                const next   = admins[up ? index - 1 : index + 1];
+                return index !== -1 && m.id !== info.me.id && adminRank(info, info.me.id) <= 1 && !!next && next.id !== info.me.id && adminWeight(next) === adminWeight(m);
+            };
 
             const renderAdminRows = (info, avatarStyle) => {
                 const owner  = info.members.find(m => m.role === "owner");
-                const admins = [...info.members.filter(m => m.role === "admin"), ...(owner ? [owner] : [])];
+                const admins = [...(owner ? [owner] : []), ...info.members.filter(m => m.role === "admin")];
+                const moves  = m => m.role !== "admin" ? "" : [["up", true], ["down", false]]
+                    .filter(([, up]) => canMoveAdmin(info, m, up))
+                    .map(([dir]) => `<span class="im-peer-admin--move im-peer-admin--move_${ dir }" data-move="${ dir }" title="${ escapeHtml(dir === "up" ? PEER_STR.moveUp : PEER_STR.moveDown) }"></span>`)
+                    .join("");
 
                 return admins.map(m => `
                     <a class="im-peer-member im-peer-admin${ m.role === "admin" ? "" : " im-peer-admin_static" }" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
@@ -2016,6 +2036,7 @@
                             <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", m.promoted_by ?? owner?.name ?? "")) }</span>
                         </span>
                         ${ m.tag ? renderTag(m.tag) : `<span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(PEER_STR[m.role]) }</span>` }
+                        ${ moves(m) }
                     </a>`).join("");
             };
 
@@ -2549,9 +2570,9 @@
                 let pickFor = null;
                 const showMemberPick = mode => {
                     pickFor = mode;
-                    const members = mode === "exception" ? info.members.filter(m => (!m.role || canEditAdmin(info, m)) && !info.exceptions.some(ex => ex.id === m.id))
+                    const members = mode === "exception" ? info.members.filter(m => (!m.role || outranks(info, m)) && !info.exceptions.some(ex => ex.id === m.id))
                         : mode === "admin" ? info.members.filter(m => !m.role)
-                        : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (!m.role || canEditAdmin(info, m)));
+                        : info.members.filter(m => outranks(info, m));
                     fillMembers(memberPick, members.map(m => renderMemberRow(m, "pick", "", avatarStyle)).join(""));
                     head.textContent = mode === "admin" ? PEER_STR.addAdmin : PEER_STR.pickMember;
                     setPage(memberPick);
@@ -2645,6 +2666,23 @@
                     head.textContent = PEER_STR.admins;
                     setPage(admins);
                     body.scrollTop = 0;
+                };
+
+                const moveAdmin = async (id, up) => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("user", id);
+                    fd.set("dir", up ? "up" : "down");
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/admin-order.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        info.members = (await res.json()).members;
+                        showAdmins();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
                 };
 
                 let editedAdmin = null;
@@ -2912,6 +2950,12 @@
                     if(e.target.closest('[data-manage="log"]')) return window.router ? window.router.route(`/im/chat${ PEER_SEL }/audit`) : location.assign(`/im/chat${ PEER_SEL }/audit`);
                     if(e.target.closest('[data-manage="admin-dismiss"]')) return dismissAdmin();
 
+                    const move = e.target.closest("[data-move]");
+                    if(move) {
+                        e.preventDefault();
+                        return moveAdmin(Number(move.closest("[data-id]").dataset.id), move.dataset.move === "up");
+                    }
+
                     const adminRow = e.target.closest('[data-manage="admin"]');
                     if(adminRow) return showAdminEdit(Number(adminRow.dataset.id));
 
@@ -2971,8 +3015,8 @@
                     return [
                         ...(member.role === "admin" ? [[PEER_STR.editAdmin, () => showAdminEdit(member.id)]] : []),
                         ...(!member.role && info.admin_rights.add_admins ? [[PEER_STR.promoteMember, () => showAdminEdit(member.id)]] : []),
-                        ...(info.admin_rights.ban && (!member.role || canEditAdmin(info, member)) ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
-                        ...(info.admin_rights.ban && (!member.role || canEditAdmin(info, member)) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
+                        ...(info.admin_rights.ban && outranks(info, member) ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
+                        ...(info.admin_rights.ban && outranks(info, member) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
                     ];
                 };
 

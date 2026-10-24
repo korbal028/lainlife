@@ -257,7 +257,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $chat = $this->getChatWithAdminRight($peer, "ban");
 
         // админ может выгнать только обычных участников и назначенных им админов
-        if ($chat->isCreator($userId) || ($chat->isAdmin($userId) && !$chat->canEditAdmin($this->user->id, $userId))) {
+        if (!$chat->outranks($this->user->id, $userId)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -382,6 +382,20 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->returnJson(["members" => $chat->getMembersInfo(true)]);
     }
 
+    public function renderApiAdminOrder(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getChat($peer);
+        if (!$chat->moveAdmin($this->user->id, (int) $this->postParam("user"), $this->postParam("dir") === "up")) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $this->returnJson(["members" => $chat->getMembersInfo(true)]);
+    }
+
     public function renderApiSetAvatar(int $peer): void
     {
         $this->assertUserLoggedIn();
@@ -492,7 +506,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $chat   = $this->getChatWithAdminRight($peer, "ban");
         $userId = (int) $this->postParam("user");
 
-        if ($chat->isAdmin($userId) && !$chat->canEditAdmin($this->user->id, $userId)) {
+        if ($chat->isAdmin($userId) && !$chat->outranks($this->user->id, $userId)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
