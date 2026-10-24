@@ -952,6 +952,10 @@ ul {
     color: #8b9ab5;
 }
 
+.im-peer-admins_dragging .im-peer-admin.im-peer-admin_dragging {
+    background-color: #231e33;
+}
+
 .im-audit--hint {
     background: #16131f;
     color: #8b9ab5;

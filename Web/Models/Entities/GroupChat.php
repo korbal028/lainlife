@@ -521,8 +521,7 @@ function getAvatarUrl(string $size = 'normal'): string
     function setAdminRights(int $userId, array $rights, int $promotedBy): void
     {
         $rights = json_encode(array_merge(self::ADMIN_RIGHTS, array_map("boolval", array_intersect_key($rights, self::ADMIN_RIGHTS))));
-        $position = max([0, ...array_column($this->getAdminRows(), "position")]) + 1;
-        $row      = ["chat" => $this->getId(), "user" => $userId, "promoted_by" => $promotedBy, "rights" => $rights, "position" => $position];
+        $row    = ["chat" => $this->getId(), "user" => $userId, "promoted_by" => $promotedBy, "rights" => $rights];
         DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_admin_rights` ? ON DUPLICATE KEY UPDATE ?", $row, ["rights" => $rights]);
     }
 
@@ -532,11 +531,57 @@ function getAvatarUrl(string $size = 'normal'): string
         $creator = (int) $this->getRecord()->creator_id;
         $admins  = array_values(array_filter(array_map("intval", $this->getAdmins()), fn($id) => $id !== $creator));
         $order   = array_flip($admins);
-        $weight  = fn($id) => sizeof(array_filter($rows[$id]["rights"] ?? self::ADMIN_RIGHTS));
 
+        $positions = array_map(fn($id) => $rows[$id]["position"] ?? 0, $admins);
+        if (!in_array(0, $positions, true) && sizeof(array_unique($positions)) === sizeof($positions)) {
+            usort($admins, fn($a, $b) => $rows[$a]["position"] <=> $rows[$b]["position"]);
+            return $admins;
+        }
+
+        $weight = fn($id) => $this->getAdminWeight($id, $rows);
         usort($admins, fn($a, $b) => [$weight($b), $rows[$a]["position"] ?? 0, $order[$a]] <=> [$weight($a), $rows[$b]["position"] ?? 0, $order[$b]]);
+        $this->saveAdminRanking($admins, $rows);
 
         return $admins;
+    }
+
+    private function getAdminWeight(int $userId, array $rows): int
+    {
+        return sizeof(array_filter($rows[$userId]["rights"] ?? self::ADMIN_RIGHTS));
+    }
+
+    private function saveAdminRanking(array $ranking, array $rows): void
+    {
+        $db      = DatabaseConnection::i()->getConnection();
+        $creator = (int) $this->getRecord()->creator_id;
+        foreach (array_values($ranking) as $index => $id) {
+            $row = [
+                "chat"        => $this->getId(),
+                "user"        => $id,
+                "promoted_by" => $rows[$id]["promoted_by"] ?? $creator,
+                "rights"      => json_encode($rows[$id]["rights"] ?? self::ADMIN_RIGHTS),
+                "position"    => $index + 1,
+            ];
+            $db->query("INSERT INTO `group_chat_admin_rights` ? ON DUPLICATE KEY UPDATE ?", $row, ["position" => $index + 1]);
+        }
+    }
+
+    function placeAdmin(int $userId): void
+    {
+        $rows    = $this->getAdminRows();
+        $ranking = array_values(array_filter($this->getAdminRanking(), fn($id) => $id !== $userId));
+        $weight  = $this->getAdminWeight($userId, $rows);
+
+        $index = sizeof($ranking);
+        foreach ($ranking as $i => $id) {
+            if ($this->getAdminWeight($id, $rows) < $weight) {
+                $index = $i;
+                break;
+            }
+        }
+
+        array_splice($ranking, $index, 0, [$userId]);
+        $this->saveAdminRanking($ranking, $this->getAdminRows());
     }
 
     function outranks(int $actorId, int $targetId): bool
@@ -561,40 +606,28 @@ function getAvatarUrl(string $size = 'normal'): string
         return array_search($actorId, $ranking, true) < array_search($targetId, $ranking, true);
     }
 
-    function moveAdmin(int $actorId, int $adminId, bool $up): bool
+    function reorderAdmins(int $actorId, array $order): bool
     {
         $ranking = $this->getAdminRanking();
-        $index   = array_search($adminId, $ranking, true);
-        if ($index === false || $adminId === $actorId || !($this->isCreator($actorId) || ($ranking[0] ?? null) === $actorId)) {
+        $order   = array_values(array_map("intval", $order));
+        if (sizeof($order) !== sizeof($ranking) || array_diff($ranking, $order) || array_diff($order, $ranking)) {
             return false;
         }
 
-        $swap = $up ? $index - 1 : $index + 1;
-        if (!isset($ranking[$swap]) || $ranking[$swap] === $actorId) {
-            return false;
+        if (!$this->isCreator($actorId)) {
+            if (($ranking[0] ?? null) !== $actorId || $order[0] !== $actorId) {
+                return false;
+            }
+
+            $rows = $this->getAdminRows();
+            foreach ($order as $i => $id) {
+                if ($this->getAdminWeight($id, $rows) !== $this->getAdminWeight($ranking[$i], $rows)) {
+                    return false;
+                }
+            }
         }
 
-        $rows   = $this->getAdminRows();
-        $weight = fn($id) => sizeof(array_filter($rows[$id]["rights"] ?? self::ADMIN_RIGHTS));
-        if ($weight($adminId) !== $weight($ranking[$swap])) {
-            return false;
-        }
-
-        [$ranking[$index], $ranking[$swap]] = [$ranking[$swap], $ranking[$index]];
-
-        $db      = DatabaseConnection::i()->getConnection();
-        $creator = (int) $this->getRecord()->creator_id;
-        foreach ($ranking as $position => $id) {
-            $row = [
-                "chat"        => $this->getId(),
-                "user"        => $id,
-                "promoted_by" => $rows[$id]["promoted_by"] ?? $creator,
-                "rights"      => json_encode($rows[$id]["rights"] ?? self::ADMIN_RIGHTS),
-                "position"    => $position,
-            ];
-            $db->query("INSERT INTO `group_chat_admin_rights` ? ON DUPLICATE KEY UPDATE ?", $row, ["position" => $position]);
-        }
-
+        $this->saveAdminRanking($order, $this->getAdminRows());
         return true;
     }
 

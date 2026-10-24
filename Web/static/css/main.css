@@ -2085,28 +2085,30 @@ span.ok-smile.ok-smile {
     font-weight: bold;
 }
 
-.im-peer-admin--move {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 2px;
-    color: #828a99;
-    font-size: 10px;
-    line-height: 18px;
-    text-align: center;
-    cursor: pointer;
+.im-peer-admin[data-drag] {
+    cursor: grab;
 }
 
-.im-peer-admin--move_up::before {
-    content: "▲";
+.im-peer-admins_dragging {
+    user-select: none;
 }
 
-.im-peer-admin--move_down::before {
-    content: "▼";
+.im-peer-admins_dragging .im-peer-admin {
+    transition: transform .15s ease;
 }
 
-.im-peer-admin--move:hover {
-    background: rgba(122, 156, 196, .2);
+.im-peer-admins_dragging .im-peer-admin.im-peer-admin_dragging {
+    position: relative;
+    z-index: 5;
+    cursor: grabbing;
+    transition: none;
+    background-color: #f9f9f9;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, .2);
+}
+
+.im-peer-admin.im-peer-admin_dropping {
+    position: relative;
+    z-index: 5;
 }
 
 .im-peer-admin_static {

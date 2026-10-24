@@ -1467,8 +1467,6 @@
 "messenger_chat_member_promote" = "Назначить администратором";
 "messenger_chat_member_restrict" = "Ограничить пользователя";
 "messenger_chat_member_remove" = "Удалить из беседы";
-"messenger_chat_admins_move_up" = "Выше";
-"messenger_chat_admins_move_down" = "Ниже";
 "messenger_chat_audit" = "Аудит";
 "messenger_chat_audit_hint" = "Действия участников и администраторов за последние 7 дней. Более старые записи удаляются автоматически.";
 "messenger_chat_audit_empty" = "За последнюю неделю в беседе ничего не происходило.";

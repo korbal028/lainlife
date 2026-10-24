@@ -373,6 +373,9 @@ final class GroupChatPresenter extends OpenVKPresenter
             (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_add", "target" => $userId], $userId);
         }
         $chat->setAdminRights($userId, $rights, $isAdmin ? $chat->getPromoter($userId) : $me);
+        if (!$isAdmin) {
+            $chat->placeAdmin($userId);
+        }
 
         if (!is_null($this->postParam("tag")) && $chat->hasAdminRight("tags", $me)) {
             $color = (string) $this->postParam("color");
@@ -388,7 +391,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
 
         $chat = $this->getChat($peer);
-        if (!$chat->moveAdmin($this->user->id, (int) $this->postParam("user"), $this->postParam("dir") === "up")) {
+        if (!$chat->reorderAdmins($this->user->id, explode(",", (string) $this->postParam("order")))) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
