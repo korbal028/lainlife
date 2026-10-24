@@ -189,6 +189,10 @@
                                 <input type="hidden" name="hash" value="{$csrfToken}" />
 
                                 <button class="button" data-bind="click: sendMessage, text: sendLabel, css: { 'im-slowmode-wait': slowWait() > 0 }">{_send}</button>
+                                <label n:if="$asClub" class="im-as-club" title="{$asClub->getCanonicalName()}">
+                                    <input type="checkbox" id="im_as_club" />
+                                    {_messenger_send_as_club}
+                                </label>
 
                                 <div style="float: right; display: flex; flex-direction: column; padding-top: 5px;">
                                     <a class='menu_toggler'>
@@ -1243,6 +1247,7 @@
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
                     fd.set("content", "");
+                    if(document.getElementById("im_as_club")?.checked) fd.set("as_club", "1");
                     fd.set("attachments", "sticker" + sticker.id);
                     if(window.replyTo()) {
                         fd.set("reply_to", window.replyTo().uuid);
@@ -1279,6 +1284,7 @@
                 
                     let msgData = new FormData();
                     msgData.set("content", content);
+                    if(document.getElementById("im_as_club")?.checked) msgData.set("as_club", "1");
                     msgData.set("hash", {$csrfToken});
                     const replyTo  = window.replyTo();
                     const forwards = window.forwardMsgs();
@@ -1803,6 +1809,14 @@
                 adminPin:   {tr("messenger_chat_admins_right_pin")},
                 adminTags:  {tr("messenger_chat_admins_right_tags")},
                 adminAdd:   {tr("messenger_chat_admins_right_add_admins")},
+                adminAsClub: {tr("messenger_chat_admins_right_as_club")},
+                clubManager: {tr("messenger_chat_admins_club_manager")},
+                club:       {tr("messenger_chat_club")},
+                clubLink:   {tr("messenger_chat_club_link")},
+                clubUnlink: {tr("messenger_chat_club_unlink")},
+                clubUnlinkConfirm: {tr("messenger_chat_club_unlink_confirm", "%NAME%")},
+                clubPick:   {tr("messenger_chat_club_pick")},
+                clubLinkHint: {tr("messenger_chat_club_link_hint")},
                 adminNoAddHint: {tr("messenger_chat_admins_no_add_hint")},
                 adminAddHint: {tr("messenger_chat_admins_add_hint")},
                 adminTagHint: {tr("messenger_chat_admins_tag_hint", "%NAME%")},
@@ -1934,6 +1948,10 @@
                                 ${ row("admins", "apps/system-users.png", PEER_STR.admins, String(info.members.filter(m => m.role).length)) }
                                 ${ row("log", "apps/utilities-log-viewer.png", PEER_STR.log) }
                             </div>` : "" }
+                        ${ info.can_delete_for_all && (info.club || info.linkable_clubs.length) ? `
+                            <div class="im-peer-section">
+                                ${ info.club ? row("club-unlink", "apps/system-users.png", PEER_STR.clubUnlink, info.club.name) : row("club-link", "apps/system-users.png", PEER_STR.clubLink) }
+                            </div>` : "" }
                         ${ info.can_delete_for_all ? `
                             <div class="im-peer-section">
                                 <a class="im-peer-row im-peer-danger" data-manage="delete">
@@ -2041,7 +2059,7 @@
                         <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
                         <span class="im-peer-admin--info">
                             <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
-                            <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", m.promoted_by ?? owner?.name ?? "")) }</span>
+                            <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : m.club_admin ? PEER_STR.clubManager : PEER_STR.promotedBy.replace("%NAME%", m.promoted_by ?? owner?.name ?? "")) }</span>
                         </span>
                         ${ m.tag ? renderTag(m.tag) : `<span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(PEER_STR[m.role]) }</span>` }
                     </a>`).join("");
@@ -2059,7 +2077,7 @@
             // права админа и его тег; «изменение информации» у админов есть всегда, поэтому пункта нет
             const ADMIN_RIGHT_LABELS = [
                 ["delete", "adminDelete"], ["ban", "adminBan"], ["invite", "adminInvite"],
-                ["pin", "adminPin"], ["tags", "adminTags"], ["add_admins", "adminAdd"],
+                ["pin", "adminPin"], ["tags", "adminTags"], ["add_admins", "adminAdd"], ["as_club", "adminAsClub"],
             ];
             const renderAdminEdit = (info, avatarStyle) => `
                 <div class="im-peer-page im-peer-rights im-peer-admin-edit" data-page="admin-edit" hidden>
@@ -2072,7 +2090,7 @@
                     </div>
                     <div class="im-peer-section">
                         <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.adminQuestion) }</div>
-                        ${ ADMIN_RIGHT_LABELS.map(([key, label]) => `
+                        ${ ADMIN_RIGHT_LABELS.filter(([key]) => key !== "as_club" || info.club).map(([key, label]) => `
                             <label class="im-peer-toggle">
                                 <span>${ escapeHtml(PEER_STR[label]) }</span>
                                 <input type="checkbox" class="im-peer-switch" name="right_${ key }" />
@@ -2214,6 +2232,13 @@
                                 <a${ info.link ? ` href="${ escapeHtml(info.link) }"` : "" }><img class="im-peer-avatar avatar-style-${ avatarStyle }" src="${ escapeHtml(info.avatar) }" alt="" /></a>
                                 <a class="im-peer-name"${ info.link ? ` href="${ escapeHtml(info.link) }"` : "" }>${ escapeHtml(info.name) }</a>
                             </div>
+                            ${ info.club ? `
+                                <div class="im-peer-section">
+                                    <div class="im-peer-info">
+                                        <a href="${ escapeHtml(info.club.link) }">${ escapeHtml(info.club.name) }</a>
+                                        <div class="im-peer-label">${ escapeHtml(PEER_STR.club) }</div>
+                                    </div>
+                                </div>` : "" }
                             ${ info.shortcode || info.birthday ? `
                                 <div class="im-peer-section">
                                     ${ info.shortcode ? `
@@ -2823,7 +2848,7 @@
                         adminTagInput.value = member.tag?.text ?? "";
                         adminTagInput.readOnly = !editable;
                     }
-                    adminEdit.querySelector(".im-peer-admin-edit--dismiss").hidden = isNew || !editable;
+                    adminEdit.querySelector(".im-peer-admin-edit--dismiss").hidden = isNew || !editable || member.club_admin;
                     updateAdminEdit();
 
                     head.textContent = isNew ? PEER_STR.addAdmin : PEER_STR.editAdmin;
@@ -3048,6 +3073,8 @@
                     if(e.target.closest('[data-manage="exception-delete"]')) return deleteException();
 
                     if(e.target.closest('[data-manage="removed"]')) return showRemoved();
+                    if(e.target.closest('[data-manage="club-link"]')) return pickClub();
+                    if(e.target.closest('[data-manage="club-unlink"]')) return unlinkClub();
                     if(e.target.closest('[data-manage="log"]')) return window.router ? window.router.route(`/im/chat${ PEER_SEL }/audit`) : location.assign(`/im/chat${ PEER_SEL }/audit`);
                     if(e.target.closest('[data-manage="admin-dismiss"]')) return dismissAdmin();
 
@@ -3165,6 +3192,47 @@
                     const member = row && info.members.find(m => m.id === Number(row.dataset.id));
                     if(member && openMemberMenu(member, new DOMRect(e.clientX, e.clientY, 0, 0))) e.preventDefault();
                 });
+
+                const postClub = async fields => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    Object.entries(fields).forEach(([key, value]) => fd.set(key, value));
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/club.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        close();
+                        openPeerInfo();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
+                };
+
+                const pickClub = () => {
+                    const box = MessageBox(PEER_STR.clubPick, `
+                        <div class="im-club-pick">
+                            <div class="im-club-pick--hint">${ escapeHtml(PEER_STR.clubLinkHint) }</div>
+                            ${ info.linkable_clubs.map(c => `
+                                <a class="im-club-pick--row" data-club="${ Number(c.id) }">
+                                    <img src="${ escapeHtml(c.avatar) }" alt="" />
+                                    <span>${ escapeHtml(c.name) }</span>
+                                </a>`).join("") }
+                        </div>`, [PEER_STR.cancel], [Function.noop], true);
+
+                    box.getNode().first().querySelector(".im-club-pick").addEventListener("click", e => {
+                        const pick = e.target.closest("[data-club]");
+                        if(!pick) return;
+
+                        box.close();
+                        postClub({ act: "link", club: pick.dataset.club });
+                    });
+                };
+
+                const unlinkClub = () => MessageBox(PEER_STR.clubUnlink, escapeHtml(PEER_STR.clubUnlinkConfirm.replace("%NAME%", info.club.name)), [PEER_STR.yes, PEER_STR.no], [
+                    () => postClub({ act: "unlink" }),
+                    Function.noop,
+                ]);
 
                 const onRoster = async () => {
                     if(!document.body.contains(root)) return window.removeEventListener("im:roster", onRoster);

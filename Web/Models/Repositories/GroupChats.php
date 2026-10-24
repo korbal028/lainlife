@@ -36,6 +36,16 @@ class GroupChats
         return $chat ? new GroupChat($chat) : null;
     }
 
+    public function getByClub(int $clubId): array
+    {
+        $chats = [];
+        foreach ($this->chats->where(["club_id" => $clubId, "deleted" => 0])->order("id ASC") as $row) {
+            $chats[] = new GroupChat($row);
+        }
+
+        return $chats;
+    }
+
     public function getByPeerId(int $peerId): ?GroupChat
     {
         if ($peerId <= GroupChat::PEER_OFFSET) {
@@ -89,6 +99,7 @@ public function getUserChatsCount(int $userId): int
             "name"               => $data["name"] ?? "Новый чат",
             "description"        => $data["description"] ?? null,
             "creator_id"         => $data["creator_id"],
+            "club_id"            => $data["club_id"] ?? null,
             "participants"       => $data["participants"] ?? "",
             "participants_count" => $data["participants_count"] ?? 1,
             "avatar"             => $data["avatar"] ?? null,
@@ -170,7 +181,7 @@ public function getUserChatsCount(int $userId): int
     {
         $chat = $this->get($chatId);
         if(!$chat) return false;
-        $admins = $chat->getAdmins();
+        $admins = $chat->getStoredAdmins();
         if(in_array((string)$userId, array_map('strval', $admins))) return false;
         $admins[] = $userId;
         $this->chats->get($chatId)->update(["admins" => implode(",", $admins)]);
@@ -181,7 +192,7 @@ public function getUserChatsCount(int $userId): int
     {
         $chat = $this->get($chatId);
         if(!$chat) return false;
-        $admins = array_filter($chat->getAdmins(), fn($a) => (int)$a !== $userId);
+        $admins = array_filter($chat->getStoredAdmins(), fn($a) => (int)$a !== $userId);
         $this->chats->get($chatId)->update(["admins" => implode(",", $admins)]);
         DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_admin_rights` WHERE `chat` = ? AND `user` = ?", $chatId, $userId);
         return true;

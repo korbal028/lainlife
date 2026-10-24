@@ -336,6 +336,14 @@ routes:
       handler: "GroupChat->audit"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/chat{?chat}/join-club"
+      handler: "GroupChat->clubJoin"
+      placeholders:
+          chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/club.json"
+      handler: "GroupChat->apiClub"
+      placeholders:
+          chat: "2\\d{9}"
     - url: "/im/api/chat{?chat}/admin-order.json"
       handler: "GroupChat->apiAdminOrder"
       placeholders:

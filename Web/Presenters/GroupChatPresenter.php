@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace openvk\Web\Presenters;
 
-use openvk\Web\Models\Repositories\{Users, GroupChats};
-use openvk\Web\Models\Entities\{GroupChat, Photo, Correspondence, User};
+use openvk\Web\Models\Repositories\{Users, GroupChats, Clubs};
+use openvk\Web\Models\Entities\{GroupChat, Photo, Correspondence, User, Club};
 
 // управление беседами; сами сообщения бесед обслуживает MessengerPresenter
 final class GroupChatPresenter extends OpenVKPresenter
@@ -111,15 +111,42 @@ final class GroupChatPresenter extends OpenVKPresenter
 
             return $user && $me->getSubscriptionStatus($user) === User::SUBSCRIPTION_MUTUAL;
         });
-        $members = array_values(array_unique([$me->getId(), ...$members]));
+        $club = $this->getManagedClub((int) $this->postParam("club"));
+        $members = array_values(array_unique([$me->getId(), ...($club ? [$club->getOwner()->getId()] : []), ...$members]));
 
-        return $this->groupChats->createChat([
+        $chat = $this->groupChats->createChat([
             "name"               => $name,
             "description"        => $this->postParam("description"),
-            "creator_id"         => $this->user->id,
+            "creator_id"         => $club ? $club->getOwner()->getId() : $this->user->id,
+            "club_id"            => $club?->getId(),
             "participants"       => implode(",", $members),
             "participants_count" => count($members),
         ]);
+
+        if ($club) {
+            $chat->logAction("club_created", $this->user->id, null, ["club" => $club->getId()]);
+        }
+
+        return $chat;
+    }
+
+    private function getManagedClub(int $clubId): ?Club
+    {
+        $club = $clubId > 0 ? (new Clubs())->get($clubId) : null;
+
+        return ($club && !$club->isBanned() && $club->canBeModifiedBy($this->user->identity)) ? $club : null;
+    }
+
+    private function getManagedClubs(bool $ownedOnly = false): array
+    {
+        $clubs = [];
+        foreach ($this->user->identity->getClubs(1, true, 100) as $club) {
+            if (!$club->isBanned() && (!$ownedOnly || $club->getOwner()->getId() === $this->user->id)) {
+                $clubs[] = $club;
+            }
+        }
+
+        return $clubs;
     }
 
     public function renderIndex(): void
@@ -144,7 +171,9 @@ final class GroupChatPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
 
-        $this->template->friends = $this->getFriendsSortedByMessages();
+        $this->template->friends      = $this->getFriendsSortedByMessages();
+        $this->template->managedClubs = $this->getManagedClubs();
+        $this->template->selectedClub = (int) ($_GET["club"] ?? 0);
 
         if ($_SERVER["REQUEST_METHOD"] !== "POST") {
             return;
@@ -355,6 +384,11 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         if ($this->postParam("act") === "dismiss") {
+            if ($chat->isClubAdmin($userId)) {
+                header("HTTP/1.1 400 Bad Request");
+                exit();
+            }
+
             if ($isAdmin) {
                 $this->groupChats->removeAdmin($chat->getId(), $userId);
                 (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_remove", "target" => $userId], $userId);
@@ -397,6 +431,32 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $this->returnJson(["members" => $chat->getMembersInfo(true)]);
+    }
+
+    public function renderApiClub(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getCreatedChat($peer);
+        if ($this->postParam("act") === "unlink") {
+            if ($chat->getClub()) {
+                $chat->setClub(null);
+                $chat->logAction("club_unlinked", $this->user->id);
+            }
+
+            $this->returnJson(["success" => true]);
+        }
+
+        $club = $this->getManagedClub((int) $this->postParam("club"));
+        if (!$club || $club->getOwner()->getId() !== $this->user->id || $chat->getClub()) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        $chat->setClub($club);
+        $chat->logAction("club_linked", $this->user->id, null, ["club" => $club->getId()]);
+        $this->returnJson(["success" => true]);
     }
 
     public function renderApiSetAvatar(int $peer): void
@@ -583,6 +643,14 @@ final class GroupChatPresenter extends OpenVKPresenter
             ? '<a href="' . htmlspecialchars($user->getURL()) . '">' . htmlspecialchars($user->getCanonicalName()) . '</a>'
             : htmlspecialchars(tr("messenger_chat_audit_unknown"));
 
+        $clubLink = function ($id): string {
+            $club = $id ? (new Clubs())->get((int) $id) : null;
+
+            return $club
+                ? '<a href="' . htmlspecialchars($club->getURL()) . '">' . htmlspecialchars($club->getCanonicalName()) . '</a>'
+                : htmlspecialchars(tr("messenger_chat_audit_unknown"));
+        };
+
         $entries = [];
         foreach ($chat->getActionLog() as $entry) {
             $key = "messenger_chat_audit_" . $entry->type;
@@ -604,7 +672,7 @@ final class GroupChatPresenter extends OpenVKPresenter
                 "actor"   => $entry->actor,
                 "created" => $entry->created,
                 "data"    => $entry->data,
-                "html"    => str_replace(["%ACTOR%", "%TARGET%", "%TAG%"], [$link($entry->actor), $link($entry->target), $tag ?? ""], tr($key)),
+                "html"    => str_replace(["%ACTOR%", "%TARGET%", "%TAG%", "%CLUB%"], [$link($entry->actor), $link($entry->target), $tag ?? "", $clubLink($entry->data["club"] ?? null)], tr($key)),
             ];
         }
 
@@ -641,6 +709,34 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $this->template->chat = $chat;
+    }
+
+    public function renderClubJoin(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+
+        $chat = $this->groupChats->getByPeerId($peer);
+        $club = $chat && !$chat->getRecord()->deleted ? $chat->getClub() : null;
+        if (!$club) {
+            $this->notFound();
+        }
+
+        if ($_SERVER["REQUEST_METHOD"] !== "POST" || $chat->isParticipant($this->user->id)) {
+            $this->redirect($chat->isParticipant($this->user->id) ? $chat->getURL() : $club->getURL());
+        }
+
+        $this->willExecuteWriteAction();
+
+        $me = $this->user->identity;
+        if ($chat->isBanned($this->user->id) || !($club->getSubscriptionStatus($me) || $club->canBeModifiedBy($me))) {
+            $this->flashFail("err", tr("error"), $chat->isBanned($this->user->id) ? tr("messenger_join_chat_banned") : tr("club_chats_subscribe_hint"));
+        }
+
+        $this->groupChats->addParticipant($chat->getId(), $this->user->id);
+        (new Correspondence($me, $chat))->markAsJoined();
+        $chat->logAction("joined_club", $this->user->id);
+        (new Correspondence($me, $chat))->announce(["type" => "join_club"]);
+        $this->redirect($chat->getURL());
     }
 
     public function renderApiGetFriends(int $peer): void

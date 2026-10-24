@@ -790,8 +790,9 @@ class Correspondence
         $preview = $sender->getCanonicalName() . ": " . $this->getNotificationPreview($message);
         $dialogs = new MessengerDialogs();
         $users   = new Users();
+        $actorId = $sender instanceof User ? $sender->getId() : $users->getByChandlerUser(Authenticator::i()->getUser())?->getId();
         foreach ($chat->getParticipantIds() as $userId) {
-            $user = $userId === $sender->getId() ? null : $users->get($userId);
+            $user = $userId === $actorId ? null : $users->get($userId);
             if (!$user || $dialogs->get($user, $chat)["muted"]) {
                 continue;
             }

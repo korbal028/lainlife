@@ -7,7 +7,7 @@ namespace openvk\Web\Presenters;
 use openvk\Web\Models\Entities\{Club, Photo, Post};
 use Nette\InvalidStateException;
 use openvk\Web\Models\Entities\Notifications\ClubModeratorNotification;
-use openvk\Web\Models\Repositories\{Clubs, Users, Albums, Managers, Topics, Audios, Posts, Documents};
+use openvk\Web\Models\Repositories\{Clubs, Users, Albums, Managers, Topics, Audios, Posts, Documents, GroupChats};
 use Chandler\Security\Authenticator;
 use Nette\InvalidStateException as ISE;
 
@@ -41,6 +41,7 @@ final class GroupPresenter extends OpenVKPresenter
                 $this->template->audiosCount = (new Audios())->getClubCollectionSize($club);
                 $this->template->docsCount   = $docs->size();
                 $this->template->docs        = $docs->offsetLimit(0, 2);
+                $this->template->clubChats   = (new GroupChats())->getByClub($club->getId());
             }
 
             if (!is_null($this->user->identity) && $club->getWallType() == 2) {

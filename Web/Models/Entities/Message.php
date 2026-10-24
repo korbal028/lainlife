@@ -339,7 +339,7 @@ class Message extends RowModel
         $chat = (int) $rec->recipient_id;
         if (!isset(self::$chatRoles[$chat])) {
             $entity = (new GroupChats())->get($chat);
-            self::$chatRoles[$chat] = $entity ? [(int) $entity->getRecord()->creator_id, array_map("intval", $entity->getAdmins())] : [0, []];
+            self::$chatRoles[$chat] = $entity ? [$entity->getOwnerId(), array_map("intval", $entity->getAdmins())] : [0, []];
         }
 
         [$creator, $admins] = self::$chatRoles[$chat];
@@ -411,7 +411,7 @@ class Message extends RowModel
         $author = $this->getSender();
 
         return [
-            "id"     => $author->getId(),
+            "id"     => $author instanceof Club ? -$author->getId() : $author->getId(),
             "link"   => $author->getURL(),
             "avatar" => $author->getAvatarUrl("miniscule"),
             "name"   => $author->getCanonicalName(),
@@ -515,10 +515,10 @@ class Message extends RowModel
         return [
             "uuid"   => $this->getId(),
             "sender" => [
-                "id"     => $author->getId(),
+                "id"     => $author instanceof Club ? -$author->getId() : $author->getId(),
                 "link"   => $_SERVER['REQUEST_SCHEME'] . "://" . $_SERVER['HTTP_HOST'] . $author->getURL(),
                 "avatar" => $author->getAvatarUrl(),
-                "name"   => $depth > 0 ? $author->getCanonicalName() : $author->getFirstName(),
+                "name"   => ($depth > 0 || !($author instanceof User)) ? $author->getCanonicalName() : $author->getFirstName(),
                 "tag"    => $depth === 0 ? $this->getSenderTag() : null,
                 "role"   => $depth === 0 ? $this->getSenderRole() : null,
             ],

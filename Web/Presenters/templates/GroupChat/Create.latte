@@ -31,6 +31,15 @@
                 <td valign="top"><span class="nobold">{_description}:</span></td>
                 <td><textarea name="description" rows="3"></textarea></td>
             </tr>
+            <tr n:if="sizeof($managedClubs) > 0">
+                <td valign="top"><span class="nobold">{_messenger_create_chat_as}:</span></td>
+                <td>
+                    <select name="club">
+                        <option value="0">{_messenger_create_chat_as_self}</option>
+                        <option n:foreach="$managedClubs as $club" value="{$club->getId()}" n:attr="selected => $club->getId() === $selectedClub">{$club->getCanonicalName()}</option>
+                    </select>
+                </td>
+            </tr>
             <tr>
                 <td valign="top"><span class="nobold">{_messenger_create_chat_members}:</span></td>
                 <td>

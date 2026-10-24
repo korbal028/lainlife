@@ -266,6 +266,39 @@
             </div>
         </div>
     </div>
+    <div n:if="sizeof($clubChats ?? []) > 0 || ($thisUser && $club->canBeModifiedBy($thisUser))">
+        <div class="content_title_expanded" onclick="hidePanel(this, {sizeof($clubChats ?? [])});">
+            {_club_chats}
+        </div>
+        <div>
+            <div n:if="$thisUser && $club->canBeModifiedBy($thisUser)" class="content_subtitle">
+                <a href="/im/create?club={$club->getId()}">{_club_chats_create}</a>
+            </div>
+            <div class="avatar-list">
+                <div class="avatar-list-item" n:foreach="$clubChats ?? [] as $clubChat">
+                    <div class="avatar">
+                        <img class="ava" src="{$clubChat->getAvatarUrl('miniscule')}" alt="" />
+                    </div>
+                    <div class="info">
+                        <span class="title">{$clubChat->getName()}</span>
+                        <div class="subtitle">{tr("participants", $clubChat->getParticipantsCount())}</div>
+                        {if $thisUser}
+                            {if $clubChat->isParticipant($thisUser->getId())}
+                                <a href="{$clubChat->getURL()}">{_club_chats_open}</a>
+                            {elseif !$clubChat->isBanned($thisUser->getId()) && ($club->getSubscriptionStatus($thisUser) || $club->canBeModifiedBy($thisUser))}
+                                <form class="club-chat-join" method="post" action="/im/chat{$clubChat->getPeerId()}/join-club">
+                                    <input type="hidden" name="hash" value="{$csrfToken}" />
+                                    <input type="submit" class="button" value="{_club_chats_join}" />
+                                </form>
+                            {elseif !$clubChat->isBanned($thisUser->getId())}
+                                <div class="subtitle">{_club_chats_subscribe_hint}</div>
+                            {/if}
+                        {/if}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
     <div n:if="$albumsCount > 0 || ($thisUser && $club->canBeModifiedBy($thisUser))">
         <div class="content_title_expanded" onclick="hidePanel(this, {$albumsCount});">
             {_albums}

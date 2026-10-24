@@ -177,6 +177,7 @@ final class MessengerPresenter extends OpenVKPresenter
             ? $correspondent->getPermissionsFor($this->user->id)
             : array_fill_keys(array_keys(GroupChat::PERMISSIONS), true);
         $this->template->adminDefaults = GroupChat::ADMIN_RIGHTS;
+        $this->template->asClub        = ($correspondent instanceof GroupChat && $correspondent->hasAdminRight("as_club", $this->user->id)) ? $correspondent->getClub() : null;
         $this->template->canDeleteAny  = $correspondent instanceof GroupChat && $correspondent->hasAdminRight("delete", $this->user->id);
         $this->template->slowmode      = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeFor($this->user->id) : 0;
         $this->template->slowmodeWait  = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeWait($this->user->id) : 0;
@@ -313,7 +314,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "pinned"   => $pinned,
             "members_label" => $correspondent instanceof GroupChat ? tr("participants", $correspondent->getParticipantsCount()) : null,
             "roster"   => $correspondent instanceof GroupChat ? $correspondent->getRosterSignature() : null,
-            "roles"    => $correspondent instanceof GroupChat ? ["owner" => (int) $correspondent->getRecord()->creator_id, "admins" => array_map("intval", $correspondent->getAdmins())] : null,
+            "roles"    => $correspondent instanceof GroupChat ? ["owner" => $correspondent->getOwnerId(), "admins" => array_map("intval", $correspondent->getAdmins())] : null,
         ]));
     }
 
@@ -366,7 +367,18 @@ final class MessengerPresenter extends OpenVKPresenter
             }
         }
 
-        $cor = new Correspondence($this->user->identity, $sel);
+        $author = $this->user->identity;
+        if ($this->postParam("as_club") === "1") {
+            $club = $sel instanceof GroupChat ? $sel->getClub() : null;
+            if (!$club || !$sel->hasAdminRight("as_club", $this->user->id)) {
+                header("HTTP/1.1 403 Forbidden");
+                exit();
+            }
+
+            $author = $club;
+        }
+
+        $cor = new Correspondence($author, $sel);
         $msg = new Message();
         $msg->setContent($this->postParam("content") ?? "");
         if ($replyTo) {
@@ -623,7 +635,10 @@ final class MessengerPresenter extends OpenVKPresenter
             }
 
             $sender = $msg->getSender();
-            if ($forAll && $sender instanceof User && ($deleteAny || $sender->getId() === $this->user->id)) {
+            $canDelete = $sender instanceof User
+                ? ($deleteAny || $sender->getId() === $this->user->id)
+                : ($sender instanceof Club && $correspondent instanceof GroupChat && ($deleteAny || $correspondent->hasAdminRight("as_club", $this->user->id)));
+            if ($forAll && $canDelete) {
                 if ($correspondent instanceof GroupChat) {
                     $correspondent->logAction("deleted", $this->user->id, $sender->getId(), ["id" => $id, "text" => (string) $msg->unwrap()->content]);
                 }
@@ -790,6 +805,8 @@ final class MessengerPresenter extends OpenVKPresenter
             "permissions" => $isChat ? $peer->getPermissions() : null,
             "slowmode"  => $isChat ? $peer->getSlowmode() : null,
             "admin_rights" => $isChat ? $peer->getAdminRights($me->getId()) : null,
+            "club"      => ($isChat && ($club = $peer->getClub())) ? ["id" => $club->getId(), "name" => $club->getCanonicalName(), "link" => $club->getURL(), "avatar" => $club->getAvatarUrl("miniscule")] : null,
+            "linkable_clubs" => ($isChat && $peer->isCreator($me->getId()) && !$peer->getClub()) ? $this->getOwnedClubs() : [],
             "exceptions" => ($isChat && $peer->hasAdminRight("ban", $me->getId())) ? array_values($peer->getExceptions()) : [],
             "removed"   => ($isChat && $peer->hasAdminRight("ban", $me->getId())) ? $peer->getBans() : [],
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
@@ -799,6 +816,18 @@ final class MessengerPresenter extends OpenVKPresenter
             "blocked"   => ($isUser && !$isSelf) ? $peer->isBlacklistedBy($me) : null,
             "peer_id"   => $isUser ? $peer->getId() : null,
         ]);
+    }
+
+    private function getOwnedClubs(): array
+    {
+        $clubs = [];
+        foreach ($this->user->identity->getClubs(1, true, 100) as $club) {
+            if (!$club->isBanned() && $club->getOwner()->getId() === $this->user->id) {
+                $clubs[] = ["id" => $club->getId(), "name" => $club->getCanonicalName(), "avatar" => $club->getAvatarUrl("miniscule")];
+            }
+        }
+
+        return $clubs;
     }
 
     public function renderApiPeerAttachments(int $sel): void

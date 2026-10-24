@@ -1,7 +1,7 @@
 <?php declare(strict_types=1);
 namespace openvk\Web\Models\Entities;
 use Chandler\Database\DatabaseConnection;
-use openvk\Web\Models\Repositories\{Users, Messages};
+use openvk\Web\Models\Repositories\{Users, Messages, Clubs};
 use openvk\Web\Models\Entities\Messages\Sticker;
 use openvk\Web\Models\RowModel;
 use openvk\Web\Util\DateTime;
@@ -35,6 +35,7 @@ class GroupChat extends RowModel
         "pin"        => true,
         "tags"       => true,
         "add_admins" => false,
+        "as_club"    => false,
     ];
 
     public const LOG_TTL = 604800;
@@ -57,7 +58,45 @@ class GroupChat extends RowModel
      */
     function getCreator(): ?User
     {
-        return (new Users())->get($this->getRecord()->creator_id);
+        return (new Users())->get($this->getOwnerId());
+    }
+
+    function getClub(): ?Club
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+        $club  = $fresh->club_id ? (new Clubs())->get((int) $fresh->club_id) : null;
+
+        return ($club && !$club->isBanned()) ? $club : null;
+    }
+
+    function setClub(?Club $club): void
+    {
+        $fields = ["club_id" => $club?->getId()];
+        if ($club) {
+            $fields["creator_id"] = $club->getOwner()->getId();
+        }
+
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update($fields);
+    }
+
+    function getOwnerId(): int
+    {
+        return $this->getClub()?->getOwner()?->getId() ?? (int) $this->getRecord()->creator_id;
+    }
+
+    function getClubManagerIds(): array
+    {
+        $club = $this->getClub();
+        if (!$club) {
+            return [];
+        }
+
+        return array_map("intval", array_values(DatabaseConnection::i()->getContext()->table("group_coadmins")->where("club", $club->getId())->fetchPairs(null, "user")));
+    }
+
+    function isClubAdmin(int $userId): bool
+    {
+        return in_array($userId, $this->getClubManagerIds(), true) && $this->isParticipant($userId);
     }
 
     /**
@@ -65,7 +104,7 @@ class GroupChat extends RowModel
      */
     function isCreator(int $userId): bool
     {
-        return $this->getRecord()->creator_id == $userId;
+        return $this->getOwnerId() === $userId;
     }
 
     /**
@@ -459,13 +498,26 @@ function getAvatarUrl(string $size = 'normal'): string
     }
 
 
-    function getAdmins(): array
+    function getStoredAdmins(): array
     {
         $db = \Chandler\Database\DatabaseConnection::i()->getContext();
         $fresh = $db->table("group_chats")->get($this->getId());
         $admins = $fresh->admins ?? "";
         if(empty($admins)) return [];
         return array_filter(explode(",", $admins));
+    }
+
+    function getAdmins(): array
+    {
+        $owner  = $this->getOwnerId();
+        $admins = array_map("strval", $this->getStoredAdmins());
+        foreach ($this->getClubManagerIds() as $id) {
+            if ($this->isParticipant($id)) {
+                $admins[] = (string) $id;
+            }
+        }
+
+        return array_values(array_filter(array_unique($admins), fn($id) => (int) $id !== $owner));
     }
 
     function isAdmin(int $userId): bool
@@ -515,7 +567,7 @@ function getAvatarUrl(string $size = 'normal'): string
 
     function getPromoter(int $userId): int
     {
-        return $this->getAdminRows()[$userId]["promoted_by"] ?? (int) $this->getRecord()->creator_id;
+        return $this->getAdminRows()[$userId]["promoted_by"] ?? $this->getOwnerId();
     }
 
     function setAdminRights(int $userId, array $rights, int $promotedBy): void
@@ -528,7 +580,7 @@ function getAvatarUrl(string $size = 'normal'): string
     function getAdminRanking(): array
     {
         $rows    = $this->getAdminRows();
-        $creator = (int) $this->getRecord()->creator_id;
+        $creator = $this->getOwnerId();
         $admins  = array_values(array_filter(array_map("intval", $this->getAdmins()), fn($id) => $id !== $creator));
         $order   = array_flip($admins);
 
@@ -553,7 +605,7 @@ function getAvatarUrl(string $size = 'normal'): string
     private function saveAdminRanking(array $ranking, array $rows): void
     {
         $db      = DatabaseConnection::i()->getConnection();
-        $creator = (int) $this->getRecord()->creator_id;
+        $creator = $this->getOwnerId();
         foreach (array_values($ranking) as $index => $id) {
             $row = [
                 "chat"        => $this->getId(),
@@ -646,7 +698,7 @@ function getAvatarUrl(string $size = 'normal'): string
         $users     = new Users();
         $tags      = $this->getTags();
         $adminRows = $this->getAdminRows();
-        $creator   = (int) $this->getRecord()->creator_id;
+        $creator   = $this->getOwnerId();
         $members   = [];
         foreach ($this->getParticipantIds() as $id) {
             $user = $users->get($id);
@@ -665,6 +717,7 @@ function getAvatarUrl(string $size = 'normal'): string
             ];
 
             if ($role === "admin") {
+                $member["club_admin"] = $this->isClubAdmin($id);
                 $promoter = $adminRows[$id]["promoted_by"] ?? $creator;
                 $member["promoted_by"] = $users->get($promoter)?->getCanonicalName();
                 if ($withRights) {
