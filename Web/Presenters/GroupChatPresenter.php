@@ -370,7 +370,6 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         if (!$isAdmin) {
             $this->groupChats->makeAdmin($chat->getId(), $userId);
-            $chat->removeException($userId);
             (new Correspondence($this->user->identity, $chat))->announce(["type" => "admin_add", "target" => $userId], $userId);
         }
         $chat->setAdminRights($userId, $rights, $isAdmin ? $chat->getPromoter($userId) : $me);
@@ -493,12 +492,17 @@ final class GroupChatPresenter extends OpenVKPresenter
         $chat   = $this->getChatWithAdminRight($peer, "ban");
         $userId = (int) $this->postParam("user");
 
+        if ($chat->isAdmin($userId) && !$chat->canEditAdmin($this->user->id, $userId)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
         if ($this->postParam("act") === "delete") {
             $chat->removeException($userId);
             $this->returnJson(["exceptions" => array_values($chat->getExceptions())]);
         }
 
-        if (!$chat->isParticipant($userId) || $chat->canManageParticipants($userId)) {
+        if (!$chat->isParticipant($userId) || $chat->isCreator($userId) || $userId === $this->user->id) {
             header("HTTP/1.1 400 Bad Request");
             exit();
         }

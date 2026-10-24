@@ -2549,7 +2549,7 @@
                 let pickFor = null;
                 const showMemberPick = mode => {
                     pickFor = mode;
-                    const members = mode === "exception" ? info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id))
+                    const members = mode === "exception" ? info.members.filter(m => (!m.role || canEditAdmin(info, m)) && !info.exceptions.some(ex => ex.id === m.id))
                         : mode === "admin" ? info.members.filter(m => !m.role)
                         : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (!m.role || canEditAdmin(info, m)));
                     fillMembers(memberPick, members.map(m => renderMemberRow(m, "pick", "", avatarStyle)).join(""));
@@ -2971,7 +2971,7 @@
                     return [
                         ...(member.role === "admin" ? [[PEER_STR.editAdmin, () => showAdminEdit(member.id)]] : []),
                         ...(!member.role && info.admin_rights.add_admins ? [[PEER_STR.promoteMember, () => showAdminEdit(member.id)]] : []),
-                        ...(!member.role && info.admin_rights.ban ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
+                        ...(info.admin_rights.ban && (!member.role || canEditAdmin(info, member)) ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
                         ...(info.admin_rights.ban && (!member.role || canEditAdmin(info, member)) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
                     ];
                 };

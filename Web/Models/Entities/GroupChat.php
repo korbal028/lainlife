@@ -201,10 +201,12 @@ function getAvatarUrl(string $size = 'normal'): string
     function getPermissionsFor(int $userId): array
     {
         if ($this->canManageParticipants($userId)) {
-            $chat   = $this->getPermissions();
-            $rights = array_fill_keys(array_keys(self::PERMISSIONS), true);
-            $rights["pin"]    = $chat["pin"] || $this->hasAdminRight("pin", $userId);
-            $rights["invite"] = $chat["invite"] || $this->hasAdminRight("invite", $userId);
+            $restricted = $this->isCreator($userId) ? null : ($this->getException($userId)["permissions"] ?? null);
+            $base       = $restricted ?? $this->getPermissions();
+            $rights     = $restricted ?? array_fill_keys(array_keys(self::PERMISSIONS), true);
+            $rights["info"]   = true;
+            $rights["pin"]    = $base["pin"] || $this->hasAdminRight("pin", $userId);
+            $rights["invite"] = $base["invite"] || $this->hasAdminRight("invite", $userId);
 
             return $rights;
         }
@@ -274,11 +276,11 @@ function getAvatarUrl(string $size = 'normal'): string
 
     function getSlowmodeFor(int $userId): int
     {
-        if ($this->canManageParticipants($userId)) {
+        if ($this->isCreator($userId)) {
             return 0;
         }
 
-        return $this->getException($userId)["slowmode"] ?? $this->getSlowmode();
+        return $this->getException($userId)["slowmode"] ?? ($this->isAdmin($userId) ? 0 : $this->getSlowmode());
     }
 
     function getSlowmodeWait(int $userId): int
