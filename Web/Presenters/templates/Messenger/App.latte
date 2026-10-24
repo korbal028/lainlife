@@ -262,6 +262,10 @@
                     </div>
                 </div>
                 <div data-bind="if: type === 'wall'" class="msg-attach-j-wall">
+                    <!-- ko if: $data.html -->
+                    <div class="msg-share-html" data-bind="html: html"></div>
+                    <!-- /ko -->
+                    <!-- ko ifnot: $data.html -->
                     <div class="msg-share">
                         <div class="msg-share--head">
                             <a data-bind="attr: { href: wall.author_link }"><img class="msg-share--ava" data-bind="attr: { src: wall.avatar, alt: wall.author }" /></a>
@@ -280,8 +284,13 @@
                         <!-- /ko -->
                         <!-- /ko -->
                     </div>
+                    <!-- /ko -->
                 </div>
                 <div data-bind="if: type === 'comment'" class="msg-attach-j-comment">
+                    <!-- ko if: $data.html -->
+                    <div class="msg-share-html" data-bind="html: html"></div>
+                    <!-- /ko -->
+                    <!-- ko ifnot: $data.html -->
                     <div class="msg-share msg-share_comment">
                         <div class="msg-share--head">
                             <a data-bind="attr: { href: comment.author_link }"><img class="msg-share--ava" data-bind="attr: { src: comment.avatar, alt: comment.author }" /></a>
@@ -297,6 +306,7 @@
                         <div class="msg-share--text" data-bind="html: comment.text"></div>
                         <!-- /ko -->
                     </div>
+                    <!-- /ko -->
                 </div>
                 <div data-bind="if: type === 'note'" class="msg-attach-j-note">
                     <div data-bind="attr: { 'data-att-type': 'note', 'data-att-id': id }">

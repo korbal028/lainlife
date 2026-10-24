@@ -3491,12 +3491,12 @@ span.ok-smile.ok-smile {
 
 
 
-.messenger-app--messages---message ._content span,
+.messenger-app--messages---message ._content span:not(:where(.msg-share-html span)),
 .messenger-app--messages---message ._content>a {
     display: block;
 }
 
-.messenger-app--messages---message ._content span {
+.messenger-app--messages---message ._content span:not(:where(.msg-share-html span)) {
     width: 100%;
     height: fit-content;
     overflow: hidden;
@@ -7949,4 +7949,13 @@ hr {
     padding: 10px;
     color: #888;
     text-align: center;
+}
+
+.msg-share-html {
+    max-width: 100%;
+    overflow: hidden;
+}
+
+.msg-share-html .post {
+    margin: 4px 0;
 }
