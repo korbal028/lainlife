@@ -2211,6 +2211,13 @@ span.ok-smile.ok-smile {
     height: auto;
 }
 
+.messenger-app--messages---message ._content .msg-role {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    overflow: visible;
+}
+
 .im-peer-admin .msg-tag {
     margin-left: 0;
 }
