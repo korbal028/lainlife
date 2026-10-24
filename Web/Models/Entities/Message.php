@@ -434,6 +434,43 @@ class Message extends RowModel
         ];
     }
 
+    private function simplifyShare(Post $post, bool $isComment): array
+    {
+        $author = $post->getOwner();
+        $gender = ($author instanceof Club || $author->isNeutral()) ? "g" : ($author->isFemale() ? "f" : "m");
+
+        $media  = [];
+        $extras = [];
+        if (!$post->isDeleted()) {
+            foreach ($post->getChildren() as $child) {
+                if ($child instanceof Photo) {
+                    $media[] = ["type" => "photo", "thumb" => $child->getURLBySizeId("normal"), "link" => "/photo" . $child->getPrettyId()];
+                } elseif ($child instanceof Video) {
+                    $media[] = ["type" => "video", "thumb" => $child->getThumbnailURL(), "link" => "/video" . $child->getPrettyId(), "duration" => $child->getFormattedLength()];
+                } elseif ($child instanceof Audio) {
+                    $extras[] = ["type" => "audio", "title" => $child->getPerformer() . " — " . $child->getName(), "link" => "/audio" . $child->getPrettyId()];
+                } elseif ($child instanceof Document) {
+                    $extras[] = ["type" => "doc", "title" => $child->getName(), "link" => "/doc" . $child->getPrettyId()];
+                } elseif ($child instanceof Post) {
+                    $extras[] = ["type" => "wall", "title" => tr("msg_preview_wall"), "link" => "/wall" . $child->getPrettyId()];
+                }
+            }
+        }
+
+        return [
+            "author"      => $author->getCanonicalName(),
+            "author_link" => $author->getURL(),
+            "avatar"      => $author->getAvatarUrl("miniscule"),
+            "action"      => $isComment ? tr("comment_repost_writes_$gender") : "",
+            "date"        => (string) $post->getPublicationTime(),
+            "text"        => $post->isDeleted() ? "" : $post->getText(),
+            "deleted"     => $post->isDeleted(),
+            "deleted_text" => tr($isComment ? "comment_repost_deleted" : "post_repost_deleted"),
+            "media"       => array_slice($media, 0, 4),
+            "extras"      => $extras,
+        ];
+    }
+
     function simplify(int $depth = 0): array
     {
         $author = $this->getSender();
@@ -504,33 +541,16 @@ class Message extends RowModel
                     ],
                 ];    
             } elseif ($attachment instanceof Comment) {
-                $commentAuthor = $attachment->getOwner();
                 $attachments[] = [
-                    "type"    => "comment",
-                    "link"    => $attachment->getURL(),
-                    "comment" => [
-                        "author"      => $commentAuthor->getCanonicalName(),
-                        "author_link" => $commentAuthor->getURL(),
-                        "avatar"      => $commentAuthor->getAvatarUrl("miniscule"),
-                        "text"        => $attachment->isDeleted() ? "" : $attachment->getText(),
-                        "date"        => (string) $attachment->getPublicationTime(),
-                        "deleted"     => $attachment->isDeleted(),
-                    ],
+                    "type"  => "comment",
+                    "link"  => $attachment->getURL(),
+                    "share" => $this->simplifyShare($attachment, true),
                 ];
             } elseif ($attachment instanceof Post) {
-                $postAuthor = $attachment->getOwner();
                 $attachments[] = [
-                    "type" => "wall",
-                    "link" => "/wall" . $attachment->getPrettyId(),
-                    "wall" => [
-                        "author"      => $postAuthor->getCanonicalName(),
-                        "author_link" => $postAuthor->getURL(),
-                        "avatar"      => $postAuthor->getAvatarUrl("miniscule"),
-                        "text"        => $attachment->isDeleted() ? "" : $attachment->getText(),
-                        "date"        => (string) $attachment->getPublicationTime(),
-                        "deleted"     => $attachment->isDeleted(),
-                        "has_media"   => !$attachment->isDeleted() && sizeof(iterator_to_array($attachment->getChildren())) > 0,
-                    ],
+                    "type"  => "wall",
+                    "link"  => "/wall" . $attachment->getPrettyId(),
+                    "share" => $this->simplifyShare($attachment, false),
                 ];
             } elseif ($attachment instanceof Sticker) {
                 $attachments[] = $attachment->simplify();

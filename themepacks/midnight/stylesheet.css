@@ -956,6 +956,30 @@ ul {
     border-color: #2c2640;
 }
 
+.msg-attach-wall-card {
+    border-left-color: #4a3f6b;
+    background: rgba(255, 255, 255, .03);
+}
+
+.msg-attach-wall-card:hover {
+    background: rgba(255, 255, 255, .06);
+}
+
+.msg-attach-wall-card .wall-card-author-name,
+.msg-attach-wall-card .wall-card-extra {
+    color: #a99ad8;
+}
+
+.msg-attach-wall-card .wall-card-action,
+.msg-attach-wall-card .wall-card-date,
+.msg-attach-wall-card .wall-card-empty {
+    color: #8b9ab5;
+}
+
+.msg-attach-wall-card .wall-card-text {
+    color: #c8c8d8;
+}
+
 .accounts-switcher--item:hover {
     background: rgba(122, 156, 196, .1);
 }

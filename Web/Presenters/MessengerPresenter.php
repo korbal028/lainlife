@@ -402,23 +402,6 @@ final class MessengerPresenter extends OpenVKPresenter
         exit(json_encode($simple));
     }
 
-    private function renderThemedComponent(string $name, array $params): string
-    {
-        $theme = $this->user->identity?->getTheme();
-        $dir   = ($theme && $theme->overridesTemplates()) ? $theme->getBaseDir() . "/tpl/components" : __DIR__ . "/templates/components";
-
-        try {
-            return $this->getTemplatingEngine()->renderToString("$dir/$name", $params + [
-                "thisUser"  => $this->user->identity,
-                "csrfToken" => $GLOBALS["csrfToken"] ?? "",
-                "theme"     => $theme,
-            ]);
-        } catch (\Throwable $e) {
-            error_log("Message attachment render error: " . $e->getMessage());
-            return "";
-        }
-    }
-
     private function enrichAttachmentsWithHTML(Message $messageObj, array &$simplifiedArray): void
     {
         $children = iterator_to_array($messageObj->getChildren());
@@ -439,11 +422,6 @@ final class MessengerPresenter extends OpenVKPresenter
                         'club' => null,
                     ]
                 );
-            }
-            if ($attachmentData['type'] === 'wall') {
-                $html = $this->renderThemedComponent("post.latte", ["post" => $originalObj, "compact" => true, "commentSection" => false]);
-            } elseif ($attachmentData['type'] === 'comment') {
-                $html = $this->renderThemedComponent("attachment.latte", ["attachment" => $originalObj]);
             }
             if ($html !== "") {
                 $attachmentData['html'] = $html;
