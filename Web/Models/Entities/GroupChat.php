@@ -615,7 +615,8 @@ function getAvatarUrl(string $size = 'normal'): string
         }
 
         if (!$this->isCreator($actorId)) {
-            if (($ranking[0] ?? null) !== $actorId || $order[0] !== $actorId) {
+            $own = array_search($actorId, $ranking, true);
+            if ($own === false || array_slice($order, 0, $own + 1) !== array_slice($ranking, 0, $own + 1)) {
                 return false;
             }
 

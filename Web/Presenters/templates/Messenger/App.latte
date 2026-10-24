@@ -2027,11 +2027,11 @@
                 const list   = info.members.filter(a => a.role === "admin");
                 const index  = list.indexOf(m);
                 const myRank = adminRank(info, info.me.id);
-                if(index === -1 || m.id === info.me.id || myRank > 1) return null;
+                if(index === -1 || myRank === Infinity || index < myRank) return null;
                 if(myRank === 0) return list.length > 1 ? [0, list.length - 1] : null;
 
                 let lo = index, hi = index;
-                while(lo > 1 && adminWeight(list[lo - 1]) === adminWeight(m)) lo--;
+                while(lo > myRank && adminWeight(list[lo - 1]) === adminWeight(m)) lo--;
                 while(hi < list.length - 1 && adminWeight(list[hi + 1]) === adminWeight(m)) hi++;
                 return lo < hi ? [lo, hi] : null;
             };
