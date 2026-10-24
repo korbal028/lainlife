@@ -738,6 +738,8 @@
             
                 // Троттлинг: шлём не чаще раза в 3 секунды, пока юзер печатает, а не на каждый keystroke
                 sendTypingActivity() {
+                    if(document.getElementById("im_as_club")?.checked) return;
+
                     let now = Date.now();
                     if(this.lastTypingSentAt && now - this.lastTypingSentAt < 3000) return;
                     this.lastTypingSentAt = now;
