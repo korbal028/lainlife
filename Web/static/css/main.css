@@ -7861,43 +7861,6 @@ hr {
     overflow-wrap: anywhere;
 }
 
-.shared-comment {
-    margin: 4px 0;
-    padding: 4px 0 4px 10px;
-    border-left: 2px solid #c0cad5;
-}
-
-.shared-comment--head {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.shared-comment--ava {
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    object-fit: cover;
-}
-
-.shared-comment--who {
-    display: flex;
-    flex-direction: column;
-}
-
-.shared-comment--author {
-    font-weight: bold;
-}
-
-.shared-comment--meta {
-    color: #888;
-    font-size: 11px;
-}
-
-.shared-comment--text {
-    margin-top: 4px;
-    overflow-wrap: anywhere;
-}
 
 .repost-dialogs {
     flex-direction: column;

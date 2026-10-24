@@ -2858,6 +2858,9 @@
 "repost_sent_to_messages" = "Sent to messages";
 "comment_repost_label" = "Comment";
 "comment_repost_deleted" = "Comment deleted";
+"comment_repost_writes_m" = "commented";
+"comment_repost_writes_f" = "commented";
+"comment_repost_writes_g" = "commented";
 "post_repost_deleted" = "Post deleted";
 "repost_post_media" = "Attachments";
 "repost_dialogs_empty" = "No dialogs";

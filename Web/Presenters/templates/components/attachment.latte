@@ -56,20 +56,41 @@
     </div>
 {elseif $attachment instanceof \openvk\Web\Models\Entities\Comment}
     {var $sharedAuthor = $attachment->getOwner()}
-    <div class="shared-comment">
-        <div class="shared-comment--head">
-            <a href="{$sharedAuthor->getURL()}"><img class="shared-comment--ava" src="{$sharedAuthor->getAvatarUrl('miniscule')}" alt="" /></a>
-            <div class="shared-comment--who">
-                <a class="shared-comment--author" href="{$sharedAuthor->getURL()}">{$sharedAuthor->getCanonicalName()}</a>
-                <a class="shared-comment--meta" href="{$attachment->getURL()}">{_comment_repost_label} · {$attachment->getPublicationTime()}</a>
-            </div>
-        </div>
-        {if $attachment->isDeleted()}
-            <div class="shared-comment--meta">{_comment_repost_deleted}</div>
-        {else}
-            <div class="shared-comment--text">{$attachment->getText()|noescape}</div>
-        {/if}
-    </div>
+    <table border="0" style="font-size: 11px;" class="post shared-comment">
+        <tbody>
+            <tr>
+                <td class="post-author-ava" width="54" valign="top">
+                    <a class="post-author-url" href="{$sharedAuthor->getURL()}">
+                        <img src="{$sharedAuthor->getAvatarURL('miniscule')}" class="post-avatar" width="50" loading=lazy />
+                    </a>
+                </td>
+                <td width="100%" valign="top">
+                    <div class="post-author">
+                        <a href="{$sharedAuthor->getURL()}"><b class="post-author-name">{$sharedAuthor->getCanonicalName()}</b></a>
+                        <img n:if="$sharedAuthor->isVerified()" class="name-checkmark" src="/assets/packages/static/openvk/img/checkmark.png">
+                        {if $sharedAuthor instanceof \openvk\Web\Models\Entities\Club || $sharedAuthor->isNeutral()}
+                            {_comment_repost_writes_g}
+                        {elseif $sharedAuthor->isFemale()}
+                            {_comment_repost_writes_f}
+                        {else}
+                            {_comment_repost_writes_m}
+                        {/if}
+                        <br/>
+                        <a href="{$attachment->getURL()}" class="date">{$attachment->getPublicationTime()}</a>
+                    </div>
+                    <div class="post-content">
+                        <div class="text">
+                            {if $attachment->isDeleted()}
+                                <span class="really_text">{_comment_repost_deleted}</span>
+                            {else}
+                                <span class="really_text">{$attachment->getText()|noescape}</span>
+                            {/if}
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+    </table>
 {elseif $attachment instanceof \openvk\Web\Models\Entities\Post}
     {var $nestedLevel = ($nestedLevel ?? 0) + 1}
     {if $nestedLevel > 2}

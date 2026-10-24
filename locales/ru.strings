@@ -2799,6 +2799,9 @@
 "repost_sent_to_messages" = "Отправлено в сообщения";
 "comment_repost_label" = "Комментарий";
 "comment_repost_deleted" = "Комментарий удалён";
+"comment_repost_writes_m" = "оставил комментарий";
+"comment_repost_writes_f" = "оставила комментарий";
+"comment_repost_writes_g" = "оставили комментарий";
 "post_repost_deleted" = "Запись удалена";
 "repost_post_media" = "Вложения";
 "repost_dialogs_empty" = "Нет диалогов";
