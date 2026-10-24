@@ -243,7 +243,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         // история до вступления не считается непрочитанной
         (new Correspondence($user, $chat))->markAsJoined();
-        $chat->log("added", $this->user->id, $userId);
+        $chat->logAction("added", $this->user->id, $userId);
 
         $this->returnJson(["success" => true]);
     }
@@ -269,7 +269,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->groupChats->removeAdmin($chat->getId(), $userId);
         $chat->removeException($userId);
         $chat->ban($userId, $this->user->id);
-        $chat->log("removed", $this->user->id, $userId);
+        $chat->logAction("removed", $this->user->id, $userId);
         $this->returnJson(["success" => true, "removed" => $chat->getBans()]);
     }
 
@@ -296,7 +296,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $this->groupChats->leaveChat($chat->getId(), $this->user->id);
-        $chat->log("left", $this->user->id);
+        $chat->logAction("left", $this->user->id);
         $this->groupChats->removeAdmin($chat->getId(), $this->user->id);
         $chat->removeException($this->user->id);
         $this->returnJson(["success" => true]);
@@ -534,7 +534,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $chat->setTag($userId, $text, $color);
         $new = $chat->getTags()[$userId] ?? null;
         if ($old != $new) {
-            $chat->log("tag", $this->user->id, $userId, $new ?? []);
+            $chat->logAction("tag", $this->user->id, $userId, $new ?? []);
         }
     }
 
@@ -554,7 +554,7 @@ final class GroupChatPresenter extends OpenVKPresenter
             : htmlspecialchars(tr("messenger_chat_audit_unknown"));
 
         $entries = [];
-        foreach ($chat->getLog() as $entry) {
+        foreach ($chat->getActionLog() as $entry) {
             $key = "messenger_chat_audit_" . $entry->type;
             $tag = null;
             if ($entry->type === "tag") {
@@ -605,7 +605,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
             $this->groupChats->addParticipant($chat->getId(), $this->user->id);
             (new Correspondence($this->user->identity, $chat))->markAsJoined();
-            $chat->log("joined", $this->user->id);
+            $chat->logAction("joined", $this->user->id);
             $this->redirect($chat->getURL());
         }
 

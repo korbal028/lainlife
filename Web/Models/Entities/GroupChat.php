@@ -386,7 +386,7 @@ function getAvatarUrl(string $size = 'normal'): string
         DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_bans` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId);
     }
 
-    function log(string $type, int $actor, ?int $target = null, array $data = []): void
+    function logAction(string $type, int $actor, ?int $target = null, array $data = []): void
     {
         $db = DatabaseConnection::i()->getConnection();
         $db->query("DELETE FROM `group_chat_log` WHERE `created` < ?", time() - self::LOG_TTL);
@@ -400,7 +400,7 @@ function getAvatarUrl(string $size = 'normal'): string
         ]);
     }
 
-    function getLog(int $limit = 500): array
+    function getActionLog(int $limit = 500): array
     {
         $rows  = DatabaseConnection::i()->getConnection()->query("SELECT * FROM `group_chat_log` WHERE `chat` = ? AND `created` >= ? ORDER BY `id` DESC LIMIT ?", $this->getId(), time() - self::LOG_TTL, $limit);
         $users = new Users();
