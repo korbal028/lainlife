@@ -2021,7 +2021,8 @@
             const outranks = (info, m) => m.id !== info.me.id && m.role !== "owner" && adminRank(info, info.me.id) !== Infinity
                 && (!m.role || adminRank(info, info.me.id) < adminRank(info, m.id));
             const canEditAdmin = (info, m) => m.role === "admin" && outranks(info, m)
-                && (adminRank(info, info.me.id) === 0 || (info.admin_rights.add_admins && m.promoter === info.me.id));
+                && (adminRank(info, info.me.id) === 0 || (info.admin_rights.add_admins
+                    && (m.promoter === info.me.id || m.promoter !== info.members.find(o => o.role === "owner")?.id)));
             const adminWeight  = m => Object.values(m.rights ?? ADMIN_DEFAULTS).filter(Boolean).length;
             const adminDragBounds = (info, m) => {
                 const list   = info.members.filter(a => a.role === "admin");
