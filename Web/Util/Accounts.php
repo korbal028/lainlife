@@ -57,7 +57,8 @@ final class Accounts
                 continue;
             }
 
-            $user = $users->getByChandlerUserId((string) $row->user);
+            $profileId = $db->table("profiles")->where("user", (string) $row->user)->fetchField("id");
+            $user      = $profileId ? $users->get((int) $profileId) : null;
             if (!$user || ($user->isDeleted() && !$user->isDeactivated())) {
                 continue;
             }
