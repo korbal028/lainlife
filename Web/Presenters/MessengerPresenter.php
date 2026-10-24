@@ -176,6 +176,8 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->chatRights    = $correspondent instanceof GroupChat
             ? $correspondent->getPermissionsFor($this->user->id)
             : array_fill_keys(array_keys(GroupChat::PERMISSIONS), true);
+        $this->template->adminDefaults = GroupChat::ADMIN_RIGHTS;
+        $this->template->canDeleteAny  = $correspondent instanceof GroupChat && $correspondent->hasAdminRight("delete", $this->user->id);
         $this->template->slowmode      = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeFor($this->user->id) : 0;
         $this->template->slowmodeWait  = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeWait($this->user->id) : 0;
         $this->template->correspondent = $correspondent;
@@ -595,9 +597,10 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
-        $cor    = new Correspondence($this->user->identity, $correspondent);
-        $forAll = $this->postParam("for_all") === "1";
-        $repo   = new Messages();
+        $cor       = new Correspondence($this->user->identity, $correspondent);
+        $forAll    = $this->postParam("for_all") === "1";
+        $deleteAny = $correspondent instanceof GroupChat && $correspondent->hasAdminRight("delete", $this->user->id);
+        $repo      = new Messages();
 
         $deleted = [];
         $hidden  = [];
@@ -608,7 +611,7 @@ final class MessengerPresenter extends OpenVKPresenter
             }
 
             $sender = $msg->getSender();
-            if ($forAll && $sender instanceof User && $sender->getId() === $this->user->id) {
+            if ($forAll && $sender instanceof User && ($deleteAny || $sender->getId() === $this->user->id)) {
                 $msg->setDeleted(1);
                 $msg->setEdited(time()); // метка для поллинга (apiSync)
                 $msg->save();
@@ -759,43 +762,16 @@ final class MessengerPresenter extends OpenVKPresenter
             "history_visible" => $isChat ? $peer->isHistoryVisible() : null,
             "permissions" => $isChat ? $peer->getPermissions() : null,
             "slowmode"  => $isChat ? $peer->getSlowmode() : null,
-            "exceptions" => ($isChat && $peer->canManageParticipants($me->getId())) ? array_values($peer->getExceptions()) : [],
-            "removed"   => ($isChat && $peer->canManageParticipants($me->getId())) ? $peer->getBans() : [],
+            "admin_rights" => $isChat ? $peer->getAdminRights($me->getId()) : null,
+            "exceptions" => ($isChat && $peer->hasAdminRight("ban", $me->getId())) ? array_values($peer->getExceptions()) : [],
+            "removed"   => ($isChat && $peer->hasAdminRight("ban", $me->getId())) ? $peer->getBans() : [],
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
-            "members"   => $isChat ? $this->getChatMembers($peer) : [],
+            "members"   => $isChat ? $peer->getMembersInfo($peer->canManageParticipants($me->getId())) : [],
             "birthday"  => $birthday ? trim($birthday) : null,
             "counts"    => $counts,
             "blocked"   => ($isUser && !$isSelf) ? $peer->isBlacklistedBy($me) : null,
             "peer_id"   => $isUser ? $peer->getId() : null,
         ]);
-    }
-
-    // участники беседы: владелец, админы, остальные
-    private function getChatMembers(GroupChat $chat): array
-    {
-        $users   = new Users();
-        $tags    = $chat->getTags();
-        $members = [];
-        foreach ($chat->getParticipantIds() as $id) {
-            $user = $users->get($id);
-            if (!$user) {
-                continue;
-            }
-
-            $role = $chat->isCreator($id) ? "owner" : ($chat->isAdmin($id) ? "admin" : null);
-            $members[] = [
-                "id"     => $id,
-                "name"   => $user->getCanonicalName(),
-                "avatar" => $user->getAvatarUrl("miniscule"),
-                "link"   => $user->getURL(),
-                "role"   => $role,
-                "tag"    => $tags[$id] ?? null,
-                "order"  => $role === "owner" ? 0 : ($role === "admin" ? 1 : 2),
-            ];
-        }
-
-        usort($members, fn($a, $b) => $a["order"] <=> $b["order"]);
-        return array_map(fn($m) => array_diff_key($m, ["order" => 0]), $members);
     }
 
     public function renderApiPeerAttachments(int $sel): void

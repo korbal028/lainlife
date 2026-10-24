@@ -28,6 +28,15 @@ class GroupChat extends RowModel
         "info"      => false,
     ];
 
+    public const ADMIN_RIGHTS = [
+        "delete"     => true,
+        "ban"        => true,
+        "invite"     => true,
+        "pin"        => true,
+        "tags"       => true,
+        "add_admins" => false,
+    ];
+
     public const SLOWMODE_INTERVALS = [0, 5, 10, 30, 60, 300, 900, 3600];
 
     public const TAG_MAX_LENGTH         = 16;
@@ -190,7 +199,12 @@ function getAvatarUrl(string $size = 'normal'): string
     function getPermissionsFor(int $userId): array
     {
         if ($this->canManageParticipants($userId)) {
-            return array_fill_keys(array_keys(self::PERMISSIONS), true);
+            $chat   = $this->getPermissions();
+            $rights = array_fill_keys(array_keys(self::PERMISSIONS), true);
+            $rights["pin"]    = $chat["pin"] || $this->hasAdminRight("pin", $userId);
+            $rights["invite"] = $chat["invite"] || $this->hasAdminRight("invite", $userId);
+
+            return $rights;
         }
 
         return $this->getException($userId)["permissions"] ?? $this->getPermissions();
@@ -424,5 +438,101 @@ function getAvatarUrl(string $size = 'normal'): string
     function canManageParticipants(int $userId): bool
     {
         return $this->isCreator($userId) || $this->isAdmin($userId);
+    }
+
+    private function getAdminRows(): array
+    {
+        $rows = DatabaseConnection::i()->getConnection()->query("SELECT `user`, `promoted_by`, `rights` FROM `group_chat_admin_rights` WHERE `chat` = ?", $this->getId());
+
+        $admins = [];
+        foreach ($rows as $row) {
+            $saved = json_decode((string) $row->rights, true);
+            $admins[(int) $row->user] = [
+                "promoted_by" => (int) $row->promoted_by,
+                "rights"      => array_merge(self::ADMIN_RIGHTS, array_map("boolval", array_intersect_key(is_array($saved) ? $saved : [], self::ADMIN_RIGHTS))),
+            ];
+        }
+
+        return $admins;
+    }
+
+    function getAdminRights(int $userId): array
+    {
+        if ($this->isCreator($userId)) {
+            return array_fill_keys(array_keys(self::ADMIN_RIGHTS), true);
+        }
+
+        if (!$this->isAdmin($userId)) {
+            return array_fill_keys(array_keys(self::ADMIN_RIGHTS), false);
+        }
+
+        return $this->getAdminRows()[$userId]["rights"] ?? self::ADMIN_RIGHTS;
+    }
+
+    function hasAdminRight(string $right, int $userId): bool
+    {
+        return $this->getAdminRights($userId)[$right] ?? false;
+    }
+
+    function getPromoter(int $userId): int
+    {
+        return $this->getAdminRows()[$userId]["promoted_by"] ?? (int) $this->getRecord()->creator_id;
+    }
+
+    function setAdminRights(int $userId, array $rights, int $promotedBy): void
+    {
+        $rights = json_encode(array_merge(self::ADMIN_RIGHTS, array_map("boolval", array_intersect_key($rights, self::ADMIN_RIGHTS))));
+        $row    = ["chat" => $this->getId(), "user" => $userId, "promoted_by" => $promotedBy, "rights" => $rights];
+        DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_admin_rights` ? ON DUPLICATE KEY UPDATE ?", $row, ["rights" => $rights]);
+    }
+
+    function canEditAdmin(int $editorId, int $adminId): bool
+    {
+        if ($editorId === $adminId || !$this->isAdmin($adminId) || $this->isCreator($adminId)) {
+            return false;
+        }
+
+        return $this->isCreator($editorId) || ($this->hasAdminRight("add_admins", $editorId) && $this->getPromoter($adminId) === $editorId);
+    }
+
+    function getMembersInfo(bool $withRights = false): array
+    {
+        $users     = new Users();
+        $tags      = $this->getTags();
+        $adminRows = $this->getAdminRows();
+        $creator   = (int) $this->getRecord()->creator_id;
+        $members   = [];
+        foreach ($this->getParticipantIds() as $id) {
+            $user = $users->get($id);
+            if (!$user) {
+                continue;
+            }
+
+            $role   = $id === $creator ? "owner" : ($this->isAdmin($id) ? "admin" : null);
+            $member = [
+                "id"     => $id,
+                "name"   => $user->getCanonicalName(),
+                "avatar" => $user->getAvatarUrl("miniscule"),
+                "link"   => $user->getURL(),
+                "role"   => $role,
+                "tag"    => $tags[$id] ?? null,
+            ];
+
+            if ($role === "admin") {
+                $promoter = $adminRows[$id]["promoted_by"] ?? $creator;
+                $member["promoted_by"] = $users->get($promoter)?->getCanonicalName();
+                if ($withRights) {
+                    $member["promoter"] = $promoter;
+                    $member["rights"]   = $adminRows[$id]["rights"] ?? self::ADMIN_RIGHTS;
+                }
+            }
+
+            $members[] = $member;
+        }
+
+        $order = ["owner" => 0, "admin" => 1];
+        usort($members, fn($a, $b) => ($order[$a["role"]] ?? 2) <=> ($order[$b["role"]] ?? 2));
+
+        return $members;
     }
 }

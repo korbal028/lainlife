@@ -332,6 +332,8 @@
         (() => {
             const IS_GROUP_CHAT = {$isGroupChat};
             const CHAT_RIGHTS   = {$chatRights};
+            const CAN_DELETE_ANY = {$canDeleteAny};
+            const ADMIN_DEFAULTS = {$adminDefaults};
             const SLOWMODE_SEC  = {$slowmode};
             const SLOWMODE_STR  = {tr("messenger_slowmode_wait", "%TIME%")};
             const slowWait      = ko.observable(0);
@@ -1179,7 +1181,7 @@
                     const hasOwn = window.messages().some(m => msgIds.includes(m.uuid) && m.sender.id === {$thisUser->getId()});
 
                     let body = {tr("messenger_delete_messages_confirm", "%COUNT%")}.replace("%COUNT%", msgIds.length);
-                    if(hasOwn && !isSelfChat) {
+                    if((hasOwn || CAN_DELETE_ANY) && !isSelfChat) {
                         body += `<br><br><label><input type="checkbox" id="msg_delete_for_all" checked> ${ {tr("messenger_delete_for_all")} }</label>`;
                     }
 
@@ -1761,6 +1763,18 @@
                 ownerRole:  {tr("messenger_chat_admins_owner")},
                 promotedBy: {tr("messenger_chat_admins_promoted_by", "%NAME%")},
                 addAdmin:   {tr("messenger_chat_admins_add")},
+                editAdmin:  {tr("messenger_chat_admins_edit")},
+                adminQuestion: {tr("messenger_chat_admins_question")},
+                adminDelete: {tr("messenger_chat_admins_right_delete")},
+                adminBan:   {tr("messenger_chat_admins_right_ban")},
+                adminInvite: {tr("messenger_chat_admins_right_invite")},
+                adminPin:   {tr("messenger_chat_admins_right_pin")},
+                adminTags:  {tr("messenger_chat_admins_right_tags")},
+                adminAdd:   {tr("messenger_chat_admins_right_add_admins")},
+                adminNoAddHint: {tr("messenger_chat_admins_no_add_hint")},
+                adminAddHint: {tr("messenger_chat_admins_add_hint")},
+                adminTagHint: {tr("messenger_chat_admins_tag_hint", "%NAME%")},
+                dismissAdmin: {tr("messenger_chat_admins_dismiss")},
                 addException: {tr("messenger_chat_exceptions_add")},
                 delException: {tr("messenger_chat_exceptions_delete")},
                 noUsers:    {tr("messenger_chat_exceptions_empty")},
@@ -1884,7 +1898,7 @@
                                 </label>
                             </div>
                             <div class="im-peer-section">
-                                ${ row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") }
+                                ${ info.admin_rights.ban ? row("rights", "categories/preferences-other.png", PEER_STR.rights, "3/3") : "" }
                                 ${ row("admins", "apps/system-users.png", PEER_STR.admins, String(info.members.filter(m => m.role).length)) }
                                 ${ row("log", "apps/utilities-log-viewer.png", PEER_STR.log) }
                             </div>` : "" }
@@ -1966,29 +1980,75 @@
             };
 
             // администраторы беседы, пока только вёрстка; назначает админов только владелец
-            const renderAdmins = (info, avatarStyle) => {
+            // владелец правит любого админа, админ с правом назначать — только назначенных им
+            const canEditAdmin = (info, m) => m.role === "admin" && m.id !== info.me.id
+                && (info.members.some(o => o.role === "owner" && o.id === info.me.id) || (info.admin_rights.add_admins && m.promoter === info.me.id));
+
+            const renderAdminRows = (info, avatarStyle) => {
                 const owner  = info.members.find(m => m.role === "owner");
                 const admins = [...info.members.filter(m => m.role === "admin"), ...(owner ? [owner] : [])];
 
-                return `
-                    <div class="im-peer-page im-peer-admins" data-page="admins" hidden>
-                        <div class="im-peer-search--bar">
-                            <input type="search" placeholder="${ escapeHtml(PEER_STR.searchAny) }" autocomplete="off" />
-                        </div>
-                        <div class="im-peer-admins--list">
-                            ${ admins.map(m => `
-                                <a class="im-peer-member im-peer-admin" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
-                                    <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
-                                    <span class="im-peer-admin--info">
-                                        <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
-                                        <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", owner?.name ?? "")) }</span>
-                                    </span>
-                                    ${ m.tag ? renderTag(m.tag) : `<span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(PEER_STR[m.role]) }</span>` }
-                                </a>`).join("") }
-                        </div>
-                        <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.notFound) }</div>
-                    </div>`;
+                return admins.map(m => `
+                    <a class="im-peer-member im-peer-admin${ canEditAdmin(info, m) ? "" : " im-peer-admin_static" }" data-manage="admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
+                        <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
+                        <span class="im-peer-admin--info">
+                            <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
+                            <span class="im-peer-label">${ escapeHtml(m.role === "owner" ? PEER_STR.ownerRole : PEER_STR.promotedBy.replace("%NAME%", m.promoted_by ?? owner?.name ?? "")) }</span>
+                        </span>
+                        ${ m.tag ? renderTag(m.tag) : `<span class="im-peer-admin--tag im-peer-admin--tag_${ m.role }">${ escapeHtml(PEER_STR[m.role]) }</span>` }
+                    </a>`).join("");
             };
+
+            const renderAdmins = (info, avatarStyle) => `
+                <div class="im-peer-page im-peer-admins" data-page="admins" hidden>
+                    <div class="im-peer-search--bar">
+                        <input type="search" placeholder="${ escapeHtml(PEER_STR.searchAny) }" autocomplete="off" />
+                    </div>
+                    <div class="im-peer-admins--list">${ renderAdminRows(info, avatarStyle) }</div>
+                    <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.notFound) }</div>
+                </div>`;
+
+            // права админа и его тег; «изменение информации» у админов есть всегда, поэтому пункта нет
+            const ADMIN_RIGHT_LABELS = [
+                ["delete", "adminDelete"], ["ban", "adminBan"], ["invite", "adminInvite"],
+                ["pin", "adminPin"], ["tags", "adminTags"], ["add_admins", "adminAdd"],
+            ];
+            const renderAdminEdit = (info, avatarStyle) => `
+                <div class="im-peer-page im-peer-rights im-peer-admin-edit" data-page="admin-edit" hidden>
+                    <div class="im-peer-member im-peer-admin-edit--head">
+                        <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="" alt="" />
+                        <span class="im-peer-admin--info">
+                            <span class="im-peer-member--name"></span>
+                            <span class="im-peer-label"></span>
+                        </span>
+                    </div>
+                    <div class="im-peer-section">
+                        <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.adminQuestion) }</div>
+                        ${ ADMIN_RIGHT_LABELS.map(([key, label]) => `
+                            <label class="im-peer-toggle">
+                                <span>${ escapeHtml(PEER_STR[label]) }</span>
+                                <input type="checkbox" class="im-peer-switch" name="right_${ key }" />
+                            </label>`).join("") }
+                    </div>
+                    <div class="im-peer-rights--hint im-peer-admin-edit--hint"></div>
+                    ${ info.admin_rights.tags ? `
+                        <div class="im-peer-section">
+                            <div class="im-peer-tag--preview">
+                                <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="" alt="" />
+                                <span class="im-peer-tag--name"></span>
+                                <span class="msg-tag"></span>
+                            </div>
+                            <div class="im-peer-tag--field">
+                                <input type="text" name="tag" maxlength="16" placeholder="${ escapeHtml(PEER_STR.admin) }" autocomplete="off" />
+                            </div>
+                            <div class="im-peer-rights--hint im-peer-admin-edit--tag-hint"></div>
+                        </div>` : "" }
+                    <div class="im-peer-section im-peer-admin-edit--dismiss">
+                        <a class="im-peer-row im-peer-danger" data-manage="admin-dismiss">
+                            <span>${ escapeHtml(PEER_STR.dismissAdmin) }</span>
+                        </a>
+                    </div>
+                </div>`;
 
             // исключения, удалённые и выбор участника, списки заполняются при открытии
             const renderExceptionPages = () => ["exceptions", "removed", "member-pick"].map(name => `
@@ -2177,7 +2237,8 @@
                             <div class="im-peer-search--results"></div>
                         </div>
                         ${ info.can_manage || info.can_edit_info ? renderManage(info, avatarStyle) : "" }
-                        ${ info.can_manage ? renderRights(info) + renderRights(info, true) + renderAdmins(info, avatarStyle) + renderExceptionPages() : "" }
+                        ${ info.admin_rights?.ban ? renderRights(info) + renderRights(info, true) : "" }
+                        ${ info.can_manage ? renderAdmins(info, avatarStyle) + renderAdminEdit(info, avatarStyle) + renderExceptionPages() : "" }
                         ${ info.can_tag ? renderTagPage(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
@@ -2199,6 +2260,7 @@
                 const userRights    = root.querySelector('[data-page="user-rights"]');
                 const exceptions    = root.querySelector('[data-page="exceptions"]');
                 const removed       = root.querySelector('[data-page="removed"]');
+                const adminEdit     = root.querySelector('[data-page="admin-edit"]');
                 const memberPick    = root.querySelector('[data-page="member-pick"]');
                 const tagPage = root.querySelector('[data-page="tag"]');
                 const close = () => msg.close();
@@ -2224,13 +2286,13 @@
                 let shown = main;
                 const setPage = page => {
                     shown = page;
-                    const editing = [manage, rights, userRights, tagPage].includes(page);
+                    const editing = [manage, rights, userRights, adminEdit, tagPage].includes(page);
                     const listing = [admins, exceptions, removed, memberPick].includes(page);
-                    [main, list, found, manage, rights, userRights, admins, exceptions, removed, memberPick, tagPage].forEach(p => p && (p.hidden = p !== page));
+                    [main, list, found, manage, rights, userRights, admins, adminEdit, exceptions, removed, memberPick, tagPage].forEach(p => p && (p.hidden = p !== page));
                     backBtn.hidden   = page === main || editing || listing;
                     manageBtn.hidden = page !== main;
                     cancelBtn.hidden = saveBtn.hidden = !editing;
-                    addAdminBtn.hidden = page !== admins;
+                    addAdminBtn.hidden = page !== admins || !info.admin_rights?.add_admins;
                     addExceptionBtn.hidden = page !== exceptions;
                     removeUserBtn.hidden = page !== removed;
                     doneBtn.hidden   = !listing;
@@ -2464,11 +2526,11 @@
                 let pickFor = null;
                 const showMemberPick = mode => {
                     pickFor = mode;
-                    const members = mode === "exception"
-                        ? info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id))
+                    const members = mode === "exception" ? info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id))
+                        : mode === "admin" ? info.members.filter(m => !m.role)
                         : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (info.can_delete_for_all || !m.role));
                     fillMembers(memberPick, members.map(m => renderMemberRow(m, "pick", "", avatarStyle)).join(""));
-                    head.textContent = PEER_STR.pickMember;
+                    head.textContent = mode === "admin" ? PEER_STR.addAdmin : PEER_STR.pickMember;
                     setPage(memberPick);
                     body.scrollTop = 0;
                 };
@@ -2554,18 +2616,99 @@
                 };
 
                 const showAdmins = () => {
+                    admins.querySelector(".im-peer-admins--list").innerHTML = renderAdminRows(info, avatarStyle);
+                    admins.querySelector("input").value = "";
+                    admins.querySelector(".im-peer-empty").hidden = true;
                     head.textContent = PEER_STR.admins;
                     setPage(admins);
                     body.scrollTop = 0;
                 };
 
+                let editedAdmin = null;
+                const adminTagInput   = adminEdit?.querySelector('[name="tag"]');
+                const adminTagPreview = adminEdit?.querySelector(".im-peer-tag--preview .msg-tag");
+                const updateAdminEdit = () => {
+                    adminEdit.querySelector(".im-peer-admin-edit--hint").textContent = adminEdit.querySelector('[name="right_add_admins"]').checked ? PEER_STR.adminAddHint : PEER_STR.adminNoAddHint;
+                    if(adminTagInput) adminTagPreview.textContent = adminTagInput.value.trim() || PEER_STR.admin;
+                };
+                adminEdit?.addEventListener("change", updateAdminEdit);
+                adminTagInput?.addEventListener("input", updateAdminEdit);
+
+                const showAdminEdit = id => {
+                    const member = info.members.find(m => m.id === id);
+                    if(!member || (member.role === "admin" ? !canEditAdmin(info, member) : member.role)) return;
+
+                    editedAdmin = member;
+                    const isNew  = member.role !== "admin";
+                    const rights = member.rights ?? ADMIN_DEFAULTS;
+                    adminEdit.querySelectorAll('[name^="right_"]').forEach(box => {
+                        const key = box.name.replace(/^right_/, "");
+                        box.disabled = !info.admin_rights[key];
+                        box.checked  = rights[key] && info.admin_rights[key];
+                    });
+
+                    const headEl = adminEdit.querySelector(".im-peer-admin-edit--head");
+                    headEl.querySelector("img").src = member.avatar;
+                    headEl.querySelector(".im-peer-member--name").textContent = member.name;
+                    headEl.querySelector(".im-peer-label").textContent = isNew ? "" : PEER_STR.promotedBy.replace("%NAME%", member.promoted_by ?? "");
+                    if(adminTagInput) {
+                        adminEdit.querySelector(".im-peer-tag--preview img").src = member.avatar;
+                        adminEdit.querySelector(".im-peer-tag--name").textContent = member.name;
+                        adminEdit.querySelector(".im-peer-admin-edit--tag-hint").textContent = PEER_STR.adminTagHint.replace("%NAME%", member.name);
+                        adminTagPreview.style.setProperty("--tag", member.tag?.color ?? TAG_DEFAULT);
+                        adminTagInput.value = member.tag?.text ?? "";
+                    }
+                    adminEdit.querySelector(".im-peer-admin-edit--dismiss").hidden = isNew;
+                    updateAdminEdit();
+
+                    head.textContent = isNew ? PEER_STR.addAdmin : PEER_STR.editAdmin;
+                    setPage(adminEdit);
+                    body.scrollTop = 0;
+                };
+
+                const saveAdmin = async fields => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("user", editedAdmin.id);
+                    Object.entries(fields).forEach(([key, value]) => fd.set(key, value));
+
+                    const res = await fetch(`/im/api/chat${ PEER_SEL }/admin.json`, { method: "POST", body: fd });
+                    if(!res.ok) throw new Error(res.status);
+
+                    info.members = (await res.json()).members;
+                    manage.querySelector('[data-manage="admins"] .im-peer-row--value').textContent = info.members.filter(m => m.role).length;
+
+                    const member = info.members.find(m => m.id === editedAdmin.id);
+                    const row    = main.querySelector(`.im-peer-member[data-id="${ editedAdmin.id }"]`);
+                    row?.querySelector(".msg-tag, .im-peer-member--role")?.remove();
+                    row?.insertAdjacentHTML("beforeend", renderMemberBadge(member ?? {}));
+                    if(member && (member.tag?.text ?? null) !== (editedAdmin.tag?.text ?? null)) window.Msg.setSenderTag(member.id, member.tag);
+                };
+
+                const adminFields = () => {
+                    const fields = Object.fromEntries([...adminEdit.querySelectorAll('[name^="right_"]')].map(box => [box.name, box.checked ? "1" : "0"]));
+                    if(adminTagInput) Object.assign(fields, { tag: adminTagInput.value, color: editedAdmin.tag?.color ?? TAG_DEFAULT });
+
+                    return fields;
+                };
+
+                const dismissAdmin = async () => {
+                    try {
+                        await saveAdmin({ act: "dismiss" });
+                        showAdmins();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
+                };
+
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
                 addExceptionBtn.addEventListener("click", () => showMemberPick("exception"));
+                addAdminBtn.addEventListener("click", () => showMemberPick("admin"));
                 removeUserBtn.addEventListener("click", () => showMemberPick("remove"));
                 doneBtn.addEventListener("click", () => {
                     if(shown === exceptions || shown === removed) return showRights(false);
-                    if(shown === memberPick) return pickFor === "exception" ? showExceptions() : showRemoved();
+                    if(shown === memberPick) return pickFor === "exception" ? showExceptions() : pickFor === "admin" ? showAdmins() : showRemoved();
                     showManage();
                 });
                 const saveSettings = async fields => {
@@ -2596,6 +2739,9 @@
                         } else if(shown === userRights) {
                             await saveException(rightsFields(userRights));
                             showExceptions();
+                        } else if(shown === adminEdit) {
+                            await saveAdmin(adminFields());
+                            showAdmins();
                         } else if(shown === tagPage) {
                             await saveTag();
                             showMain();
@@ -2604,7 +2750,7 @@
                         fastError(tr("messages_error_1"));
                     }
                 });
-                cancelBtn.addEventListener("click", () => shown === rights ? showManage() : shown === userRights ? showExceptions() : showMain());
+                cancelBtn.addEventListener("click", () => shown === rights ? showManage() : shown === userRights ? showExceptions() : shown === adminEdit ? showAdmins() : showMain());
 
                 const avatarFile = manage?.querySelector(".im-peer-manage--file");
                 avatarFile?.addEventListener("change", async () => {
@@ -2735,6 +2881,10 @@
                     if(e.target.closest('[data-manage="exception-delete"]')) return deleteException();
 
                     if(e.target.closest('[data-manage="removed"]')) return showRemoved();
+                    if(e.target.closest('[data-manage="admin-dismiss"]')) return dismissAdmin();
+
+                    const adminRow = e.target.closest('[data-manage="admin"]');
+                    if(adminRow) return showAdminEdit(Number(adminRow.dataset.id));
 
                     const exceptionRow = e.target.closest('[data-manage="exception"]');
                     if(exceptionRow) return showUserRights(Number(exceptionRow.dataset.id));
@@ -2745,6 +2895,7 @@
                     const picked = e.target.closest('[data-manage="pick"]');
                     if(picked) {
                         const id = Number(picked.dataset.id);
+                        if(pickFor === "admin") return showAdminEdit(id);
                         return pickFor === "exception" ? showUserRights(id) : removeMember(info.members.find(m => m.id === id));
                     }
 

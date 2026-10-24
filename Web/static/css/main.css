@@ -2085,6 +2085,28 @@ span.ok-smile.ok-smile {
     font-weight: bold;
 }
 
+.im-peer-admin_static {
+    cursor: default;
+}
+
+.im-peer-member.im-peer-admin-edit--head {
+    padding-top: 12px;
+    padding-bottom: 12px;
+}
+
+.im-peer-member.im-peer-admin-edit--head:hover {
+    background: none;
+}
+
+.im-peer-member.im-peer-admin-edit--head .im-peer-member--ava {
+    width: 56px;
+    height: 56px;
+}
+
+.im-peer-admin-edit input:disabled {
+    opacity: .5;
+}
+
 .im-peer-removed .im-peer-admin {
     cursor: default;
 }

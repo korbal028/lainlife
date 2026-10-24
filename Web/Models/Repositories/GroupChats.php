@@ -183,6 +183,7 @@ public function getUserChatsCount(int $userId): int
         if(!$chat) return false;
         $admins = array_filter($chat->getAdmins(), fn($a) => (int)$a !== $userId);
         $this->chats->get($chatId)->update(["admins" => implode(",", $admins)]);
+        DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_admin_rights` WHERE `chat` = ? AND `user` = ?", $chatId, $userId);
         return true;
     }
 

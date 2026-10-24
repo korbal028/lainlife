@@ -32,10 +32,10 @@ final class GroupChatPresenter extends OpenVKPresenter
         return $chat;
     }
 
-    private function getManagedChat(int $peer): GroupChat
+    private function getChatWithAdminRight(int $peer, string $right): GroupChat
     {
         $chat = $this->getChat($peer);
-        if (!$chat->canManageParticipants($this->user->id)) {
+        if (!$chat->hasAdminRight($right, $this->user->id)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -228,7 +228,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         if ($chat->isBanned($userId)) {
-            if (!$chat->canManageParticipants($this->user->id)) {
+            if (!$chat->hasAdminRight("ban", $this->user->id)) {
                 header("HTTP/1.1 403 Forbidden");
                 $this->returnJson(["success" => false, "error" => "User was removed by an admin"]);
             }
@@ -252,7 +252,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getManagedChat($peer);
+        $chat = $this->getChatWithAdminRight($peer, "ban");
 
         // админ не может выгнать создателя и других админов
         if ($chat->isCreator($userId) || (!$chat->isCreator($this->user->id) && $chat->isAdmin($userId))) {
@@ -276,7 +276,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat = $this->getManagedChat($peer);
+        $chat = $this->getChatWithAdminRight($peer, "ban");
         $chat->unban($userId);
 
         $this->returnJson(["removed" => $chat->getBans()]);
@@ -324,6 +324,53 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->returnJson(["success" => true]);
     }
 
+    // назначение, правка и снятие админа; выдать можно только те права, что есть у себя
+    public function renderApiAdmin(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat   = $this->getChatWithAdminRight($peer, "add_admins");
+        $me     = $this->user->id;
+        $userId = (int) $this->postParam("user");
+        if (!$chat->isParticipant($userId) || $chat->isCreator($userId) || $userId === $me) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
+
+        $isAdmin = $chat->isAdmin($userId);
+        if ($isAdmin && !$chat->canEditAdmin($me, $userId)) {
+            header("HTTP/1.1 403 Forbidden");
+            exit();
+        }
+
+        if ($this->postParam("act") === "dismiss") {
+            if ($isAdmin) {
+                $this->groupChats->removeAdmin($chat->getId(), $userId);
+            }
+
+            $this->returnJson(["members" => $chat->getMembersInfo(true)]);
+        }
+
+        $rights = [];
+        foreach (array_keys(GroupChat::ADMIN_RIGHTS) as $key) {
+            $rights[$key] = $this->postParam("right_$key") === "1" && $chat->hasAdminRight($key, $me);
+        }
+
+        if (!$isAdmin) {
+            $this->groupChats->makeAdmin($chat->getId(), $userId);
+            $chat->removeException($userId);
+        }
+        $chat->setAdminRights($userId, $rights, $isAdmin ? $chat->getPromoter($userId) : $me);
+
+        if (!is_null($this->postParam("tag")) && $chat->hasAdminRight("tags", $me)) {
+            $color = (string) $this->postParam("color");
+            $chat->setTag($userId, (string) $this->postParam("tag"), preg_match("%^#[0-9a-f]{6}$%i", $color) ? $color : "#7a5bb5");
+        }
+
+        $this->returnJson(["members" => $chat->getMembersInfo(true)]);
+    }
+
     public function renderApiSetAvatar(int $peer): void
     {
         $this->assertUserLoggedIn();
@@ -365,7 +412,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->willExecuteWriteAction();
 
         $reset = $this->postParam("act") === "reset";
-        $chat  = $reset ? $this->getManagedChat($peer) : $this->getChatWithRight($peer, "invite");
+        $chat  = $reset ? $this->getChatWithAdminRight($peer, "invite") : $this->getChatWithRight($peer, "invite");
 
         $this->returnJson(["link" => $chat->getInviteLink($reset)]);
     }
@@ -386,8 +433,11 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $changesInfo     = !is_null($this->postParam("name")) || !is_null($this->postParam("description"));
-        $changesSettings = !is_null($this->postParam("history_visible")) || !is_null($this->postParam("slowmode")) || sizeof($permissions) > 0;
-        if (($changesInfo && !$chat->can("info", $this->user->id)) || ($changesSettings && !$chat->canManageParticipants($this->user->id))) {
+        $changesHistory = !is_null($this->postParam("history_visible"));
+        $changesRights  = !is_null($this->postParam("slowmode")) || sizeof($permissions) > 0;
+        if (($changesInfo && !$chat->can("info", $this->user->id))
+            || ($changesHistory && !$chat->canManageParticipants($this->user->id))
+            || ($changesRights && !$chat->hasAdminRight("ban", $this->user->id))) {
             header("HTTP/1.1 403 Forbidden");
             exit();
         }
@@ -428,7 +478,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->assertUserLoggedIn();
         $this->willExecuteWriteAction();
 
-        $chat   = $this->getManagedChat($peer);
+        $chat   = $this->getChatWithAdminRight($peer, "ban");
         $userId = (int) $this->postParam("user");
 
         if ($this->postParam("act") === "delete") {
@@ -510,7 +560,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $chat         = $this->getChat($peer);
         $participants = $chat->getParticipantIds();
-        $canManage    = $chat->canManageParticipants($this->user->id);
+        $canManage    = $chat->hasAdminRight("ban", $this->user->id);
 
         $result = [];
         foreach ($this->getFriendsSortedByMessages() as $friend) {
