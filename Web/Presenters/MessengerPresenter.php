@@ -759,6 +759,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "history_visible" => $isChat ? $peer->isHistoryVisible() : null,
             "permissions" => $isChat ? $peer->getPermissions() : null,
             "slowmode"  => $isChat ? $peer->getSlowmode() : null,
+            "exceptions" => ($isChat && $peer->canManageParticipants($me->getId())) ? array_values($peer->getExceptions()) : [],
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
             "members"   => $isChat ? $this->getChatMembers($peer) : [],
             "birthday"  => $birthday ? trim($birthday) : null,

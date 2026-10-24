@@ -193,7 +193,46 @@ function getAvatarUrl(string $size = 'normal'): string
             return array_fill_keys(array_keys(self::PERMISSIONS), true);
         }
 
-        return $this->getPermissions();
+        return $this->getException($userId)["permissions"] ?? $this->getPermissions();
+    }
+
+    function getExceptions(): array
+    {
+        $rows = DatabaseConnection::i()->getConnection()->query("SELECT `user`, `permissions`, `slowmode` FROM `group_chat_exceptions` WHERE `chat` = ?", $this->getId());
+
+        $exceptions = [];
+        foreach ($rows as $row) {
+            $saved = json_decode((string) $row->permissions, true);
+            $exceptions[(int) $row->user] = [
+                "id"          => (int) $row->user,
+                "permissions" => array_merge(self::PERMISSIONS, array_intersect_key(is_array($saved) ? $saved : [], self::PERMISSIONS)),
+                "slowmode"    => (int) $row->slowmode,
+            ];
+        }
+
+        return $exceptions;
+    }
+
+    function getException(int $userId): ?array
+    {
+        return $this->getExceptions()[$userId] ?? null;
+    }
+
+    function setException(int $userId, array $permissions, ?int $slowmode): void
+    {
+        $current     = $this->getException($userId);
+        $permissions = array_merge($current["permissions"] ?? $this->getPermissions(), array_map("boolval", array_intersect_key($permissions, self::PERMISSIONS)));
+        if (!in_array($slowmode, self::SLOWMODE_INTERVALS, true)) {
+            $slowmode = $current["slowmode"] ?? $this->getSlowmode();
+        }
+
+        $row = ["chat" => $this->getId(), "user" => $userId, "permissions" => json_encode($permissions), "slowmode" => $slowmode];
+        DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_exceptions` ? ON DUPLICATE KEY UPDATE ?", $row, ["permissions" => $row["permissions"], "slowmode" => $slowmode]);
+    }
+
+    function removeException(int $userId): void
+    {
+        DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_exceptions` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId);
     }
 
     function can(string $permission, int $userId): bool
@@ -219,7 +258,11 @@ function getAvatarUrl(string $size = 'normal'): string
 
     function getSlowmodeFor(int $userId): int
     {
-        return $this->canManageParticipants($userId) ? 0 : $this->getSlowmode();
+        if ($this->canManageParticipants($userId)) {
+            return 0;
+        }
+
+        return $this->getException($userId)["slowmode"] ?? $this->getSlowmode();
     }
 
     function getSlowmodeWait(int $userId): int

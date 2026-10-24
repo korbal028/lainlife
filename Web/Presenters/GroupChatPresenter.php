@@ -257,6 +257,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $this->groupChats->removeAdmin($chat->getId(), $userId);
+        $chat->removeException($userId);
         $this->returnJson(["success" => true]);
     }
 
@@ -273,6 +274,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $this->groupChats->leaveChat($chat->getId(), $this->user->id);
         $this->groupChats->removeAdmin($chat->getId(), $this->user->id);
+        $chat->removeException($this->user->id);
         $this->returnJson(["success" => true]);
     }
 
@@ -398,6 +400,37 @@ final class GroupChatPresenter extends OpenVKPresenter
             "permissions"     => $chat->getPermissions(),
             "slowmode"        => $chat->getSlowmode(),
         ]);
+    }
+
+    public function renderApiException(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat   = $this->getManagedChat($peer);
+        $userId = (int) $this->postParam("user");
+
+        if ($this->postParam("act") === "delete") {
+            $chat->removeException($userId);
+            $this->returnJson(["exceptions" => array_values($chat->getExceptions())]);
+        }
+
+        if (!$chat->isParticipant($userId) || $chat->canManageParticipants($userId)) {
+            header("HTTP/1.1 400 Bad Request");
+            exit();
+        }
+
+        $permissions = [];
+        foreach (array_keys(GroupChat::PERMISSIONS) as $key) {
+            if (!is_null($this->postParam("perm_$key"))) {
+                $permissions[$key] = $this->postParam("perm_$key") === "1";
+            }
+        }
+
+        $slowmode = $this->postParam("slowmode");
+        $chat->setException($userId, $permissions, is_null($slowmode) ? null : (int) $slowmode);
+
+        $this->returnJson(["exceptions" => array_values($chat->getExceptions())]);
     }
 
     public function renderApiTag(int $peer): void

@@ -1761,6 +1761,11 @@
                 ownerRole:  {tr("messenger_chat_admins_owner")},
                 promotedBy: {tr("messenger_chat_admins_promoted_by", "%NAME%")},
                 addAdmin:   {tr("messenger_chat_admins_add")},
+                addException: {tr("messenger_chat_exceptions_add")},
+                delException: {tr("messenger_chat_exceptions_delete")},
+                noUsers:    {tr("messenger_chat_exceptions_empty")},
+                pickMember: {tr("messenger_chat_exceptions_pick")},
+                exQuestion: {tr("messenger_chat_exceptions_question", "%NAME%")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
 
@@ -1892,7 +1897,7 @@
                 : sec < 3600 ? PEER_STR.min.replace("%N%", sec / 60)
                 : PEER_STR.hour.replace("%N%", sec / 3600);
 
-            const renderRights = info => {
+            const renderRights = (info, forUser = false) => {
                 const toggle = (name, label, on) => `
                     <label class="im-peer-toggle">
                         <span>${ escapeHtml(label) }</span>
@@ -1904,7 +1909,7 @@
                 ];
 
                 return `
-                    <div class="im-peer-page im-peer-rights" data-page="rights" hidden>
+                    <div class="im-peer-page im-peer-rights" data-page="${ forUser ? "user-rights" : "rights" }" hidden>
                         <div class="im-peer-rights--title">${ escapeHtml(PEER_STR.rightsQuestion) }</div>
                         ${ toggle("send", PEER_STR.rightSend, info.permissions.send) }
                         <div class="im-peer-toggle im-peer-rights--expand">
@@ -1932,16 +1937,23 @@
                             </div>
                             <div class="im-peer-rights--hint">${ escapeHtml(PEER_STR.slowHint) }</div>
                         </div>
-                        <div class="im-peer-section">
-                            <a class="im-peer-row" data-manage="exceptions">
-                                <img src="${ OXYGEN }actions/im-user.png" alt="" />
-                                <span>${ escapeHtml(PEER_STR.exceptions) }</span>
-                            </a>
-                            <a class="im-peer-row" data-manage="removed">
-                                <img src="${ OXYGEN }actions/im-kick-user.png" alt="" />
-                                <span>${ escapeHtml(PEER_STR.removed) }</span>
-                            </a>
-                        </div>
+                        ${ forUser ? `
+                            <div class="im-peer-section">
+                                <a class="im-peer-row im-peer-danger" data-manage="exception-delete">
+                                    <span>${ escapeHtml(PEER_STR.delException) }</span>
+                                </a>
+                            </div>` : `
+                            <div class="im-peer-section">
+                                <a class="im-peer-row" data-manage="exceptions">
+                                    <img src="${ OXYGEN }actions/im-user.png" alt="" />
+                                    <span>${ escapeHtml(PEER_STR.exceptions) }</span>
+                                    <span class="im-peer-row--value">${ info.exceptions.length }</span>
+                                </a>
+                                <a class="im-peer-row" data-manage="removed">
+                                    <img src="${ OXYGEN }actions/im-kick-user.png" alt="" />
+                                    <span>${ escapeHtml(PEER_STR.removed) }</span>
+                                </a>
+                            </div>` }
                     </div>`;
             };
 
@@ -1969,6 +1981,25 @@
                         <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.notFound) }</div>
                     </div>`;
             };
+
+            // исключения и выбор участника для нового исключения, списки заполняются при открытии
+            const renderExceptionPages = () => ["exceptions", "exception-pick"].map(name => `
+                <div class="im-peer-page im-peer-admins" data-page="${ name }" hidden>
+                    <div class="im-peer-search--bar">
+                        <input type="search" placeholder="${ escapeHtml(PEER_STR.searchAny) }" autocomplete="off" />
+                    </div>
+                    <div class="im-peer-admins--list"></div>
+                    <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.noUsers) }</div>
+                </div>`).join("");
+
+            const renderMemberRow = (m, act, label, avatarStyle) => `
+                <a class="im-peer-member im-peer-admin" data-manage="${ act }" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
+                    <img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" />
+                    <span class="im-peer-admin--info">
+                        <span class="im-peer-member--name">${ escapeHtml(m.name) }</span>
+                        ${ label ? `<span class="im-peer-label">${ escapeHtml(label) }</span>` : "" }
+                    </span>
+                </a>`;
 
             const openAddMembers = async canReset => {
                 const postInvite = async act => {
@@ -2127,7 +2158,7 @@
                             <div class="im-peer-search--results"></div>
                         </div>
                         ${ info.can_manage || info.can_edit_info ? renderManage(info, avatarStyle) : "" }
-                        ${ info.can_manage ? renderRights(info) + renderAdmins(info, avatarStyle) : "" }
+                        ${ info.can_manage ? renderRights(info) + renderRights(info, true) + renderAdmins(info, avatarStyle) + renderExceptionPages() : "" }
                         ${ info.can_tag ? renderTagPage(info, avatarStyle) : "" }
                     `,
                     buttons: [escapeHtml(PEER_STR.close)],
@@ -2146,6 +2177,9 @@
                 const manage = root.querySelector('[data-page="manage"]');
                 const rights = root.querySelector('[data-page="rights"]');
                 const admins = root.querySelector('[data-page="admins"]');
+                const userRights    = root.querySelector('[data-page="user-rights"]');
+                const exceptions    = root.querySelector('[data-page="exceptions"]');
+                const exceptionPick = root.querySelector('[data-page="exception-pick"]');
                 const tagPage = root.querySelector('[data-page="tag"]');
                 const close = () => msg.close();
 
@@ -2161,49 +2195,55 @@
                 const saveBtn   = u(`<button class="button im-peer-save" hidden>${ escapeHtml(PEER_STR.save) }</button>`).first();
                 // в администраторах: «добавить» слева, «закрыть» возвращает в управление
                 const addAdminBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addAdmin) }</button>`).first();
+                const addExceptionBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addException) }</button>`).first();
                 const doneBtn     = u(`<button class="button im-peer-done" hidden>${ escapeHtml(PEER_STR.close) }</button>`).first();
-                if(manage) action.prepend(manageBtn, addAdminBtn);
+                if(manage) action.prepend(manageBtn, addAdminBtn, addExceptionBtn);
                 if(manage || tagPage) action.append(cancelBtn, saveBtn, doneBtn);
 
                 let shown = main;
                 const setPage = page => {
                     shown = page;
-                    const editing = page === manage || page === rights || page === tagPage;
-                    [main, list, found, manage, rights, admins, tagPage].forEach(p => p && (p.hidden = p !== page));
-                    backBtn.hidden   = page === main || editing || page === admins;
+                    const editing = [manage, rights, userRights, tagPage].includes(page);
+                    const listing = [admins, exceptions, exceptionPick].includes(page);
+                    [main, list, found, manage, rights, userRights, admins, exceptions, exceptionPick, tagPage].forEach(p => p && (p.hidden = p !== page));
+                    backBtn.hidden   = page === main || editing || listing;
                     manageBtn.hidden = page !== main;
                     cancelBtn.hidden = saveBtn.hidden = !editing;
-                    addAdminBtn.hidden = doneBtn.hidden = page !== admins;
-                    closeBtn.hidden  = editing || page === admins;
+                    addAdminBtn.hidden = page !== admins;
+                    addExceptionBtn.hidden = page !== exceptions;
+                    doneBtn.hidden   = !listing;
+                    closeBtn.hidden  = editing || listing;
                 };
 
                 // общий тумблер медиа включает и выключает все пункты, счётчики пересчитываются сразу
-                const updateRights = () => {
-                    const media = [...rights.querySelectorAll('[name^="media_"]')];
+                const updateRights = (page = rights) => {
+                    const media = [...page.querySelectorAll('[name^="media_"]')];
                     const on    = media.filter(c => c.checked).length;
-                    const all   = [...rights.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')];
+                    const all   = [...page.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')];
 
-                    rights.querySelector('[name="media"]').checked = on > 0;
-                    rights.querySelector(".im-peer-rights--count").textContent = `${ on }/${ media.length }`;
-                    manage.querySelector('[data-manage="rights"] .im-peer-row--value').textContent = `${ all.filter(c => c.checked).length }/${ all.length }`;
+                    page.querySelector('[name="media"]').checked = on > 0;
+                    page.querySelector(".im-peer-rights--count").textContent = `${ on }/${ media.length }`;
+                    if(page === rights) manage.querySelector('[data-manage="rights"] .im-peer-row--value').textContent = `${ all.filter(c => c.checked).length }/${ all.length }`;
                 };
 
-                if(rights) {
-                    rights.addEventListener("change", e => {
-                        if(e.target.name === "media") rights.querySelectorAll('[name^="media_"]').forEach(c => c.checked = e.target.checked);
-                        updateRights();
+                [rights, userRights].forEach(page => {
+                    if(!page) return;
+
+                    page.addEventListener("change", e => {
+                        if(e.target.name === "media") page.querySelectorAll('[name^="media_"]').forEach(c => c.checked = e.target.checked);
+                        updateRights(page);
                     });
-                    rights.addEventListener("input", e => {
-                        if(e.target.name === "slowmode") setSlowRange(Number(e.target.value));
+                    page.addEventListener("input", e => {
+                        if(e.target.name === "slowmode") setSlowRange(page, Number(e.target.value));
                     });
                     // список медиа раскрывается кликом по строке, галочка справа его не трогает
-                    rights.querySelector(".im-peer-rights--expand").addEventListener("click", e => {
+                    page.querySelector(".im-peer-rights--expand").addEventListener("click", e => {
                         if(e.target.matches("input")) return;
-                        const media = rights.querySelector(".im-peer-rights--media");
+                        const media = page.querySelector(".im-peer-rights--media");
                         media.hidden = !media.hidden;
                     });
-                    updateRights();
-                }
+                    updateRights(page);
+                });
 
                 // поиск по администраторам прямо в списке
                 admins?.querySelector("input").addEventListener("input", e => {
@@ -2350,23 +2390,96 @@
                     body.scrollTop = 0;
                 };
 
-                const rightBoxes   = () => [...rights.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')].filter(box => box.name.replace(/^media_/, "") in info.permissions);
-                const slowRange    = rights?.querySelector('[name="slowmode"]');
-                const setSlowRange = index => {
-                    slowRange.value = index;
-                    rights.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === index));
+                const rightBoxes   = page => [...page.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')].filter(box => box.name.replace(/^media_/, "") in info.permissions);
+                const setSlowRange = (page, index) => {
+                    page.querySelector('[name="slowmode"]').value = index;
+                    page.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === index));
                 };
-                const rightsFields = () => ({
-                    ...Object.fromEntries(rightBoxes().map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"])),
-                    slowmode: SLOWMODE[Number(slowRange.value)],
+                const rightsFields = page => ({
+                    ...Object.fromEntries(rightBoxes(page).map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"])),
+                    slowmode: SLOWMODE[Number(page.querySelector('[name="slowmode"]').value)],
                 });
-                const showRights = () => {
-                    rightBoxes().forEach(box => box.checked = info.permissions[box.name.replace(/^media_/, "")]);
-                    setSlowRange(Math.max(0, SLOWMODE.indexOf(info.slowmode)));
-                    updateRights();
+                const fillRights = (page, permissions, slowmode) => {
+                    rightBoxes(page).forEach(box => box.checked = permissions[box.name.replace(/^media_/, "")]);
+                    setSlowRange(page, Math.max(0, SLOWMODE.indexOf(slowmode)));
+                    updateRights(page);
+                };
+                // из исключений возвращаемся без перезаполнения, чтобы не потерять несохранённые правки
+                const showRights = (refill = true) => {
+                    if(refill) fillRights(rights, info.permissions, info.slowmode);
                     head.textContent = PEER_STR.rights;
                     setPage(rights);
                     body.scrollTop = 0;
+                };
+
+                let exceptionUser = null;
+                const permCount = perms => {
+                    const values = Object.values(perms);
+                    return `${ PEER_STR.rights }: ${ values.filter(Boolean).length }/${ values.length }`;
+                };
+                const filterMembers = page => {
+                    const q    = page.querySelector("input").value.trim().toLowerCase();
+                    const rows = [...page.querySelectorAll(".im-peer-admin")];
+                    rows.forEach(row => row.hidden = !row.dataset.name.includes(q));
+                    page.querySelector(".im-peer-empty").hidden = rows.some(row => !row.hidden);
+                };
+                const fillMembers = (page, members, label) => {
+                    page.querySelector(".im-peer-admins--list").innerHTML = members.map(m => renderMemberRow(m, "exception", label(m), avatarStyle)).join("");
+                    page.querySelector("input").value = "";
+                    filterMembers(page);
+                };
+                [exceptions, exceptionPick].forEach(page => page?.querySelector("input").addEventListener("input", () => filterMembers(page)));
+
+                const showExceptions = () => {
+                    const items = info.exceptions.map(ex => [ex, info.members.find(m => m.id === ex.id)]).filter(([, m]) => m);
+                    const perms = new Map(items.map(([ex, m]) => [m, ex.permissions]));
+                    fillMembers(exceptions, items.map(([, m]) => m), m => permCount(perms.get(m)));
+                    head.textContent = PEER_STR.exceptions;
+                    setPage(exceptions);
+                    body.scrollTop = 0;
+                };
+
+                const showExceptionPick = () => {
+                    fillMembers(exceptionPick, info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id)), () => "");
+                    head.textContent = PEER_STR.pickMember;
+                    setPage(exceptionPick);
+                    body.scrollTop = 0;
+                };
+
+                const showUserRights = id => {
+                    const member = info.members.find(m => m.id === id);
+                    const ex     = info.exceptions.find(ex => ex.id === id);
+                    if(!member) return;
+
+                    exceptionUser = id;
+                    fillRights(userRights, ex?.permissions ?? info.permissions, ex?.slowmode ?? info.slowmode);
+                    userRights.querySelector(".im-peer-rights--title").textContent = PEER_STR.exQuestion.replace("%NAME%", member.name);
+                    userRights.querySelector('[data-manage="exception-delete"]').closest(".im-peer-section").hidden = !ex;
+                    head.textContent = member.name;
+                    setPage(userRights);
+                    body.scrollTop = 0;
+                };
+
+                const saveException = async fields => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+                    fd.set("user", exceptionUser);
+                    Object.entries(fields).forEach(([key, value]) => fd.set(key, value));
+
+                    const res = await fetch(`/im/api/chat${ PEER_SEL }/exception.json`, { method: "POST", body: fd });
+                    if(!res.ok) throw new Error(res.status);
+
+                    info.exceptions = (await res.json()).exceptions;
+                    rights.querySelector('[data-manage="exceptions"] .im-peer-row--value').textContent = info.exceptions.length;
+                };
+
+                const deleteException = async () => {
+                    try {
+                        await saveException({ act: "delete" });
+                        showExceptions();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
                 };
 
                 const showAdmins = () => {
@@ -2377,7 +2490,8 @@
 
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
-                doneBtn.addEventListener("click", showManage);
+                addExceptionBtn.addEventListener("click", showExceptionPick);
+                doneBtn.addEventListener("click", () => shown === exceptions ? showRights(false) : shown === exceptionPick ? showExceptions() : showManage());
                 const saveSettings = async fields => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
@@ -2401,8 +2515,11 @@
                             document.querySelector(".im-header-name")?.replaceChildren(info.name);
                             showMain();
                         } else if(shown === rights) {
-                            await saveSettings(rightsFields());
+                            await saveSettings(rightsFields(rights));
                             showManage();
+                        } else if(shown === userRights) {
+                            await saveException(rightsFields(userRights));
+                            showExceptions();
                         } else if(shown === tagPage) {
                             await saveTag();
                             showMain();
@@ -2411,7 +2528,7 @@
                         fastError(tr("messages_error_1"));
                     }
                 });
-                cancelBtn.addEventListener("click", () => shown === rights ? showManage() : showMain());
+                cancelBtn.addEventListener("click", () => shown === rights ? showManage() : shown === userRights ? showExceptions() : showMain());
 
                 const avatarFile = manage?.querySelector(".im-peer-manage--file");
                 avatarFile?.addEventListener("change", async () => {
@@ -2538,6 +2655,11 @@
                     if(e.target.closest('[data-manage="rights"]')) return showRights();
                     if(e.target.closest('[data-manage="tag"]')) return showTag();
                     if(e.target.closest('[data-manage="admins"]')) return showAdmins();
+                    if(e.target.closest('[data-manage="exceptions"]')) return showExceptions();
+                    if(e.target.closest('[data-manage="exception-delete"]')) return deleteException();
+
+                    const exceptionRow = e.target.closest('[data-manage="exception"]');
+                    if(exceptionRow) return showUserRights(Number(exceptionRow.dataset.id));
 
                     if(e.target.closest('[data-act="add-members"]')) {
                         close();

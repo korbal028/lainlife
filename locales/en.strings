@@ -1522,6 +1522,11 @@
 "messenger_chat_admins_owner" = "Owner";
 "messenger_chat_admins_promoted_by" = "Promoted by $1";
 "messenger_chat_admins_add" = "Add administrator";
+"messenger_chat_exceptions_add" = "Add exception";
+"messenger_chat_exceptions_delete" = "Remove exception";
+"messenger_chat_exceptions_empty" = "No users found.";
+"messenger_chat_exceptions_pick" = "Choose a member";
+"messenger_chat_exceptions_question" = "What can %NAME% do?";
 "messenger_chat_tag_edit" = "Edit tag";
 "messenger_chat_tag_placeholder" = "Tag";
 "messenger_chat_tag_hint" = "Share your role, title or how you're known in this chat. Your tag is visible to all members.";

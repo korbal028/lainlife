@@ -352,6 +352,10 @@ routes:
       handler: "GroupChat->apiSettings"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/exception.json"
+      handler: "GroupChat->apiException"
+      placeholders:
+          chat: "2\\d{9}"
     - url: "/im/api/chat{?chat}/tag.json"
       handler: "GroupChat->apiTag"
       placeholders:
