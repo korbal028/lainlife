@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace openvk\Web\Models\Entities\Traits;
 
-use openvk\Web\Models\Entities\{Photo, Video, Audio, Note, Document};
+use openvk\Web\Models\Entities\{Photo, Video, Audio, Note, Document, Post, Comment};
 use openvk\Web\Models\Entities\Messages\Sticker;
 
 trait TMessagePreview
@@ -39,6 +39,10 @@ trait TMessagePreview
                 return tr("msg_preview_note");
             } elseif ($attachment instanceof Sticker) {
                 return tr("msg_preview_sticker");
+            } elseif ($attachment instanceof Comment) {
+                return tr("msg_preview_comment");
+            } elseif ($attachment instanceof Post) {
+                return tr("msg_preview_wall");
             } else {
                 return tr("msg_preview_attachment");
             }

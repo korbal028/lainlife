@@ -58,6 +58,8 @@
                                 |
                                 <a class="comment-reply">{_reply}</a>
                             {/if}
+                            |
+                            <a href="javascript:repost({$comment->getId()}, 'comment')">{_share}</a>
                             {if $thisUser->getId() != $author->getRealId()}
                                 |
                                 {var $canReport = true}

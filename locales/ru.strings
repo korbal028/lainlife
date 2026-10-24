@@ -2791,6 +2791,17 @@
 "msg_preview_note" = "Заметка";
 "msg_preview_forwarded" = "Пересланное сообщение";
 "msg_preview_attachment" = "Вложение";
+"msg_preview_wall" = "Запись";
+"msg_preview_comment" = "Комментарий";
+"repost_to_messages" = "В личное сообщение или беседу";
+"repost_choose_dialog" = "Выберите, кому отправить";
+"repost_no_dialog" = "Выберите диалог, в который отправить.";
+"repost_sent_to_messages" = "Отправлено в сообщения";
+"comment_repost_label" = "Комментарий";
+"comment_repost_deleted" = "Комментарий удалён";
+"post_repost_deleted" = "Запись удалена";
+"repost_post_media" = "Вложения";
+"repost_dialogs_empty" = "Нет диалогов";
 
 /* Stickers */
 

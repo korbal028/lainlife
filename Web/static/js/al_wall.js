@@ -2105,6 +2105,16 @@ async function repost(id, repost_type = 'post') {
                     </label>
 
                     <select name="selected_repost_club" style='display:none;'></select>
+
+                    <label>
+                        <input type="radio" name="repost_type" value="messages">
+                        ${tr("repost_to_messages")}
+                    </label>
+
+                    <div id="repost_dialogs" class="repost-dialogs" style="display:none;">
+                        <input type="search" class="repost-dialogs--search" placeholder="${tr("repost_choose_dialog")}" autocomplete="off" />
+                        <div class="repost-dialogs--list"></div>
+                    </div>
                 </div>
 
                 <b>${tr('your_comment')}</b>
@@ -2180,6 +2190,35 @@ async function repost(id, repost_type = 'post') {
                     case 'video':
                         params.object = `video${id}`
                         break
+                    case 'comment':
+                        params.object = `comment${id}`
+                        break
+                }
+
+                if(type == 'messages') {
+                    const peer = node.find(`input[name='repost_peer']:checked`).nodes[0]?.value
+                    if(!peer) {
+                        return fastError(tr('repost_no_dialog'))
+                    }
+
+                    const fd = new FormData()
+                    fd.set('hash', u("meta[name=csrf]").attr("value"))
+                    fd.set('content', message)
+                    fd.set('attachments', [params.object, ...(attachments != '' ? attachments.split(',') : [])].join(','))
+
+                    try {
+                        const res = await fetch(`/im/api/messages${peer}/create.json`, { method: 'POST', body: fd })
+                        if(res.status !== 202) {
+                            throw new Error(res.status === 429 ? tr('rate_limit_error') : tr('messages_error_1'))
+                        }
+
+                        NewNotification(tr('information_-1'), tr('repost_sent_to_messages'), null, () => {window.router.route(`/im?sel=${peer}`)})
+                    } catch(e) {
+                        console.error(e)
+                        fastError(e.message)
+                    }
+
+                    return
                 }
     
                 params.message = message
@@ -2224,7 +2263,13 @@ async function repost(id, repost_type = 'post') {
     u('.ovk-diag-body').on('change', `input[name='repost_type']`, (e) => {
         const value = e.target.value
 
+        u('#repost_dialogs').attr('style', value == 'messages' ? 'display:flex' : 'display:none')
+        if(value == 'messages') {
+            loadRepostDialogs()
+        }
+
         switch(value) {
+            case 'messages':
             case 'wall':
                 u('#repost_signs').attr('style', 'display:none')
                 u(`select[name='selected_repost_club']`).attr('style', 'display:none')
@@ -2237,6 +2282,45 @@ async function repost(id, repost_type = 'post') {
                 u('.ovk-diag-body #__photoAttachment, .ovk-diag-body #__videoAttachment, .ovk-diag-body #__audioAttachment, .ovk-diag-body #__documentAttachment').attr('data-club', club_id)
                 break
         }
+    })
+
+    let repostDialogsLoaded = false
+    const loadRepostDialogs = async () => {
+        if(repostDialogsLoaded) {
+            return
+        }
+        repostDialogsLoaded = true
+
+        const list  = u('.repost-dialogs--list')
+        let   items = []
+        try {
+            for(let page = 1; page <= 3; page++) {
+                const res = await (await fetch(`/im/api/dialogs.json?p=${page}`)).json()
+                items = items.concat(res.items)
+                if(!res.more) {
+                    break
+                }
+            }
+        } catch(e) {
+            console.error(e)
+        }
+
+        if(items.length < 1) {
+            list.html(`<div class="repost-dialogs--empty">${escapeHtml(tr('repost_dialogs_empty'))}</div>`)
+            return
+        }
+
+        list.html(items.map(item => `
+            <label class="repost-dialogs--item" data-name="${escapeHtml(item.name.toLowerCase())}" data-vkify-choice-label="1">
+                <input type="radio" name="repost_peer" value="${Number(item.id)}">
+                <img src="${escapeHtml(item.avatar)}" alt="" loading="lazy">
+                <span>${escapeHtml(item.name)}</span>
+            </label>`).join(''))
+    }
+
+    u('.ovk-diag-body').on('input', '.repost-dialogs--search', (e) => {
+        const q = e.target.value.trim().toLowerCase()
+        u('.repost-dialogs--item').nodes.forEach(el => el.style.display = el.dataset.name.includes(q) ? '' : 'none')
     })
 
     u('.ovk-diag-body').on('change', `select[name='selected_repost_club']`, (e) => {

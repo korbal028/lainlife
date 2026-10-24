@@ -332,6 +332,15 @@ function parseAttachments($attachments, array $allow_types = ['photo', 'video', 
             'method' => 'getSticker',
             'onlyId' => true,
         ],
+        'wall' => [
+            'repo'   => 'openvk\Web\Models\Repositories\Posts',
+            'method' => 'getPostById',
+        ],
+        'comment' => [
+            'repo'   => 'openvk\Web\Models\Repositories\Comments',
+            'method' => 'get',
+            'onlyId' => true,
+        ],
     ];
 
     foreach ($exploded_attachments as $attachment_string) {

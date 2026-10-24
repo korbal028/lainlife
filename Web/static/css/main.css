@@ -7809,3 +7809,140 @@ hr {
 .club-chat-join {
     margin: 3px 0 0;
 }
+
+.msg-share {
+    margin: 4px 0;
+    padding: 2px 0 2px 10px;
+    border-left: 2px solid #c0cad5;
+}
+
+.msg-share--head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.messenger-app--messages---message ._content .msg-share span,
+.messenger-app--messages---message ._content .msg-share--date span {
+    display: inline;
+    width: auto;
+}
+
+.msg-share--ava {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.msg-share--who {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.msg-share--author {
+    font-weight: bold;
+}
+
+.msg-share--date,
+.msg-share--deleted,
+.msg-share--more {
+    color: #888;
+    font-size: 11px;
+}
+
+.msg-share--text {
+    display: -webkit-box;
+    margin-top: 4px;
+    overflow: hidden;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow-wrap: anywhere;
+}
+
+.shared-comment {
+    margin: 4px 0;
+    padding: 4px 0 4px 10px;
+    border-left: 2px solid #c0cad5;
+}
+
+.shared-comment--head {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.shared-comment--ava {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.shared-comment--who {
+    display: flex;
+    flex-direction: column;
+}
+
+.shared-comment--author {
+    font-weight: bold;
+}
+
+.shared-comment--meta {
+    color: #888;
+    font-size: 11px;
+}
+
+.shared-comment--text {
+    margin-top: 4px;
+    overflow-wrap: anywhere;
+}
+
+.repost-dialogs {
+    flex-direction: column;
+    gap: 4px;
+    margin: 2px 0 4px;
+}
+
+.repost-dialogs--search {
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.repost-dialogs--list {
+    max-height: 220px;
+    overflow-y: auto;
+    border: 1px solid #c0cad5;
+}
+
+.repost-dialogs--item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 6px;
+    cursor: pointer;
+}
+
+.repost-dialogs--item:hover {
+    background: rgba(81, 129, 184, .08);
+}
+
+.repost-dialogs--item input[type=radio] {
+    flex: none;
+    margin: 0;
+}
+
+.repost-dialogs--item img {
+    flex: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    object-fit: cover;
+}
+
+.repost-dialogs--empty {
+    padding: 10px;
+    color: #888;
+    text-align: center;
+}

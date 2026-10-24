@@ -54,6 +54,22 @@
             </div>
         </div>
     </div>
+{elseif $attachment instanceof \openvk\Web\Models\Entities\Comment}
+    {var $sharedAuthor = $attachment->getOwner()}
+    <div class="shared-comment">
+        <div class="shared-comment--head">
+            <a href="{$sharedAuthor->getURL()}"><img class="shared-comment--ava" src="{$sharedAuthor->getAvatarUrl('miniscule')}" alt="" /></a>
+            <div class="shared-comment--who">
+                <a class="shared-comment--author" href="{$sharedAuthor->getURL()}">{$sharedAuthor->getCanonicalName()}</a>
+                <a class="shared-comment--meta" href="{$attachment->getURL()}">{_comment_repost_label} · {$attachment->getPublicationTime()}</a>
+            </div>
+        </div>
+        {if $attachment->isDeleted()}
+            <div class="shared-comment--meta">{_comment_repost_deleted}</div>
+        {else}
+            <div class="shared-comment--text">{$attachment->getText()|noescape}</div>
+        {/if}
+    </div>
 {elseif $attachment instanceof \openvk\Web\Models\Entities\Post}
     {var $nestedLevel = ($nestedLevel ?? 0) + 1}
     {if $nestedLevel > 2}

@@ -261,6 +261,43 @@
                         <div data-bind="html: html"></div>
                     </div>
                 </div>
+                <div data-bind="if: type === 'wall'" class="msg-attach-j-wall">
+                    <div class="msg-share">
+                        <div class="msg-share--head">
+                            <a data-bind="attr: { href: wall.author_link }"><img class="msg-share--ava" data-bind="attr: { src: wall.avatar, alt: wall.author }" /></a>
+                            <div class="msg-share--who">
+                                <a class="msg-share--author" data-bind="attr: { href: wall.author_link }, text: wall.author"></a>
+                                <a class="msg-share--date" data-bind="attr: { href: link }, text: wall.date"></a>
+                            </div>
+                        </div>
+                        <!-- ko if: wall.deleted -->
+                        <div class="msg-share--deleted">{_post_repost_deleted}</div>
+                        <!-- /ko -->
+                        <!-- ko ifnot: wall.deleted -->
+                        <div class="msg-share--text" data-bind="html: wall.text"></div>
+                        <!-- ko if: wall.has_media -->
+                        <a class="msg-share--more" data-bind="attr: { href: link }">{_repost_post_media} →</a>
+                        <!-- /ko -->
+                        <!-- /ko -->
+                    </div>
+                </div>
+                <div data-bind="if: type === 'comment'" class="msg-attach-j-comment">
+                    <div class="msg-share msg-share_comment">
+                        <div class="msg-share--head">
+                            <a data-bind="attr: { href: comment.author_link }"><img class="msg-share--ava" data-bind="attr: { src: comment.avatar, alt: comment.author }" /></a>
+                            <div class="msg-share--who">
+                                <a class="msg-share--author" data-bind="attr: { href: comment.author_link }, text: comment.author"></a>
+                                <a class="msg-share--date" data-bind="attr: { href: link }"><span>{_comment_repost_label}</span> · <span data-bind="text: comment.date"></span></a>
+                            </div>
+                        </div>
+                        <!-- ko if: comment.deleted -->
+                        <div class="msg-share--deleted">{_comment_repost_deleted}</div>
+                        <!-- /ko -->
+                        <!-- ko ifnot: comment.deleted -->
+                        <div class="msg-share--text" data-bind="html: comment.text"></div>
+                        <!-- /ko -->
+                    </div>
+                </div>
                 <div data-bind="if: type === 'note'" class="msg-attach-j-note">
                     <div data-bind="attr: { 'data-att-type': 'note', 'data-att-id': id }">
                         <div class="attachment_note">

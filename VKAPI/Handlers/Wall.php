@@ -763,7 +763,9 @@ final class Wall extends VKAPIRequestHandler
         $this->willExecuteWriteAction();
 
         $postArray = [];
-        if (preg_match('/(wall|video|photo)((?:-?)[0-9]+)_([0-9]+)/', $object, $postArray) == 0) {
+        if (preg_match('/^comment([0-9]+)$/', $object, $commentMatch) === 1) {
+            $postArray = [$object, "comment", 0, (int) $commentMatch[1]];
+        } elseif (preg_match('/(wall|video|photo)((?:-?)[0-9]+)_([0-9]+)/', $object, $postArray) == 0) {
             $this->fail(100, "One of the parameters specified was missing or invalid: object is incorrect");
         }
 
@@ -788,6 +790,9 @@ final class Wall extends VKAPIRequestHandler
                 break;
             case 'video':
                 $repost_entity = (new VideosRepo())->getByOwnerAndVID((int) $postArray[2], (int) $postArray[3]);
+                break;
+            case 'comment':
+                $repost_entity = (new CommentsRepo())->get((int) $postArray[3]);
                 break;
         }
 

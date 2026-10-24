@@ -2850,6 +2850,17 @@
 "msg_preview_note" = "Note";
 "msg_preview_forwarded" = "Forwarded message";
 "msg_preview_attachment" = "Attachment";
+"msg_preview_wall" = "Post";
+"msg_preview_comment" = "Comment";
+"repost_to_messages" = "To a private message or chat";
+"repost_choose_dialog" = "Choose where to send";
+"repost_no_dialog" = "Choose a dialog to send to.";
+"repost_sent_to_messages" = "Sent to messages";
+"comment_repost_label" = "Comment";
+"comment_repost_deleted" = "Comment deleted";
+"post_repost_deleted" = "Post deleted";
+"repost_post_media" = "Attachments";
+"repost_dialogs_empty" = "No dialogs";
 
 /* Stickers */
 "stickers" = "Stickers";

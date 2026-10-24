@@ -347,7 +347,7 @@ final class MessengerPresenter extends OpenVKPresenter
         if (!empty($this->postParam("attachments"))) {
             $attachments_array = array_slice(explode(",", $this->postParam("attachments")), 0, OPENVK_ROOT_CONF["openvk"]["preferences"]["wall"]["postSizes"]["maxAttachments"]);
             if (sizeof($attachments_array) > 0) {
-                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker']);
+                $attachments = parseAttachments($attachments_array, ['photo', 'video', 'audio', 'note', 'doc', 'sticker', 'wall', 'comment']);
             }
         }
 

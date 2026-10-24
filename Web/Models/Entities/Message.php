@@ -503,6 +503,35 @@ class Message extends RowModel
                         "pub_time" => (string) $attachment->getPublicationTime(),
                     ],
                 ];    
+            } elseif ($attachment instanceof Comment) {
+                $commentAuthor = $attachment->getOwner();
+                $attachments[] = [
+                    "type"    => "comment",
+                    "link"    => $attachment->getURL(),
+                    "comment" => [
+                        "author"      => $commentAuthor->getCanonicalName(),
+                        "author_link" => $commentAuthor->getURL(),
+                        "avatar"      => $commentAuthor->getAvatarUrl("miniscule"),
+                        "text"        => $attachment->isDeleted() ? "" : $attachment->getText(),
+                        "date"        => (string) $attachment->getPublicationTime(),
+                        "deleted"     => $attachment->isDeleted(),
+                    ],
+                ];
+            } elseif ($attachment instanceof Post) {
+                $postAuthor = $attachment->getOwner();
+                $attachments[] = [
+                    "type" => "wall",
+                    "link" => "/wall" . $attachment->getPrettyId(),
+                    "wall" => [
+                        "author"      => $postAuthor->getCanonicalName(),
+                        "author_link" => $postAuthor->getURL(),
+                        "avatar"      => $postAuthor->getAvatarUrl("miniscule"),
+                        "text"        => $attachment->isDeleted() ? "" : $attachment->getText(),
+                        "date"        => (string) $attachment->getPublicationTime(),
+                        "deleted"     => $attachment->isDeleted(),
+                        "has_media"   => !$attachment->isDeleted() && sizeof(iterator_to_array($attachment->getChildren())) > 0,
+                    ],
+                ];
             } elseif ($attachment instanceof Sticker) {
                 $attachments[] = $attachment->simplify();
             } else {
