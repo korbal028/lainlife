@@ -956,6 +956,16 @@ ul {
     border-color: #2c2640;
 }
 
+.accounts-switcher--item:hover {
+    background: rgba(122, 156, 196, .1);
+}
+
+.accounts-switcher--info span,
+.accounts-switcher--hint,
+.accounts-add-hint {
+    color: #8b9ab5;
+}
+
 .repost-dialogs--item:hover {
     background: rgba(122, 156, 196, .1);
 }

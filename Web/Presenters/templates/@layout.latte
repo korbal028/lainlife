@@ -153,6 +153,9 @@
                                 <a href="/support">{_header_help} <b n:if="$ticketAnsweredCount > 0">({$ticketAnsweredCount})</b></a>
                             </div>
                             <div class="link">
+                                <a id="switch_account_link" href="javascript:void(0)">{_header_switch_account}</a>
+                            </div>
+                            <div class="link">
                                 <a id="logout_link" href="/logout?hash={urlencode($csrfToken)}">{_header_log_out}</a>
                             </div>
                             <div class="link header_divider_stick" id="search_box">
@@ -503,6 +506,7 @@
         {script "js/scroll.js"}
         {script "js/player.js"}
         {script "js/al_wall.js"}
+        {script "js/al_accounts.js"}
         {script "js/emoji_data.js"}
         {script "js/al_emoji.js"}
         {script "js/al_docs.js"}

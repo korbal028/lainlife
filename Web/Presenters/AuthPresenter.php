@@ -7,7 +7,7 @@ namespace openvk\Web\Presenters;
 use openvk\Web\Models\Entities\{IP, User, PasswordReset, EmailVerification};
 use openvk\Web\Models\Repositories\{Bans, IPs, Users, Restores, Verifications};
 use openvk\Web\Models\Exceptions\InvalidUserNameException;
-use openvk\Web\Util\Validator;
+use openvk\Web\Util\{Validator, Accounts};
 use Chandler\Session\Session;
 use Chandler\Security\User as ChandlerUser;
 use Chandler\Security\Authenticator;
@@ -182,9 +182,15 @@ final class AuthPresenter extends OpenVKPresenter
     public function renderLogin(): void
     {
         $redirUrl = $this->requestParam("jReturnTo");
+        $adding   = !is_null($this->user->identity) && $this->queryParam("add_account") === "1";
 
-        if (!is_null($this->user->identity)) {
+        if (!is_null($this->user->identity) && !$adding) {
             $this->redirect($redirUrl ?? $this->user->identity->getURL());
+        }
+
+        if ($adding) {
+            $this->template->addingAccount = true;
+            $this->template->disable_ajax  = 1;
         }
 
         if (!$this->hasPermission("user", "login", -1)) {
@@ -223,7 +229,13 @@ final class AuthPresenter extends OpenVKPresenter
                 }
             }
 
+            if ($adding) {
+                Accounts::remember(Accounts::current());
+                Session::i()->set("_su", null);
+            }
+
             $this->authenticator->authenticate($user->id);
+            Accounts::remember(Accounts::current());
             $this->redirect($redirUrl ?? $ovkUser->getURL());
         }
     }
@@ -252,10 +264,62 @@ final class AuthPresenter extends OpenVKPresenter
     {
         $this->assertUserLoggedIn();
         $this->assertNoCSRF();
+        Accounts::forget(Accounts::current());
         $this->authenticator->logout();
         Session::i()->set("_su", null);
 
+        $next = array_key_first(Accounts::getAccounts());
+        if (!is_null($next)) {
+            Accounts::switchTo($next);
+        }
+
         $this->redirect("/");
+    }
+
+    public function renderSwitchAccount(int $id): void
+    {
+        $this->assertUserLoggedIn();
+        $this->assertNoCSRF();
+
+        Accounts::remember(Accounts::current());
+        if ($id !== $this->user->id && !Accounts::switchTo($id)) {
+            $this->flashFail("err", tr("error"), tr("accounts_switch_failed"));
+        }
+
+        $this->redirect("/");
+    }
+
+    public function renderForgetAccount(int $id): void
+    {
+        $this->assertUserLoggedIn();
+        $this->assertNoCSRF();
+
+        if ($id !== $this->user->id) {
+            Accounts::forget(Accounts::getAccounts()[$id]["token"] ?? null);
+        }
+
+        $this->returnJson(["success" => true]);
+    }
+
+    public function renderApiAccounts(): void
+    {
+        $this->assertUserLoggedIn();
+
+        Accounts::remember(Accounts::current());
+        $accounts = [];
+        foreach (Accounts::getAccounts() as $id => $account) {
+            $user = $account["user"];
+            $accounts[] = [
+                "id"      => $id,
+                "name"    => $user->getCanonicalName(),
+                "avatar"  => $user->getAvatarUrl("miniscule"),
+                "contact" => Accounts::maskContact($user),
+                "unread"  => $id === $this->user->id ? 0 : $user->getUnreadMessagesCount() + $user->getNotificationsCount(),
+                "current" => $id === $this->user->id,
+            ];
+        }
+
+        $this->returnJson(["accounts" => $accounts, "limit" => Accounts::LIMIT]);
     }
 
     public function renderFinishRestoringPassword(): void

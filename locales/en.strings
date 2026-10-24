@@ -684,6 +684,15 @@
 "header_invite" = "invite";
 "header_help" = "help";
 "header_log_out" = "log out";
+"header_switch_account" = "switch account";
+"accounts_title" = "Accounts";
+"accounts_other" = "Other accounts";
+"accounts_add" = "Add account";
+"accounts_current" = "Current";
+"accounts_forget" = "Remove from list";
+"accounts_switch_failed" = "Could not switch: log in to this account again.";
+"accounts_add_hint" = "Log in to another account. It will be added to the list, and you will be able to switch between accounts without a password.";
+"accounts_limit" = "You can add up to %N% accounts.";
 "header_search" = "Search";
 
 "header_login" = "login";

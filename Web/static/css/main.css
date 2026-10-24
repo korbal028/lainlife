@@ -7922,3 +7922,70 @@ hr {
 .msg-share-html .post {
     margin: 4px 0;
 }
+
+.accounts-switcher--item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 4px;
+    cursor: pointer;
+}
+
+.accounts-switcher--item:hover {
+    background: rgba(81, 129, 184, .08);
+}
+
+.accounts-switcher--item_current {
+    cursor: default;
+}
+
+.accounts-switcher--item img {
+    flex: none;
+    width: 36px;
+    height: 36px;
+    border-radius: 2px;
+    object-fit: cover;
+}
+
+.accounts-switcher--item img.avatar-style-2 {
+    border-radius: 50%;
+}
+
+.accounts-switcher--info {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.accounts-switcher--info span {
+    color: #888;
+    font-size: 11px;
+}
+
+.accounts-switcher--badge {
+    flex: none;
+    min-width: 16px;
+    padding: 0 4px;
+    border-radius: 8px;
+    background: #e64646;
+    color: #fff;
+    font-size: 10px;
+    line-height: 16px;
+    text-align: center;
+}
+
+.accounts-switcher--forget {
+    flex: none;
+    padding: 0 4px;
+    color: #999;
+    font-size: 14px;
+}
+
+.accounts-switcher--hint,
+.accounts-add-hint {
+    margin: 8px 0;
+    color: #888;
+    font-size: 11px;
+    text-align: center;
+}

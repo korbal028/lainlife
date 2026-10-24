@@ -667,6 +667,15 @@
 "header_invite" = "пригласить";
 "header_help" = "помощь";
 "header_log_out" = "выйти";
+"header_switch_account" = "сменить аккаунт";
+"accounts_title" = "Аккаунты";
+"accounts_other" = "Другие аккаунты";
+"accounts_add" = "Добавить аккаунт";
+"accounts_current" = "Текущий";
+"accounts_forget" = "Убрать из списка";
+"accounts_switch_failed" = "Не удалось переключиться: войдите в этот аккаунт заново.";
+"accounts_add_hint" = "Войдите в другой аккаунт — он добавится в список, и между аккаунтами можно будет переключаться без пароля.";
+"accounts_limit" = "Можно добавить не больше %N% аккаунтов.";
 "header_search" = "Поиск";
 "header_login" = "вход";
 "header_registration" = "регистрация";
