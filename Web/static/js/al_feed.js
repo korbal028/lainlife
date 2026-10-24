@@ -131,7 +131,7 @@ u(document).on('click', '#__feed_settings_link', (e) => {
                 const CURRENT_PERPAGE = Number(__temp_url.searchParams.get('posts') ?? 10)
                 const CURRENT_PAGE = Number(__temp_url.searchParams.get('p') ?? 1)
                 const CURRENT_RETURN_BANNED = Number(__temp_url.searchParams.get('return_banned') ?? 0)
-                const CURRENT_ALIEN_POSTS    = Number(__temp_url.searchParams.get('with_alien_wall_posts') ?? 0)
+                const CURRENT_ALIEN_POSTS    = Number(__temp_url.searchParams.get('with_alien_wall_posts') ?? 1)
                 const COUNT = [1, 5, 10, 20, 30, 40, 50]
                 u('#_feed_settings_container #__content').html(`
                     <table class="flexible_table" cellspacing="7" cellpadding="0" border="0" align="center">
@@ -206,9 +206,9 @@ u(document).on('click', '#__feed_settings_link', (e) => {
                     }
 
                     if(INPUT_ALIEN_POSTS == 1) {
-                        FINAL_URL.searchParams.set('with_alien_wall_posts', 1)
-                    } else {
                         FINAL_URL.searchParams.delete('with_alien_wall_posts')
+                    } else {
+                        FINAL_URL.searchParams.set('with_alien_wall_posts', 0)
                     }
                     
                     window.router.route(FINAL_URL.href)

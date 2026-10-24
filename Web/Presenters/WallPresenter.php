@@ -201,7 +201,7 @@ final class WallPresenter extends OpenVKPresenter
         $ids[] = $this->user->id;
 
         $perPage = min((int) ($_GET["posts"] ?? OPENVK_DEFAULT_PER_PAGE), 50);
-        $withAlienWallPosts = (int) ($_GET["with_alien_wall_posts"] ?? 0);
+        $withAlienWallPosts = (int) ($_GET["with_alien_wall_posts"] ?? 1);
 
         $posts   = DatabaseConnection::i()
                    ->getContext()
@@ -236,7 +236,7 @@ final class WallPresenter extends OpenVKPresenter
         $page  = (int) ($_GET["p"] ?? 1);
         $pPage = min((int) ($_GET["posts"] ?? OPENVK_DEFAULT_PER_PAGE), 50);
 
-        $withAlienWallPosts = (int) ($_GET["with_alien_wall_posts"] ?? 0);
+        $withAlienWallPosts = (int) ($_GET["with_alien_wall_posts"] ?? 1);
 
         $queryBase = "FROM `posts` LEFT JOIN `groups` ON GREATEST(`posts`.`wall`, 0) = 0 AND `groups`.`id` = ABS(`posts`.`wall`) LEFT JOIN `profiles` ON LEAST(`posts`.`wall`, 0) = 0 AND `profiles`.`id` = ABS(`posts`.`wall`)";
         $queryBase .= " WHERE (`groups`.`hide_from_global_feed` = 0 OR `groups`.`name` IS NULL) AND ((`profiles`.`profile_type` = 0 AND `profiles`.`hide_global_feed` = 0) OR `profiles`.`first_name` IS NULL) AND `posts`.`deleted` = 0 AND `posts`.`suggested` = 0";
