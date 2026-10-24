@@ -2022,7 +2022,6 @@
                 && (!m.role || adminRank(info, info.me.id) < adminRank(info, m.id));
             const canEditAdmin = (info, m) => m.role === "admin" && outranks(info, m)
                 && (adminRank(info, info.me.id) === 0 || info.admin_rights.add_admins);
-            const adminWeight  = m => Object.values(m.rights ?? ADMIN_DEFAULTS).filter(Boolean).length;
             const adminDragBounds = (info, m) => {
                 const list   = info.members.filter(a => a.role === "admin");
                 const index  = list.indexOf(m);
@@ -2030,10 +2029,7 @@
                 if(index === -1 || myRank === Infinity || index < myRank) return null;
                 if(myRank === 0) return list.length > 1 ? [0, list.length - 1] : null;
 
-                let lo = index, hi = index;
-                while(lo > myRank && adminWeight(list[lo - 1]) === adminWeight(m)) lo--;
-                while(hi < list.length - 1 && adminWeight(list[hi + 1]) === adminWeight(m)) hi++;
-                return lo < hi ? [lo, hi] : null;
+                return list.length - 1 > myRank ? [myRank, list.length - 1] : null;
             };
 
             const renderAdminRows = (info, avatarStyle) => {

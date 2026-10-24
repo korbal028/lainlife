@@ -619,13 +619,6 @@ function getAvatarUrl(string $size = 'normal'): string
             if ($own === false || array_slice($order, 0, $own + 1) !== array_slice($ranking, 0, $own + 1)) {
                 return false;
             }
-
-            $rows = $this->getAdminRows();
-            foreach ($order as $i => $id) {
-                if ($this->getAdminWeight($id, $rows) !== $this->getAdminWeight($ranking[$i], $rows)) {
-                    return false;
-                }
-            }
         }
 
         $this->saveAdminRanking($order, $this->getAdminRows());
