@@ -105,7 +105,7 @@
                     }
 
                     if(act === "pin" || act === "unpin") {
-                        location.reload();
+                        refreshList(true);
                     } else if(act === "archive" || act === "unarchive") {
                         entry.remove();
                     } else {
@@ -289,18 +289,18 @@
 
                 // фоновое обновление списка
                 let lastListHtml = null;
-                const refreshList = async () => {
-                    if(document.hidden || drag || document.querySelector("[data-tippy-root]")) return;
+                const refreshList = async (force = false) => {
+                    if(!force && (document.hidden || drag || document.querySelector("[data-tippy-root]"))) return;
 
                     const params = new URLSearchParams(location.search);
                     const url = `/im/api/list?archive=${ isArchive ? 1 : 0 }&p=${ params.get("p") ?? 1 }`;
 
                     try {
                         const html = (await (await fetch(url)).text()).trim();
-                        if(html === "" || html === lastListHtml || html.includes("<html")) return;
+                        if(html === "" || html.includes("<html") || (!force && html === lastListHtml)) return;
 
                         lastListHtml = html;
-                        if(drag || document.querySelector("[data-tippy-root]")) return;
+                        if(!force && (drag || document.querySelector("[data-tippy-root]"))) return;
                         list.innerHTML = html;
                     } catch(e) {
                         console.error("Dialogs list refresh failed", e);
