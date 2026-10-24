@@ -1781,6 +1781,10 @@
                 promotedBy: {tr("messenger_chat_admins_promoted_by", "%NAME%")},
                 addAdmin:   {tr("messenger_chat_admins_add")},
                 editAdmin:  {tr("messenger_chat_admins_edit")},
+                more:       {tr("messenger_more")},
+                promoteMember: {tr("messenger_chat_member_promote")},
+                restrictMember: {tr("messenger_chat_member_restrict")},
+                removeMember: {tr("messenger_chat_member_remove")},
                 adminQuestion: {tr("messenger_chat_admins_question")},
                 adminDelete: {tr("messenger_chat_admins_right_delete")},
                 adminBan:   {tr("messenger_chat_admins_right_ban")},
@@ -2703,7 +2707,8 @@
                     const member = info.members.find(m => m.id === editedAdmin.id);
                     const row    = main.querySelector(`.im-peer-member[data-id="${ editedAdmin.id }"]`);
                     row?.querySelector(".msg-tag, .im-peer-member--role")?.remove();
-                    row?.insertAdjacentHTML("beforeend", renderMemberBadge(member ?? {}));
+                    const moreBtn = row?.querySelector(".im-peer-member--more");
+                    moreBtn ? moreBtn.insertAdjacentHTML("beforebegin", renderMemberBadge(member ?? {})) : row?.insertAdjacentHTML("beforeend", renderMemberBadge(member ?? {}));
                     if(member && (member.tag?.text ?? null) !== (editedAdmin.tag?.text ?? null)) window.Msg.setSenderTag(member.id, member.tag);
                 };
 
@@ -2958,6 +2963,69 @@
                         close();
                         return OpenVideo(video.dataset.id.split("_"));
                     }
+                });
+
+                const memberMenuItems = member => {
+                    if(!info.chat || !info.can_manage || member.id === info.me.id || member.role === "owner") return [];
+
+                    const isOwner = info.members.some(o => o.role === "owner" && o.id === info.me.id);
+                    return [
+                        ...(member.role === "admin" ? [[PEER_STR.editAdmin, () => showAdminEdit(member.id)]] : []),
+                        ...(!member.role && info.admin_rights.add_admins ? [[PEER_STR.promoteMember, () => showAdminEdit(member.id)]] : []),
+                        ...(!member.role && info.admin_rights.ban ? [[PEER_STR.restrictMember, () => showUserRights(member.id)]] : []),
+                        ...(info.admin_rights.ban && (!member.role || isOwner) ? [[PEER_STR.removeMember, () => removeMember(member), true]] : []),
+                    ];
+                };
+
+                const openMemberMenu = (member, rect) => {
+                    const items = memberMenuItems(member);
+                    if(items.length === 0) return false;
+
+                    ctxTip.setProps({ zIndex: 10000, getReferenceClientRect: () => rect });
+                    ctxTip.setContent((() => {
+                        const menu = u(`
+                            <div class="msg-menu">
+                                <div class="like_tooltip_wrapper crp-menu-tooltip crp-menu-context msg-menu-actions">
+                                    <div class="like_tooltip_body"></div>
+                                </div>
+                            </div>
+                        `);
+                        items.forEach(([text, handler, danger]) => {
+                            const link = u(`<a></a>`).text(text);
+                            if(danger) link.addClass("crp-menu-danger");
+                            link.on("click", ev => {
+                                ev.preventDefault();
+                                ctxTip.hide();
+                                handler();
+                            });
+                            menu.find(".like_tooltip_body").append(link);
+                        });
+
+                        return menu.first();
+                    })());
+                    ctxTip.show();
+                    return true;
+                };
+
+                main.querySelectorAll(".im-peer-member[data-id]").forEach(row => {
+                    const member = info.members.find(m => m.id === Number(row.dataset.id));
+                    if(member && memberMenuItems(member).length) row.insertAdjacentHTML("beforeend", `<span class="im-peer-member--more" title="${ escapeHtml(PEER_STR.more) }"></span>`);
+                });
+
+                main.addEventListener("click", e => {
+                    const more   = e.target.closest(".im-peer-member--more");
+                    const member = more && info.members.find(m => m.id === Number(more.closest("[data-id]").dataset.id));
+                    if(!more) return;
+
+                    e.preventDefault();
+                    const rect = more.getBoundingClientRect();
+                    if(member) openMemberMenu(member, new DOMRect(rect.left, rect.bottom, rect.width, 0));
+                });
+
+                main.addEventListener("contextmenu", e => {
+                    const row    = e.target.closest(".im-peer-member[data-id]");
+                    const member = row && info.members.find(m => m.id === Number(row.dataset.id));
+                    if(member && openMemberMenu(member, new DOMRect(e.clientX, e.clientY, 0, 0))) e.preventDefault();
                 });
 
                 const onRoster = async () => {

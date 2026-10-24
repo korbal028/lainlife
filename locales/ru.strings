@@ -1464,6 +1464,9 @@
 "messenger_chat_admins_add_hint" = "Этот администратор сможет назначать новых администраторов с такими же или меньшими правами.";
 "messenger_chat_admins_tag_hint" = "Короткий тег рядом с именем участника %NAME%.";
 "messenger_chat_admins_dismiss" = "Разжаловать администратора";
+"messenger_chat_member_promote" = "Назначить администратором";
+"messenger_chat_member_restrict" = "Ограничить пользователя";
+"messenger_chat_member_remove" = "Удалить из беседы";
 "messenger_chat_audit" = "Аудит";
 "messenger_chat_audit_hint" = "Действия участников и администраторов за последние 7 дней. Более старые записи удаляются автоматически.";
 "messenger_chat_audit_empty" = "За последнюю неделю в беседе ничего не происходило.";

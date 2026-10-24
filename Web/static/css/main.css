@@ -2532,6 +2532,37 @@ span.ok-smile.ok-smile {
     font-size: 11px;
 }
 
+.im-peer-member--more {
+    flex: none;
+    width: 20px;
+    height: 20px;
+    margin-left: 4px;
+    border-radius: 2px;
+    color: #828a99;
+    cursor: pointer;
+    visibility: hidden;
+    text-align: center;
+    line-height: 16px;
+}
+
+.im-peer-member--more::before {
+    content: "⋯";
+}
+
+.im-peer-member:hover .im-peer-member--more {
+    visibility: visible;
+}
+
+.im-peer-member--more:hover {
+    background: rgba(122, 156, 196, .2);
+}
+
+@media (hover: none) {
+    .im-peer-member--more {
+        visibility: visible;
+    }
+}
+
 .im-peer-member--role {
     flex: none;
     color: #888;
