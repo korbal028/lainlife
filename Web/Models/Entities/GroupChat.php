@@ -531,6 +531,13 @@ function getAvatarUrl(string $size = 'normal'): string
         return $this->isCreator($editorId) || ($this->hasAdminRight("add_admins", $editorId) && $this->getPromoter($adminId) === $editorId);
     }
 
+    function getRosterSignature(): string
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+
+        return md5(implode("|", [(string) $fresh->participants, (string) $fresh->admins, json_encode($this->getAdminRows()), json_encode($this->getTags())]));
+    }
+
     function getMembersInfo(bool $withRights = false): array
     {
         $users     = new Users();

@@ -624,6 +624,11 @@
                                     const members = document.querySelector(".im-header-members");
                                     if(members && data.members_label && members.textContent !== data.members_label) members.textContent = data.members_label;
 
+                                    if(data.roster) {
+                                        if(this.rosterSig && this.rosterSig !== data.roster) window.dispatchEvent(new Event("im:roster"));
+                                        this.rosterSig = data.roster;
+                                    }
+
                                     if(typeof data.pinned !== "undefined") {
                                         this.setPinned(data.pinned);
                                     }
@@ -2954,6 +2959,21 @@
                         return OpenVideo(video.dataset.id.split("_"));
                     }
                 });
+
+                const onRoster = async () => {
+                    if(!document.body.contains(root)) return window.removeEventListener("im:roster", onRoster);
+
+                    try {
+                        const fresh = await (await fetch(`/im/api/peer${ PEER_SEL }.json`)).json();
+                        Object.assign(info, { members: fresh.members, admin_rights: fresh.admin_rights, exceptions: fresh.exceptions, removed: fresh.removed });
+                        const count = manage?.querySelector('[data-manage="admins"] .im-peer-row--value');
+                        if(count) count.textContent = info.members.filter(m => m.role).length;
+                        if(shown === admins) showAdmins();
+                    } catch(e) {
+                        console.error("Chat roster refresh failed", e);
+                    }
+                };
+                window.addEventListener("im:roster", onRoster);
 
                 if(page === "search") showSearch();
             };
