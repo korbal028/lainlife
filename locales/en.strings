@@ -1537,6 +1537,8 @@
 "messenger_chat_member_promote" = "Promote to admin";
 "messenger_chat_member_restrict" = "Restrict user";
 "messenger_chat_member_remove" = "Remove from chat";
+"messenger_chat_role_owner" = "Chat owner";
+"messenger_chat_role_admin" = "Chat admin";
 "messenger_chat_audit" = "Audit";
 "messenger_chat_audit_hint" = "Actions of members and admins during the last 7 days. Older entries are deleted automatically.";
 "messenger_chat_audit_empty" = "Nothing happened in this chat during the last week.";

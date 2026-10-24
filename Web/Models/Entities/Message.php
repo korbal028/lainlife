@@ -327,6 +327,27 @@ class Message extends RowModel
 
     private static array $chatTags = [];
 
+    private static array $chatRoles = [];
+
+    private function getSenderRole(): ?string
+    {
+        $rec = $this->getRecord();
+        if (!$this->isInGroupChat() || $rec->sender_type !== User::class) {
+            return null;
+        }
+
+        $chat = (int) $rec->recipient_id;
+        if (!isset(self::$chatRoles[$chat])) {
+            $entity = (new GroupChats())->get($chat);
+            self::$chatRoles[$chat] = $entity ? [(int) $entity->getRecord()->creator_id, array_map("intval", $entity->getAdmins())] : [0, []];
+        }
+
+        [$creator, $admins] = self::$chatRoles[$chat];
+        $id = (int) $rec->sender_id;
+
+        return $id === $creator ? "owner" : (in_array($id, $admins, true) ? "admin" : null);
+    }
+
     private function getSenderTag(): ?array
     {
         $rec = $this->getRecord();
@@ -499,6 +520,7 @@ class Message extends RowModel
                 "avatar" => $author->getAvatarUrl(),
                 "name"   => $depth > 0 ? $author->getCanonicalName() : $author->getFirstName(),
                 "tag"    => $depth === 0 ? $this->getSenderTag() : null,
+                "role"   => $depth === 0 ? $this->getSenderRole() : null,
             ],
             "timing" => [
                 "sent"   => (string) $this->getSendTimeHumanized(),

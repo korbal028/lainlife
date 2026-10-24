@@ -81,6 +81,9 @@
                             <a href="#" data-bind="attr: { href: sender.link }">
                                 <strong data-bind="text: sender.name"></strong>
                             </a>
+                            <!-- ko if: sender.role -->
+                            <span class="msg-role" data-bind="html: emoji_span(sender.role === 'owner' ? '👑' : '🎩'), attr: { title: sender.role === 'owner' ? window.MSG_STR.roleOwner : window.MSG_STR.roleAdmin }"></span>
+                            <!-- /ko -->
                             <!-- ko if: sender.tag -->
                             <span class="msg-tag" data-bind="text: sender.tag.text, attr: { style: '--tag: ' + sender.tag.color }"></span>
                             <!-- /ko -->
@@ -372,6 +375,8 @@
             const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
 
             window.MSG_STR = {
+                roleOwner: {tr("messenger_chat_role_owner")},
+                roleAdmin: {tr("messenger_chat_role_admin")},
                 pin:     {tr("messenger_pin_message")},
                 unpin:   {tr("messenger_unpin_message")},
                 reply:   {tr("messenger_reply")},
@@ -625,7 +630,14 @@
                                     if(members && data.members_label && members.textContent !== data.members_label) members.textContent = data.members_label;
 
                                     if(data.roster) {
-                                        if(this.rosterSig && this.rosterSig !== data.roster) window.dispatchEvent(new Event("im:roster"));
+                                        if(this.rosterSig && this.rosterSig !== data.roster) {
+                                            window.dispatchEvent(new Event("im:roster"));
+                                            if(data.roles) window.messages().forEach((msg, i) => {
+                                                const role = msg.sender.id === data.roles.owner ? "owner" : data.roles.admins.includes(msg.sender.id) ? "admin" : null;
+                                                if(msg.action || (msg.sender.role ?? null) === role) return;
+                                                window.messages.splice(i, 1, Object.assign({}, msg, { sender: Object.assign({}, msg.sender, { role }) }));
+                                            });
+                                        }
                                         this.rosterSig = data.roster;
                                     }
 

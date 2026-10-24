@@ -2377,6 +2377,16 @@ span.ok-smile.ok-smile {
     text-overflow: ellipsis;
 }
 
+.msg-role {
+    display: inline-block;
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+.msg-role .emoji {
+    cursor: default;
+}
+
 .messenger-app--service {
     padding: 8px 20px;
     text-align: center;
