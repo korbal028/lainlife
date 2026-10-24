@@ -1766,6 +1766,13 @@
                 noUsers:    {tr("messenger_chat_exceptions_empty")},
                 pickMember: {tr("messenger_chat_exceptions_pick")},
                 exQuestion: {tr("messenger_chat_exceptions_question", "%NAME%")},
+                removedHint: {tr("messenger_chat_removed_hint")},
+                removedBy:  {tr("messenger_chat_removed_by", "%NAME%")},
+                unban:      {tr("messenger_chat_removed_unban")},
+                removeUser: {tr("messenger_chat_removed_add")},
+                removeTitle: {tr("messenger_chat_removed_confirm_title")},
+                removeText: {tr("messenger_chat_removed_confirm", "%NAME%")},
+                cantInvite: {tr("messenger_chat_removed_cant_invite")},
             };
             const OXYGEN     = "/assets/packages/static/openvk/img/oxygen-icons/64x64/";
 
@@ -1952,6 +1959,7 @@
                                 <a class="im-peer-row" data-manage="removed">
                                     <img src="${ OXYGEN }actions/im-kick-user.png" alt="" />
                                     <span>${ escapeHtml(PEER_STR.removed) }</span>
+                                    <span class="im-peer-row--value">${ info.removed.length }</span>
                                 </a>
                             </div>` }
                     </div>`;
@@ -1982,15 +1990,26 @@
                     </div>`;
             };
 
-            // исключения и выбор участника для нового исключения, списки заполняются при открытии
-            const renderExceptionPages = () => ["exceptions", "exception-pick"].map(name => `
-                <div class="im-peer-page im-peer-admins" data-page="${ name }" hidden>
+            // исключения, удалённые и выбор участника, списки заполняются при открытии
+            const renderExceptionPages = () => ["exceptions", "removed", "member-pick"].map(name => `
+                <div class="im-peer-page im-peer-admins im-peer-${ name }" data-page="${ name }" hidden>
                     <div class="im-peer-search--bar">
                         <input type="search" placeholder="${ escapeHtml(PEER_STR.searchAny) }" autocomplete="off" />
                     </div>
                     <div class="im-peer-admins--list"></div>
                     <div class="im-peer-empty" hidden>${ escapeHtml(PEER_STR.noUsers) }</div>
+                    ${ name === "removed" ? `<div class="im-peer-removed--hint">${ escapeHtml(PEER_STR.removedHint) }</div>` : "" }
                 </div>`).join("");
+
+            const renderRemovedRow = (m, avatarStyle) => `
+                <div class="im-peer-member im-peer-admin" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
+                    <a href="${ escapeHtml(m.link) }"><img class="im-peer-member--ava avatar-style-${ avatarStyle }" src="${ escapeHtml(m.avatar) }" alt="" loading="lazy" /></a>
+                    <span class="im-peer-admin--info">
+                        <a class="im-peer-member--name" href="${ escapeHtml(m.link) }">${ escapeHtml(m.name) }</a>
+                        ${ m.by ? `<span class="im-peer-label">${ escapeHtml(PEER_STR.removedBy.replace("%NAME%", m.by)) }</span>` : "" }
+                    </span>
+                    <a class="im-peer-removed--unban" data-manage="unban">${ escapeHtml(PEER_STR.unban) }</a>
+                </div>`;
 
             const renderMemberRow = (m, act, label, avatarStyle) => `
                 <a class="im-peer-member im-peer-admin" data-manage="${ act }" data-id="${ Number(m.id) }" data-name="${ escapeHtml(m.name.toLowerCase()) }">
@@ -2025,10 +2044,10 @@
 
                 const list = friends.length ? friends.map(f => `
                     <label class="im-add-member">
-                        <input type="checkbox" value="${ Number(f.id) }" ${ f.already_in_chat ? "checked disabled" : "" } />
+                        <input type="checkbox" value="${ Number(f.id) }" ${ f.already_in_chat ? "checked disabled" : f.banned ? "disabled" : "" } />
                         <img class="avatar-style-${ Number(window.openvk?.avatar_style ?? 0) }" src="${ escapeHtml(f.avatar) }" alt="" loading="lazy" />
                         <span class="im-add-member--name">${ escapeHtml(f.name) }</span>
-                        ${ f.already_in_chat ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.inChat) }</span>` : "" }
+                        ${ f.already_in_chat ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.inChat) }</span>` : f.banned ? `<span class="im-add-member--note">${ escapeHtml(PEER_STR.cantInvite) }</span>` : "" }
                     </label>`).join("") : `<div class="im-add-member--empty">${ escapeHtml(PEER_STR.noFriends) }</div>`;
 
                 const root = MessageBox(PEER_STR.addMembers, `
@@ -2179,7 +2198,8 @@
                 const admins = root.querySelector('[data-page="admins"]');
                 const userRights    = root.querySelector('[data-page="user-rights"]');
                 const exceptions    = root.querySelector('[data-page="exceptions"]');
-                const exceptionPick = root.querySelector('[data-page="exception-pick"]');
+                const removed       = root.querySelector('[data-page="removed"]');
+                const memberPick    = root.querySelector('[data-page="member-pick"]');
                 const tagPage = root.querySelector('[data-page="tag"]');
                 const close = () => msg.close();
 
@@ -2196,21 +2216,23 @@
                 // в администраторах: «добавить» слева, «закрыть» возвращает в управление
                 const addAdminBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addAdmin) }</button>`).first();
                 const addExceptionBtn = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.addException) }</button>`).first();
+                const removeUserBtn   = u(`<button class="button im-peer-manage-btn" hidden>${ escapeHtml(PEER_STR.removeUser) }</button>`).first();
                 const doneBtn     = u(`<button class="button im-peer-done" hidden>${ escapeHtml(PEER_STR.close) }</button>`).first();
-                if(manage) action.prepend(manageBtn, addAdminBtn, addExceptionBtn);
+                if(manage) action.prepend(manageBtn, addAdminBtn, addExceptionBtn, removeUserBtn);
                 if(manage || tagPage) action.append(cancelBtn, saveBtn, doneBtn);
 
                 let shown = main;
                 const setPage = page => {
                     shown = page;
                     const editing = [manage, rights, userRights, tagPage].includes(page);
-                    const listing = [admins, exceptions, exceptionPick].includes(page);
-                    [main, list, found, manage, rights, userRights, admins, exceptions, exceptionPick, tagPage].forEach(p => p && (p.hidden = p !== page));
+                    const listing = [admins, exceptions, removed, memberPick].includes(page);
+                    [main, list, found, manage, rights, userRights, admins, exceptions, removed, memberPick, tagPage].forEach(p => p && (p.hidden = p !== page));
                     backBtn.hidden   = page === main || editing || listing;
                     manageBtn.hidden = page !== main;
                     cancelBtn.hidden = saveBtn.hidden = !editing;
                     addAdminBtn.hidden = page !== admins;
                     addExceptionBtn.hidden = page !== exceptions;
+                    removeUserBtn.hidden = page !== removed;
                     doneBtn.hidden   = !listing;
                     closeBtn.hidden  = editing || listing;
                 };
@@ -2423,27 +2445,76 @@
                     rows.forEach(row => row.hidden = !row.dataset.name.includes(q));
                     page.querySelector(".im-peer-empty").hidden = rows.some(row => !row.hidden);
                 };
-                const fillMembers = (page, members, label) => {
-                    page.querySelector(".im-peer-admins--list").innerHTML = members.map(m => renderMemberRow(m, "exception", label(m), avatarStyle)).join("");
+                const fillMembers = (page, html) => {
+                    page.querySelector(".im-peer-admins--list").innerHTML = html;
                     page.querySelector("input").value = "";
                     filterMembers(page);
                 };
-                [exceptions, exceptionPick].forEach(page => page?.querySelector("input").addEventListener("input", () => filterMembers(page)));
+                [exceptions, removed, memberPick].forEach(page => page?.querySelector("input").addEventListener("input", () => filterMembers(page)));
 
                 const showExceptions = () => {
                     const items = info.exceptions.map(ex => [ex, info.members.find(m => m.id === ex.id)]).filter(([, m]) => m);
-                    const perms = new Map(items.map(([ex, m]) => [m, ex.permissions]));
-                    fillMembers(exceptions, items.map(([, m]) => m), m => permCount(perms.get(m)));
+                    fillMembers(exceptions, items.map(([ex, m]) => renderMemberRow(m, "exception", permCount(ex.permissions), avatarStyle)).join(""));
                     head.textContent = PEER_STR.exceptions;
                     setPage(exceptions);
                     body.scrollTop = 0;
                 };
 
-                const showExceptionPick = () => {
-                    fillMembers(exceptionPick, info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id)), () => "");
+                // выбор участника: для нового исключения или для удаления из беседы
+                let pickFor = null;
+                const showMemberPick = mode => {
+                    pickFor = mode;
+                    const members = mode === "exception"
+                        ? info.members.filter(m => !m.role && !info.exceptions.some(ex => ex.id === m.id))
+                        : info.members.filter(m => m.id !== info.me.id && m.role !== "owner" && (info.can_delete_for_all || !m.role));
+                    fillMembers(memberPick, members.map(m => renderMemberRow(m, "pick", "", avatarStyle)).join(""));
                     head.textContent = PEER_STR.pickMember;
-                    setPage(exceptionPick);
+                    setPage(memberPick);
                     body.scrollTop = 0;
+                };
+
+                const updateRemovedCount = () => rights.querySelector('[data-manage="removed"] .im-peer-row--value').textContent = info.removed.length;
+                const showRemoved = () => {
+                    fillMembers(removed, info.removed.map(m => renderRemovedRow(m, avatarStyle)).join(""));
+                    head.textContent = PEER_STR.removed;
+                    setPage(removed);
+                    body.scrollTop = 0;
+                };
+
+                const removeMember = member => MessageBox(PEER_STR.removeTitle, escapeHtml(PEER_STR.removeText.replace("%NAME%", member.name)), [PEER_STR.yes, PEER_STR.no], [async () => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/remove${ member.id }.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        info.removed    = (await res.json()).removed;
+                        info.members    = info.members.filter(m => m.id !== member.id);
+                        info.exceptions = info.exceptions.filter(ex => ex.id !== member.id);
+                        main.querySelector(`.im-peer-member[data-id="${ member.id }"]`)?.remove();
+                        rights.querySelector('[data-manage="exceptions"] .im-peer-row--value').textContent = info.exceptions.length;
+                        updateRemovedCount();
+                        showRemoved();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
+                }, Function.noop]);
+
+                const unbanMember = async id => {
+                    const fd = new FormData();
+                    fd.set("hash", {$csrfToken});
+
+                    try {
+                        const res = await fetch(`/im/api/chat${ PEER_SEL }/unban${ id }.json`, { method: "POST", body: fd });
+                        if(!res.ok) throw new Error(res.status);
+
+                        info.removed = (await res.json()).removed;
+                        updateRemovedCount();
+                        showRemoved();
+                    } catch(e) {
+                        fastError(tr("messages_error_1"));
+                    }
                 };
 
                 const showUserRights = id => {
@@ -2490,8 +2561,13 @@
 
                 backBtn.addEventListener("click", showMain);
                 manageBtn.addEventListener("click", showManage);
-                addExceptionBtn.addEventListener("click", showExceptionPick);
-                doneBtn.addEventListener("click", () => shown === exceptions ? showRights(false) : shown === exceptionPick ? showExceptions() : showManage());
+                addExceptionBtn.addEventListener("click", () => showMemberPick("exception"));
+                removeUserBtn.addEventListener("click", () => showMemberPick("remove"));
+                doneBtn.addEventListener("click", () => {
+                    if(shown === exceptions || shown === removed) return showRights(false);
+                    if(shown === memberPick) return pickFor === "exception" ? showExceptions() : showRemoved();
+                    showManage();
+                });
                 const saveSettings = async fields => {
                     const fd = new FormData();
                     fd.set("hash", {$csrfToken});
@@ -2658,8 +2734,19 @@
                     if(e.target.closest('[data-manage="exceptions"]')) return showExceptions();
                     if(e.target.closest('[data-manage="exception-delete"]')) return deleteException();
 
+                    if(e.target.closest('[data-manage="removed"]')) return showRemoved();
+
                     const exceptionRow = e.target.closest('[data-manage="exception"]');
                     if(exceptionRow) return showUserRights(Number(exceptionRow.dataset.id));
+
+                    const unbanBtn = e.target.closest('[data-manage="unban"]');
+                    if(unbanBtn) return unbanMember(Number(unbanBtn.closest("[data-id]").dataset.id));
+
+                    const picked = e.target.closest('[data-manage="pick"]');
+                    if(picked) {
+                        const id = Number(picked.dataset.id);
+                        return pickFor === "exception" ? showUserRights(id) : removeMember(info.members.find(m => m.id === id));
+                    }
 
                     if(e.target.closest('[data-act="add-members"]')) {
                         close();

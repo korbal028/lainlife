@@ -329,6 +329,47 @@ function getAvatarUrl(string $size = 'normal'): string
         DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_tags` ? ON DUPLICATE KEY UPDATE ?", $row, ["tag" => $text, "color" => $row["color"]]);
     }
 
+    function getBans(): array
+    {
+        $rows  = DatabaseConnection::i()->getConnection()->query("SELECT `user`, `admin`, `created` FROM `group_chat_bans` WHERE `chat` = ? ORDER BY `created` DESC", $this->getId());
+        $users = new Users();
+
+        $bans = [];
+        foreach ($rows as $row) {
+            $user  = $users->get((int) $row->user);
+            $admin = $users->get((int) $row->admin);
+            if (!$user) {
+                continue;
+            }
+
+            $bans[] = [
+                "id"     => $user->getId(),
+                "name"   => $user->getCanonicalName(),
+                "avatar" => $user->getAvatarUrl("miniscule"),
+                "link"   => $user->getURL(),
+                "by"     => $admin?->getCanonicalName(),
+            ];
+        }
+
+        return $bans;
+    }
+
+    function isBanned(int $userId): bool
+    {
+        return (bool) DatabaseConnection::i()->getConnection()->query("SELECT 1 FROM `group_chat_bans` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId)->fetch();
+    }
+
+    function ban(int $userId, int $adminId): void
+    {
+        $row = ["chat" => $this->getId(), "user" => $userId, "admin" => $adminId, "created" => time()];
+        DatabaseConnection::i()->getConnection()->query("INSERT INTO `group_chat_bans` ? ON DUPLICATE KEY UPDATE ?", $row, ["admin" => $adminId, "created" => $row["created"]]);
+    }
+
+    function unban(int $userId): void
+    {
+        DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_bans` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId);
+    }
+
     function getInviteLink(bool $reset = false): string
     {
         $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());

@@ -11,6 +11,7 @@
         <img class="im-join--avatar avatar-style-{$thisUser->getStyleAvatar()}" src="{$chat->getAvatarUrl('normal')}" alt="" />
         <b class="im-join--name">{$chat->getName()}</b>
         <span class="im-join--members">{tr("participants", $chat->getParticipantsCount())}</span>
-        <button type="submit" class="button">{_messenger_join_chat}</button>
+        <span n:if="$banned" class="im-join--banned">{_messenger_join_chat_banned}</span>
+        <button n:if="!$banned" type="submit" class="button">{_messenger_join_chat}</button>
     </form>
 {/block}

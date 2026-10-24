@@ -332,6 +332,10 @@ routes:
       handler: "GroupChat->apiRemoveParticipant"
       placeholders:
           chat: "2\\d{9}"
+    - url: "/im/api/chat{?chat}/unban{num}.json"
+      handler: "GroupChat->apiUnban"
+      placeholders:
+          chat: "2\\d{9}"
     - url: "/im/api/chat{?chat}/make-admin{num}.json"
       handler: "GroupChat->apiMakeAdmin"
       placeholders:

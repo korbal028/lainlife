@@ -1457,6 +1457,14 @@
 "messenger_chat_exceptions_empty" = "Пользователи не найдены.";
 "messenger_chat_exceptions_pick" = "Выберите участника";
 "messenger_chat_exceptions_question" = "Что может делать %NAME%?";
+"messenger_chat_removed_hint" = "Удалённых администраторами пользователей нельзя вернуть по ссылке-приглашению или через приглашение участника — только администратор может снова добавить их в беседу.";
+"messenger_chat_removed_by" = "Кто удалил: %NAME%";
+"messenger_chat_removed_unban" = "Разбанить";
+"messenger_chat_removed_add" = "Удалить пользователя";
+"messenger_chat_removed_confirm_title" = "Удаление из беседы";
+"messenger_chat_removed_confirm" = "Удалить %NAME% из беседы? Вернуть пользователя сможет только администратор.";
+"messenger_chat_removed_cant_invite" = "Удалили из беседы";
+"messenger_join_chat_banned" = "Администратор удалил вас из этой беседы, поэтому вступить по ссылке нельзя.";
 "messenger_chat_tag_edit" = "Изменить тег";
 "messenger_chat_tag_placeholder" = "Тег";
 "messenger_chat_tag_hint" = "Укажите свою роль, звание или то, как вас знают в этой беседе. Тег видят все участники.";

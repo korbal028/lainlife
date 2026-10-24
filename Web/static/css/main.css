@@ -2085,6 +2085,23 @@ span.ok-smile.ok-smile {
     font-weight: bold;
 }
 
+.im-peer-removed .im-peer-admin {
+    cursor: default;
+}
+
+.im-peer-removed--unban {
+    flex: none;
+    font-size: 12px;
+    cursor: pointer;
+}
+
+.im-peer-removed--hint {
+    padding: 10px 20px 20px;
+    text-align: center;
+    color: #888;
+    font-size: 12px;
+}
+
 .im-peer-admin--tag {
     flex: none;
     max-width: 140px;
@@ -2338,6 +2355,12 @@ span.ok-smile.ok-smile {
 .im-join--members {
     margin-bottom: 8px;
     color: #888;
+}
+
+.im-join--banned {
+    max-width: 320px;
+    text-align: center;
+    color: #c33;
 }
 
 .im-invite {

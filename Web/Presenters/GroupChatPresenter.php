@@ -227,6 +227,15 @@ final class GroupChatPresenter extends OpenVKPresenter
             exit();
         }
 
+        if ($chat->isBanned($userId)) {
+            if (!$chat->canManageParticipants($this->user->id)) {
+                header("HTTP/1.1 403 Forbidden");
+                $this->returnJson(["success" => false, "error" => "User was removed by an admin"]);
+            }
+
+            $chat->unban($userId);
+        }
+
         if (!$user || !$this->groupChats->addParticipant($chat->getId(), $userId)) {
             header("HTTP/1.1 400 Bad Request");
             $this->returnJson(["success" => false, "error" => "User already in chat"]);
@@ -258,7 +267,19 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $this->groupChats->removeAdmin($chat->getId(), $userId);
         $chat->removeException($userId);
-        $this->returnJson(["success" => true]);
+        $chat->ban($userId, $this->user->id);
+        $this->returnJson(["success" => true, "removed" => $chat->getBans()]);
+    }
+
+    public function renderApiUnban(int $peer, int $userId): void
+    {
+        $this->assertUserLoggedIn();
+        $this->willExecuteWriteAction();
+
+        $chat = $this->getManagedChat($peer);
+        $chat->unban($userId);
+
+        $this->returnJson(["removed" => $chat->getBans()]);
     }
 
     public function renderApiLeave(int $peer): void
@@ -467,8 +488,13 @@ final class GroupChatPresenter extends OpenVKPresenter
             $this->redirect($chat->getURL());
         }
 
+        $this->template->banned = $chat->isBanned($this->user->id);
         if ($_SERVER["REQUEST_METHOD"] === "POST") {
             $this->willExecuteWriteAction();
+
+            if ($this->template->banned) {
+                $this->flashFail("err", tr("error"), tr("messenger_join_chat_banned"));
+            }
 
             $this->groupChats->addParticipant($chat->getId(), $this->user->id);
             (new Correspondence($this->user->identity, $chat))->markAsJoined();
@@ -484,6 +510,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $chat         = $this->getChat($peer);
         $participants = $chat->getParticipantIds();
+        $canManage    = $chat->canManageParticipants($this->user->id);
 
         $result = [];
         foreach ($this->getFriendsSortedByMessages() as $friend) {
@@ -492,6 +519,7 @@ final class GroupChatPresenter extends OpenVKPresenter
                 "name"            => $friend->getCanonicalName(),
                 "avatar"          => $friend->getAvatarUrl("miniscule"),
                 "already_in_chat" => in_array($friend->getId(), $participants, true),
+                "banned"          => !$canManage && $chat->isBanned($friend->getId()),
             ];
         }
 

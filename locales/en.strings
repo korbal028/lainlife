@@ -1527,6 +1527,14 @@
 "messenger_chat_exceptions_empty" = "No users found.";
 "messenger_chat_exceptions_pick" = "Choose a member";
 "messenger_chat_exceptions_question" = "What can %NAME% do?";
+"messenger_chat_removed_hint" = "Users removed from the chat by admins can't rejoin via invite links or be invited by members. Only admins can add them back.";
+"messenger_chat_removed_by" = "Removed by %NAME%";
+"messenger_chat_removed_unban" = "Unban";
+"messenger_chat_removed_add" = "Remove user";
+"messenger_chat_removed_confirm_title" = "Remove from chat";
+"messenger_chat_removed_confirm" = "Remove %NAME% from the chat? Only admins will be able to add them back.";
+"messenger_chat_removed_cant_invite" = "Removed by an admin";
+"messenger_join_chat_banned" = "An admin removed you from this chat, so you can't rejoin via the invite link.";
 "messenger_chat_tag_edit" = "Edit tag";
 "messenger_chat_tag_placeholder" = "Tag";
 "messenger_chat_tag_hint" = "Share your role, title or how you're known in this chat. Your tag is visible to all members.";
