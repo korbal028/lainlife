@@ -37,6 +37,8 @@ class GroupChat extends RowModel
         "add_admins" => false,
     ];
 
+    public const LOG_TTL = 604800;
+
     public const SLOWMODE_INTERVALS = [0, 5, 10, 30, 60, 300, 900, 3600];
 
     public const TAG_MAX_LENGTH         = 16;
@@ -382,6 +384,40 @@ function getAvatarUrl(string $size = 'normal'): string
     function unban(int $userId): void
     {
         DatabaseConnection::i()->getConnection()->query("DELETE FROM `group_chat_bans` WHERE `chat` = ? AND `user` = ?", $this->getId(), $userId);
+    }
+
+    function log(string $type, int $actor, ?int $target = null, array $data = []): void
+    {
+        $db = DatabaseConnection::i()->getConnection();
+        $db->query("DELETE FROM `group_chat_log` WHERE `created` < ?", time() - self::LOG_TTL);
+        $db->query("INSERT INTO `group_chat_log` ?", [
+            "chat"    => $this->getId(),
+            "actor"   => $actor,
+            "target"  => $target,
+            "type"    => $type,
+            "data"    => json_encode($data, JSON_UNESCAPED_UNICODE),
+            "created" => time(),
+        ]);
+    }
+
+    function getLog(int $limit = 500): array
+    {
+        $rows  = DatabaseConnection::i()->getConnection()->query("SELECT * FROM `group_chat_log` WHERE `chat` = ? AND `created` >= ? ORDER BY `id` DESC LIMIT ?", $this->getId(), time() - self::LOG_TTL, $limit);
+        $users = new Users();
+
+        $log = [];
+        foreach ($rows as $row) {
+            $data  = json_decode((string) $row->data, true);
+            $log[] = (object) [
+                "type"    => $row->type,
+                "actor"   => $users->get((int) $row->actor),
+                "target"  => is_null($row->target) ? null : $users->get((int) $row->target),
+                "data"    => is_array($data) ? $data : [],
+                "created" => new DateTime((int) $row->created),
+            ];
+        }
+
+        return $log;
     }
 
     function getInviteLink(bool $reset = false): string

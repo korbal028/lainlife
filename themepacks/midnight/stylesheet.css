@@ -948,6 +948,25 @@ ul {
     color: #8b9ab5;
 }
 
+.im-audit--hint {
+    background: #16131f;
+    color: #8b9ab5;
+}
+
+.im-audit--item {
+    border-color: #2c2640;
+}
+
+.im-audit--quote {
+    border-color: #4a3f6b;
+}
+
+.im-audit--label,
+.im-audit--time,
+.im-audit--empty {
+    color: #8b9ab5;
+}
+
 .im-peer-manage--name span,
 .im-peer-row--value {
     color: #a99ad8;

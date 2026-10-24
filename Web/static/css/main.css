@@ -2351,6 +2351,74 @@ span.ok-smile.ok-smile {
     text-overflow: ellipsis;
 }
 
+.im-audit {
+    padding: 0 0 12px;
+}
+
+.im-audit--hint {
+    padding: 10px 20px;
+    background: #f7f8fa;
+    color: #888;
+    font-size: 11px;
+}
+
+.im-audit--empty {
+    padding: 40px 20px;
+    text-align: center;
+    color: #888;
+}
+
+.im-audit--item {
+    display: flex;
+    gap: 10px;
+    padding: 10px 20px;
+    border-bottom: 1px solid #e7e8ec;
+}
+
+.im-audit--ava {
+    flex: none;
+    width: 36px;
+    height: 36px;
+}
+
+.im-audit--body {
+    flex: 1;
+    min-width: 0;
+}
+
+.im-audit--text .msg-tag {
+    margin-left: 0;
+}
+
+.im-audit--quote {
+    margin-top: 6px;
+    padding: 2px 0 2px 8px;
+    border-left: 2px solid #c0cad5;
+    overflow-wrap: anywhere;
+}
+
+.im-audit--label {
+    display: block;
+    color: #888;
+    font-size: 11px;
+}
+
+.im-audit--link {
+    display: inline-block;
+    margin-top: 6px;
+    font-size: 11px;
+}
+
+.im-audit--time {
+    margin-top: 4px;
+    color: #888;
+    font-size: 11px;
+}
+
+.im-audit--foot {
+    padding: 12px 20px 0;
+}
+
 .im-join {
     display: flex;
     flex-direction: column;

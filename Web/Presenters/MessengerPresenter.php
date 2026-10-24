@@ -468,6 +468,11 @@ final class MessengerPresenter extends OpenVKPresenter
             exit();
         }
 
+        $oldContent = (string) $msg->getRecord()->content;
+        if ($msg->isInGroupChat() && $oldContent !== $this->postParam("content")) {
+            $msg->getRecipient()->log("edited", $this->user->id, null, ["id" => $msg->getId(), "old" => $oldContent, "new" => $this->postParam("content")]);
+        }
+
         $msg->setContent($this->postParam("content"));
         $msg->setEdited(time());
         $msg->save();
@@ -494,6 +499,10 @@ final class MessengerPresenter extends OpenVKPresenter
         if ($msg->getSender()->getId() !== $this->user->id) {
             header("HTTP/1.1 403 Forbidden");
             exit();
+        }
+
+        if ($msg->isInGroupChat() && !$msg->isDeleted()) {
+            $msg->getRecipient()->log("deleted", $this->user->id, $this->user->id, ["id" => $msg->getId(), "text" => (string) $msg->getRecord()->content]);
         }
 
         $msg->setDeleted(1);
@@ -612,6 +621,10 @@ final class MessengerPresenter extends OpenVKPresenter
 
             $sender = $msg->getSender();
             if ($forAll && $sender instanceof User && ($deleteAny || $sender->getId() === $this->user->id)) {
+                if ($correspondent instanceof GroupChat) {
+                    $correspondent->log("deleted", $this->user->id, $sender->getId(), ["id" => $id, "text" => (string) $msg->getRecord()->content]);
+                }
+
                 $msg->setDeleted(1);
                 $msg->setEdited(time()); // метка для поллинга (apiSync)
                 $msg->save();

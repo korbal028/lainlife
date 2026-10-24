@@ -243,6 +243,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         // история до вступления не считается непрочитанной
         (new Correspondence($user, $chat))->markAsJoined();
+        $chat->log("added", $this->user->id, $userId);
 
         $this->returnJson(["success" => true]);
     }
@@ -268,6 +269,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         $this->groupChats->removeAdmin($chat->getId(), $userId);
         $chat->removeException($userId);
         $chat->ban($userId, $this->user->id);
+        $chat->log("removed", $this->user->id, $userId);
         $this->returnJson(["success" => true, "removed" => $chat->getBans()]);
     }
 
@@ -294,6 +296,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $this->groupChats->leaveChat($chat->getId(), $this->user->id);
+        $chat->log("left", $this->user->id);
         $this->groupChats->removeAdmin($chat->getId(), $this->user->id);
         $chat->removeException($this->user->id);
         $this->returnJson(["success" => true]);
@@ -365,7 +368,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         if (!is_null($this->postParam("tag")) && $chat->hasAdminRight("tags", $me)) {
             $color = (string) $this->postParam("color");
-            $chat->setTag($userId, (string) $this->postParam("tag"), preg_match("%^#[0-9a-f]{6}$%i", $color) ? $color : "#7a5bb5");
+            $this->setTagLogged($chat, $userId, (string) $this->postParam("tag"), preg_match("%^#[0-9a-f]{6}$%i", $color) ? $color : "#7a5bb5");
         }
 
         $this->returnJson(["members" => $chat->getMembersInfo(true)]);
@@ -521,8 +524,62 @@ final class GroupChatPresenter extends OpenVKPresenter
             exit();
         }
 
-        $chat->setTag($this->user->id, (string) $this->postParam("tag"), $color);
+        $this->setTagLogged($chat, $this->user->id, (string) $this->postParam("tag"), $color);
         $this->returnJson(["tag" => $chat->getTags()[$this->user->id] ?? null]);
+    }
+
+    private function setTagLogged(GroupChat $chat, int $userId, string $text, string $color): void
+    {
+        $old = $chat->getTags()[$userId] ?? null;
+        $chat->setTag($userId, $text, $color);
+        $new = $chat->getTags()[$userId] ?? null;
+        if ($old != $new) {
+            $chat->log("tag", $this->user->id, $userId, $new ?? []);
+        }
+    }
+
+    // недавние действия за неделю, видят только админы
+    public function renderAudit(int $peer): void
+    {
+        $this->assertUserLoggedIn();
+
+        $chat = $this->getChat($peer);
+        if (!$chat->canManageParticipants($this->user->id)) {
+            $this->flash("err", tr("error"), tr("forbidden"));
+            $this->redirect($chat->getURL());
+        }
+
+        $link = fn(?User $user) => $user
+            ? '<a href="' . htmlspecialchars($user->getURL()) . '">' . htmlspecialchars($user->getCanonicalName()) . '</a>'
+            : htmlspecialchars(tr("messenger_chat_audit_unknown"));
+
+        $entries = [];
+        foreach ($chat->getLog() as $entry) {
+            $key = "messenger_chat_audit_" . $entry->type;
+            $tag = null;
+            if ($entry->type === "tag") {
+                $self = $entry->target?->getId() === $entry->actor?->getId();
+                $key .= (empty($entry->data["text"]) ? "_removed" : "") . ($self ? "_self" : "_other");
+                if (!empty($entry->data["text"])) {
+                    $tag = '<span class="msg-tag im-tag" style="--tag: ' . htmlspecialchars((string) $entry->data["color"]) . '">' . htmlspecialchars((string) $entry->data["text"]) . '</span>';
+                }
+            }
+
+            if ($entry->type === "deleted" && $entry->target?->getId() === $entry->actor?->getId()) {
+                $key .= "_self";
+            }
+
+            $entries[] = (object) [
+                "type"    => $entry->type,
+                "actor"   => $entry->actor,
+                "created" => $entry->created,
+                "data"    => $entry->data,
+                "html"    => str_replace(["%ACTOR%", "%TARGET%", "%TAG%"], [$link($entry->actor), $link($entry->target), $tag ?? ""], tr($key)),
+            ];
+        }
+
+        $this->template->chat    = $chat;
+        $this->template->entries = $entries;
     }
 
     public function renderJoin(string $hash): void
@@ -548,6 +605,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
             $this->groupChats->addParticipant($chat->getId(), $this->user->id);
             (new Correspondence($this->user->identity, $chat))->markAsJoined();
+            $chat->log("joined", $this->user->id);
             $this->redirect($chat->getURL());
         }
 

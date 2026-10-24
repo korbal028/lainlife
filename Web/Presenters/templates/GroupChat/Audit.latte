@@ -1,0 +1,40 @@
+{extends "../@layout.latte"}
+{block title}{_messenger_chat_audit} — {$chat->getName()}{/block}
+
+{block header}
+    <a href="/im">{_my_messages}</a> »
+    <a href="{$chat->getURL()}">{$chat->getName()}</a> »
+    {_messenger_chat_audit}
+{/block}
+
+{block content}
+    <div class="im-audit">
+        <div class="im-audit--hint">{_messenger_chat_audit_hint}</div>
+        <div n:if="count($entries) === 0" class="im-audit--empty">{_messenger_chat_audit_empty}</div>
+        <div n:foreach="$entries as $entry" class="im-audit--item im-audit--item_{$entry->type}">
+            <a n:tag-if="$entry->actor" href="{$entry->actor?->getURL()}">
+                <img class="im-audit--ava avatar-style-{$thisUser->getStyleAvatar()}" src="{$entry->actor?->getAvatarUrl('miniscule') ?? '/assets/packages/static/openvk/img/camera_200.png'}" alt="" />
+            </a>
+            <div class="im-audit--body">
+                <div class="im-audit--text">{$entry->html|noescape}</div>
+                {if $entry->type === "deleted"}
+                    <div class="im-audit--quote">{($entry->data["text"] ?? "") ?: tr("messenger_no_text")|breaklines}</div>
+                {elseif $entry->type === "edited"}
+                    <div class="im-audit--quote">
+                        <span class="im-audit--label">{_messenger_chat_audit_before}</span>
+                        {($entry->data["old"] ?? "") ?: tr("messenger_no_text")|breaklines}
+                    </div>
+                    <div class="im-audit--quote">
+                        <span class="im-audit--label">{_messenger_chat_audit_after}</span>
+                        {($entry->data["new"] ?? "") ?: tr("messenger_no_text")|breaklines}
+                    </div>
+                    <a n:if="isset($entry->data['id'])" class="im-audit--link" href="{$chat->getURL()}&msg={$entry->data['id']}">{_messenger_chat_audit_go_to}</a>
+                {/if}
+                <div class="im-audit--time">{$entry->created}</div>
+            </div>
+        </div>
+        <div class="im-audit--foot">
+            <a class="button" href="{$chat->getURL()}">{_messenger_chat_audit_back}</a>
+        </div>
+    </div>
+{/block}
