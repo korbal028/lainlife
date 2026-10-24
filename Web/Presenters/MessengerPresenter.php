@@ -176,6 +176,8 @@ final class MessengerPresenter extends OpenVKPresenter
         $this->template->chatRights    = $correspondent instanceof GroupChat
             ? $correspondent->getPermissionsFor($this->user->id)
             : array_fill_keys(array_keys(GroupChat::PERMISSIONS), true);
+        $this->template->slowmode      = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeFor($this->user->id) : 0;
+        $this->template->slowmodeWait  = $correspondent instanceof GroupChat ? $correspondent->getSlowmodeWait($this->user->id) : 0;
         $this->template->correspondent = $correspondent;
         $this->template->reactions     = Message::REACTIONS;
         $this->template->reactionStats = (object) $this->messages->getReactionStats($this->user->identity);
@@ -324,6 +326,12 @@ final class MessengerPresenter extends OpenVKPresenter
         if (!$sel || !$this->canWrite($sel)) {
             header("HTTP/1.1 403 Forbidden");
             exit();
+        }
+
+        $slowmodeWait = $sel instanceof GroupChat ? $sel->getSlowmodeWait($this->user->id) : 0;
+        if ($slowmodeWait > 0) {
+            header("HTTP/1.1 429 Too Many Requests");
+            $this->returnJson(["error" => "slowmode", "wait" => $slowmodeWait]);
         }
 
         $replyTo  = $this->getReplyTarget($sel);
@@ -750,6 +758,7 @@ final class MessengerPresenter extends OpenVKPresenter
             "description" => $isChat ? (string) $peer->getDescription() : null,
             "history_visible" => $isChat ? $peer->isHistoryVisible() : null,
             "permissions" => $isChat ? $peer->getPermissions() : null,
+            "slowmode"  => $isChat ? $peer->getSlowmode() : null,
             "members_label" => $isChat ? tr("participants", $peer->getParticipantsCount()) : null,
             "members"   => $isChat ? $this->getChatMembers($peer) : [],
             "birthday"  => $birthday ? trim($birthday) : null,

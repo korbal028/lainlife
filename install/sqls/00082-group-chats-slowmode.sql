@@ -1,0 +1,1 @@
+ALTER TABLE `group_chats` ADD COLUMN IF NOT EXISTS `slowmode` int(10) UNSIGNED NOT NULL DEFAULT 0 AFTER `permissions`;

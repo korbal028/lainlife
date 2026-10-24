@@ -1443,6 +1443,7 @@
 "messenger_chat_rights_slowmode" = "Медленный режим";
 "messenger_chat_rights_slowmode_off" = "Выкл";
 "messenger_chat_rights_slowmode_hint" = "Участники смогут отправлять только одно сообщение за этот интервал.";
+"messenger_slowmode_wait" = "Включён медленный режим. Следующее сообщение можно отправить через %TIME%.";
 "messenger_chat_rights_seconds" = "$1с";
 "messenger_chat_rights_minutes" = "$1м";
 "messenger_chat_rights_hours" = "$1ч";

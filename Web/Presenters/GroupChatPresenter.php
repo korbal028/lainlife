@@ -363,7 +363,7 @@ final class GroupChatPresenter extends OpenVKPresenter
         }
 
         $changesInfo     = !is_null($this->postParam("name")) || !is_null($this->postParam("description"));
-        $changesSettings = !is_null($this->postParam("history_visible")) || sizeof($permissions) > 0;
+        $changesSettings = !is_null($this->postParam("history_visible")) || !is_null($this->postParam("slowmode")) || sizeof($permissions) > 0;
         if (($changesInfo && !$chat->can("info", $this->user->id)) || ($changesSettings && !$chat->canManageParticipants($this->user->id))) {
             header("HTTP/1.1 403 Forbidden");
             exit();
@@ -387,11 +387,16 @@ final class GroupChatPresenter extends OpenVKPresenter
             $chat->setPermissions($permissions);
         }
 
+        if (!is_null($this->postParam("slowmode"))) {
+            $chat->setSlowmode((int) $this->postParam("slowmode"));
+        }
+
         $this->returnJson([
             "name"            => $chat->getName(),
             "description"     => (string) $chat->getDescription(),
             "history_visible" => $chat->isHistoryVisible(),
             "permissions"     => $chat->getPermissions(),
+            "slowmode"        => $chat->getSlowmode(),
         ]);
     }
 

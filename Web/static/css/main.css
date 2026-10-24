@@ -2032,6 +2032,12 @@ span.ok-smile.ok-smile {
     outline: none;
 }
 
+.messenger-app--input .button.im-slowmode-wait {
+    opacity: .6;
+    font-variant-numeric: tabular-nums;
+    cursor: default;
+}
+
 .im-peer-rights--hint {
     padding: 10px 20px;
     background: #f7f8fa;

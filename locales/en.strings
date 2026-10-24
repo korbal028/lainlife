@@ -1513,6 +1513,7 @@
 "messenger_chat_rights_slowmode" = "Slow mode";
 "messenger_chat_rights_slowmode_off" = "Off";
 "messenger_chat_rights_slowmode_hint" = "Members will be able to send only one message per this interval.";
+"messenger_slowmode_wait" = "Slow mode is on. You can send your next message in %TIME%.";
 "messenger_chat_rights_seconds" = "$1s";
 "messenger_chat_rights_minutes" = "$1m";
 "messenger_chat_rights_hours" = "$1h";

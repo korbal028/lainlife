@@ -28,6 +28,8 @@ class GroupChat extends RowModel
         "info"      => false,
     ];
 
+    public const SLOWMODE_INTERVALS = [0, 5, 10, 30, 60, 300, 900, 3600];
+
     public const TAG_MAX_LENGTH         = 16;
     public const NAME_MAX_LENGTH        = 64;
     public const DESCRIPTION_MAX_LENGTH = 1000;
@@ -197,6 +199,42 @@ function getAvatarUrl(string $size = 'normal'): string
     function can(string $permission, int $userId): bool
     {
         return $this->getPermissionsFor($userId)[$permission] ?? false;
+    }
+
+    function getSlowmode(): int
+    {
+        $fresh = DatabaseConnection::i()->getContext()->table("group_chats")->get($this->getId());
+
+        return (int) ($fresh->slowmode ?? 0);
+    }
+
+    function setSlowmode(int $seconds): void
+    {
+        if (!in_array($seconds, self::SLOWMODE_INTERVALS, true)) {
+            return;
+        }
+
+        DatabaseConnection::i()->getContext()->table("group_chats")->where("id", $this->getId())->update(["slowmode" => $seconds]);
+    }
+
+    function getSlowmodeFor(int $userId): int
+    {
+        return $this->canManageParticipants($userId) ? 0 : $this->getSlowmode();
+    }
+
+    function getSlowmodeWait(int $userId): int
+    {
+        $interval = $this->getSlowmodeFor($userId);
+        if ($interval === 0) {
+            return 0;
+        }
+
+        $last = DatabaseConnection::i()->getContext()->table("messages")
+            ->where(["recipient_type" => self::class, "recipient_id" => $this->getId(), "sender_type" => User::class, "sender_id" => $userId])
+            ->order("created DESC")
+            ->fetch();
+
+        return $last ? max(0, (int) $last->created + $interval - time()) : 0;
     }
 
     static function getAttachmentPermission(object $attachment): ?string

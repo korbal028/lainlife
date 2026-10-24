@@ -177,7 +177,7 @@
                                 <input type="hidden" name="type" value="1" autocomplete="off" />
                                 <input type="hidden" name="hash" value="{$csrfToken}" />
 
-                                <button class="button" data-bind="click: sendMessage">{_send}</button>
+                                <button class="button" data-bind="click: sendMessage, text: sendLabel, css: { 'im-slowmode-wait': slowWait() > 0 }">{_send}</button>
 
                                 <div style="float: right; display: flex; flex-direction: column; padding-top: 5px;">
                                     <a class='menu_toggler'>
@@ -332,6 +332,31 @@
         (() => {
             const IS_GROUP_CHAT = {$isGroupChat};
             const CHAT_RIGHTS   = {$chatRights};
+            const SLOWMODE_SEC  = {$slowmode};
+            const SLOWMODE_STR  = {tr("messenger_slowmode_wait", "%TIME%")};
+            const slowWait      = ko.observable(0);
+            let slowTimer       = null;
+            window.slowWait     = slowWait;
+            window.slowClock    = sec => {
+                const h = Math.floor(sec / 3600), m = Math.floor(sec % 3600 / 60), pad = n => String(n).padStart(2, "0");
+                return (h ? `${ h }:${ pad(m) }` : m) + ":" + pad(sec % 60);
+            };
+            window.startSlowmode = sec => {
+                clearInterval(slowTimer);
+                const until = Date.now() + sec * 1000;
+                const tick  = () => {
+                    const left = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+                    slowWait(left);
+                    if(left === 0) clearInterval(slowTimer);
+                };
+                tick();
+                if(sec > 0) slowTimer = setInterval(tick, 1000);
+            };
+            window.slowmodeBlocked = () => {
+                if(slowWait() === 0) return false;
+                fastError(SLOWMODE_STR.replace("%TIME%", window.slowClock(slowWait())));
+                return true;
+            };
             const AVATAR_STYLE  = {$thisUser->getStyleAvatar()};
             const PEER_SEL = {$isGroupChat ? $correspondent->getPeerId() : ($correspondent instanceof \openvk\Web\Models\Entities\Club ? -$correspondent->getId() : $correspondent->getId())};
             const TYPING_TPL = {tr('message_user_typing', '%NAMES%')};
@@ -428,9 +453,12 @@
                 this.forwardMsgs    = window.forwardMsgs;
                 this.selectionLabel = ko.pureComputed(() => {tr("messenger_selected_count", "%COUNT%")}.replace("%COUNT%", this.selectedMsgs().length));
                 this.messageContent = ko.observable("");
+                this.slowWait       = window.slowWait;
+                this.sendLabel      = ko.pureComputed(() => this.slowWait() > 0 ? window.slowClock(this.slowWait()) : {tr("send")});
             
                 this.sendMessage = model => {
                     if(model.messageContent() === "" && !document.querySelector("#write [data-att-id]") && model.forwardMsgs().length === 0) return false;
+                    if(window.slowmodeBlocked()) return false;
                 
                     window.Msg.sendMessage(model.messageContent());
                     model.messageContent("");
@@ -1174,6 +1202,8 @@
 
                 // стикер уходит сразу отдельным сообщением, без текста
                 async sendSticker(sticker) {
+                    if(window.slowmodeBlocked()) return;
+
                     const msg = this._newSelfMessage("");
                     msg.attachments = [{ type: "sticker", id: sticker.id, sticker: { pack: sticker.pack, url: sticker.url, emoji: sticker.emoji } }];
                     msg.timing.sent = "<img src=\"/assets/packages/static/openvk/img/loading_mini.gif\">";
@@ -1188,8 +1218,15 @@
                         this.clearReply();
                     }
 
+                    window.startSlowmode(SLOWMODE_SEC);
                     try {
                         const res = await fetch("/im/api/messages" + PEER_SEL + "/create.json", { method: "POST", body: fd });
+                        if(res.status === 429) {
+                            window.messages.remove(m => m._tuid === msg._tuid);
+                            window.startSlowmode((await res.json()).wait);
+                            window.slowmodeBlocked();
+                            return;
+                        }
                         if(res.status !== 202) throw new Error(res.status);
 
                         const sent = await res.json();
@@ -1199,6 +1236,7 @@
                         else
                             this._patchMessage(msg._tuid, sent);
                     } catch(e) {
+                        window.startSlowmode(0);
                         window.messages.remove(m => m._tuid === msg._tuid);
                         fastError(tr("messages_error_1"));
                     }
@@ -1211,6 +1249,8 @@
                     let msgData = new FormData();
                     msgData.set("content", content);
                     msgData.set("hash", {$csrfToken});
+                    const replyTo  = window.replyTo();
+                    const forwards = window.forwardMsgs();
                     if(window.replyTo()) {
                         msgData.set("reply_to", window.replyTo().uuid);
                         this.clearReply();
@@ -1244,8 +1284,20 @@
                     xhr.onreadystatechange = (function() {
                         if(this.readyState !== 4)
                             return;
+                        else if(this.status === 429) {
+                            window.messages.remove(m => m._tuid === tempId);
+                            window.startSlowmode(JSON.parse(xhr.responseText).wait);
+                            window.slowmodeBlocked();
+                            const vm = ko.dataFor(document.querySelector(".messenger-app"));
+                            if(vm.messageContent() === "") vm.messageContent(content);
+                            if(!window.replyTo()) window.replyTo(replyTo);
+                            if(window.forwardMsgs().length === 0) window.forwardMsgs(forwards);
+
+                            return;
+                        }
                         else if(this.status !== 202) {
                             console.error("Message was not sent.");
+                            window.startSlowmode(0);
                             that._patchMessage(tempId, {
                                 sender: {
                                     avatar: "/assets/packages/static/openvk/img/oof.apng",
@@ -1297,12 +1349,14 @@
                         }
                     });
                     xhr.send(msgData);
+                    window.startSlowmode(SLOWMODE_SEC);
                     console.debug("Message sent, awaiting response.");
                 }
             }
         
             window.Msg = new Messenger([]);
             window.Msg.takeForward();
+            window.startSlowmode({$slowmodeWait});
 
             document.querySelector(".messenger-app--input #write form")?.addEventListener("sticker:send", e => {
                 e.preventDefault();
@@ -1831,7 +1885,7 @@
                     </div>`;
             };
 
-            // разрешения участников, пока только вёрстка: медиа раскрываются списком, медленный режим — ползунком
+            // разрешения участников: медиа раскрываются списком, медленный режим — ползунком
             const SLOWMODE  = [0, 5, 10, 30, 60, 300, 900, 3600];
             const slowLabel = sec => sec === 0 ? PEER_STR.slowOff
                 : sec < 60 ? PEER_STR.sec.replace("%N%", sec)
@@ -2140,8 +2194,7 @@
                         updateRights();
                     });
                     rights.addEventListener("input", e => {
-                        if(e.target.name !== "slowmode") return;
-                        rights.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === Number(e.target.value)));
+                        if(e.target.name === "slowmode") setSlowRange(Number(e.target.value));
                     });
                     // список медиа раскрывается кликом по строке, галочка справа его не трогает
                     rights.querySelector(".im-peer-rights--expand").addEventListener("click", e => {
@@ -2298,9 +2351,18 @@
                 };
 
                 const rightBoxes   = () => [...rights.querySelectorAll('.im-peer-switch:not([name="media"]), [name^="media_"]')].filter(box => box.name.replace(/^media_/, "") in info.permissions);
-                const rightsFields = () => Object.fromEntries(rightBoxes().map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"]));
+                const slowRange    = rights?.querySelector('[name="slowmode"]');
+                const setSlowRange = index => {
+                    slowRange.value = index;
+                    rights.querySelectorAll(".im-peer-slow--labels span").forEach((label, i) => label.classList.toggle("active", i === index));
+                };
+                const rightsFields = () => ({
+                    ...Object.fromEntries(rightBoxes().map(box => ["perm_" + box.name.replace(/^media_/, ""), box.checked ? "1" : "0"])),
+                    slowmode: SLOWMODE[Number(slowRange.value)],
+                });
                 const showRights = () => {
                     rightBoxes().forEach(box => box.checked = info.permissions[box.name.replace(/^media_/, "")]);
+                    setSlowRange(Math.max(0, SLOWMODE.indexOf(info.slowmode)));
                     updateRights();
                     head.textContent = PEER_STR.rights;
                     setPage(rights);
