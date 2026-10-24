@@ -1557,6 +1557,7 @@
 "messenger_service_unpin" = "%ACTOR% unpinned the message «%TEXT%»";
 "messenger_service_invite" = "%ACTOR% invited %TARGET%";
 "messenger_service_join" = "%ACTOR% joined the chat via invite link";
+"messenger_service_leave" = "%ACTOR% left the chat";
 "messenger_service_admin_add" = "%ACTOR% made you an admin";
 "messenger_service_admin_remove" = "%ACTOR% removed you from admins";
 "messenger_service_in_chat" = "in the chat";

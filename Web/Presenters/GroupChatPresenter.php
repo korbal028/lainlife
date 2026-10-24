@@ -298,6 +298,7 @@ final class GroupChatPresenter extends OpenVKPresenter
 
         $this->groupChats->leaveChat($chat->getId(), $this->user->id);
         $chat->logAction("left", $this->user->id);
+        (new Correspondence($this->user->identity, $chat))->announce(["type" => "leave"]);
         $this->groupChats->removeAdmin($chat->getId(), $this->user->id);
         $chat->removeException($this->user->id);
         $this->returnJson(["success" => true]);

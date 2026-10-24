@@ -1487,6 +1487,7 @@
 "messenger_service_unpin" = "%ACTOR% открепил(а) сообщение «%TEXT%»";
 "messenger_service_invite" = "%ACTOR% пригласил(а) %TARGET%";
 "messenger_service_join" = "%ACTOR% вступил(а) в беседу по ссылке-приглашению";
+"messenger_service_leave" = "%ACTOR% покинул(а) беседу";
 "messenger_service_admin_add" = "%ACTOR% назначил(а) вас администратором";
 "messenger_service_admin_remove" = "%ACTOR% снял(а) вас с поста администратора";
 "messenger_service_in_chat" = "в беседе";
