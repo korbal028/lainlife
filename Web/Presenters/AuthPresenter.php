@@ -314,7 +314,6 @@ final class AuthPresenter extends OpenVKPresenter
                 "name"    => $user->getCanonicalName(),
                 "avatar"  => $user->getAvatarUrl("miniscule"),
                 "contact" => Accounts::maskContact($user),
-                "unread"  => $id === $this->user->id ? 0 : $user->getUnreadMessagesCount() + $user->getNotificationsCount(),
                 "current" => $id === $this->user->id,
             ];
         }

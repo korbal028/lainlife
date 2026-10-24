@@ -15,7 +15,6 @@ async function openAccountsSwitcher() {
                 <b>${escapeHtml(account.name)}</b>
                 <span>${account.current ? escapeHtml(tr('accounts_current')) : escapeHtml(account.contact)}</span>
             </span>
-            ${account.unread > 0 ? `<span class="accounts-switcher--badge">${Number(account.unread)}</span>` : ''}
             ${account.current ? '' : `<a class="accounts-switcher--forget" title="${escapeHtml(tr('accounts_forget'))}">×</a>`}
         </div>`).join('')
 
