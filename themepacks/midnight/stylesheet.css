@@ -952,6 +952,14 @@ ul {
     color: #8b9ab5;
 }
 
+.repost-dialogs--list {
+    border-color: #2c2640;
+}
+
+.repost-dialogs--item:hover {
+    background: rgba(122, 156, 196, .1);
+}
+
 .msg-role_admin {
     background-color: #a99ad8;
 }

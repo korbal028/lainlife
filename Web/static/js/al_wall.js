@@ -2313,7 +2313,7 @@ async function repost(id, repost_type = 'post') {
         list.html(items.map(item => `
             <label class="repost-dialogs--item" data-name="${escapeHtml(item.name.toLowerCase())}" data-vkify-choice-label="1">
                 <input type="radio" name="repost_peer" value="${Number(item.id)}">
-                <img src="${escapeHtml(item.avatar)}" alt="" loading="lazy">
+                <img class="avatar-style-${Number(window.openvk?.avatar_style ?? 0)}" src="${escapeHtml(item.avatar)}" alt="" loading="lazy">
                 <span>${escapeHtml(item.name)}</span>
             </label>`).join(''))
     }

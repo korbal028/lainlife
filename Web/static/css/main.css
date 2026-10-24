@@ -7937,8 +7937,12 @@ hr {
     flex: none;
     width: 28px;
     height: 28px;
-    border-radius: 50%;
+    border-radius: 2px;
     object-fit: cover;
+}
+
+.repost-dialogs--item img.avatar-style-2 {
+    border-radius: 50%;
 }
 
 .repost-dialogs--empty {
